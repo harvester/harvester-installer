@@ -3,7 +3,7 @@ FROM golang:1.13.4-alpine3.10
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
-RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates
+RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates zstd
 RUN go get -d golang.org/x/lint/golint && \
     git -C /go/src/golang.org/x/lint/golint checkout -b current 06c8688daad7faa9da5a0c2f163a3d14aac986ca && \
     go install golang.org/x/lint/golint && \
@@ -16,6 +16,12 @@ RUN rm -rf /go/src /go/pkg
 RUN if [ "${ARCH}" == "amd64" ]; then \
         curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.15.0; \
     fi
+# set up helm
+ENV HELM_VERSION v3.3.1
+ENV HELM_URL=https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz
+RUN mkdir /usr/tmp && \
+    curl ${HELM_URL} | tar xvzf - --strip-components=1 -C /usr/tmp/ && \
+    mv /usr/tmp/helm /usr/bin/helm
 
 ENV GO111MODULE off
 ENV DAPPER_ENV REPO TAG DRONE_TAG CROSS
