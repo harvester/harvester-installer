@@ -1,4 +1,4 @@
-From 4acc362435ace725bfa5625061624e3b14ac8ae4 Mon Sep 17 00:00:00 2001
+From 50f14a031c9ef3dfda48ef5ac9601ac1d90025ef Mon Sep 17 00:00:00 2001
 From: gitlawr <lawrleegle@gmail.com>
 Date: Mon, 2 Nov 2020 10:30:49 +0800
 Subject: [PATCH] Add Harvester bundle
@@ -267,14 +267,14 @@ index 2d931ba..211d5fa 100755
      reboot -f
  fi
 diff --git a/main.go b/main.go
-index af87796..c05ac17 100644
+index af87796..da4c5b4 100644
 --- a/main.go
 +++ b/main.go
 @@ -9,6 +9,7 @@ import (
  
  	"github.com/docker/docker/pkg/mount"
  	"github.com/docker/docker/pkg/reexec"
-+	"github.com/rancher/harvester/pkg/console"
++	"github.com/rancher/harvester-installer/pkg/console"
  	"github.com/rancher/k3os/pkg/cli/app"
  	"github.com/rancher/k3os/pkg/enterchroot"
  	"github.com/rancher/k3os/pkg/transferroot"
@@ -318,7 +318,7 @@ index 4887f7e..b7e11ba 100644
  PermitRootLogin         no
  LoginGraceTime          30s
 diff --git a/pkg/cli/install/install.go b/pkg/cli/install/install.go
-index 3a2f346..51aba85 100644
+index 3a2f346..b61ce6b 100644
 --- a/pkg/cli/install/install.go
 +++ b/pkg/cli/install/install.go
 @@ -4,7 +4,7 @@ import (
@@ -326,7 +326,7 @@ index 3a2f346..51aba85 100644
  	"os"
  
 -	"github.com/rancher/k3os/pkg/cliinstall"
-+	"github.com/rancher/harvester/pkg/console"
++	"github.com/rancher/harvester-installer/pkg/console"
  	"github.com/rancher/k3os/pkg/mode"
  	"github.com/sirupsen/logrus"
  	"github.com/urfave/cli"
