@@ -5,30 +5,6 @@ source $(dirname $0)/version
 
 cd $(dirname $0)/..
 
-# Build ISO on tag or related file changes
-if [ -n "$GIT_TAG" ]; then
-  should_build_iso="1"
-fi
-
-iso_related_path_list=("build-iso" "scripts/iso" "pkg/console")
-if [ -n "${DRONE_PULL_REQUEST}" ]; then
-  changed_paths=$(git --no-pager diff --name-only FETCH_HEAD FETCH_HEAD~1);
-else
-  changed_paths=$(git --no-pager diff --name-only HEAD~1);
-fi
-
-for element in "${iso_related_path_list[@]}"
-do
-  if [[ "$changed_paths" == *"$element"* ]]; then
-    should_build_iso="1"
-  fi
-done
-
-if [ -z "$should_build_iso" ]; then
-  echo "Skip building ISO"
-  exit 0
-fi
-
 echo "Start building ISO"
 
 K3OS_VERSION=v0.11.1
