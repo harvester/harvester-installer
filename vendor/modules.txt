@@ -1,0 +1,46 @@
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/docker/docker v1.13.1
+github.com/docker/docker/pkg/mount
+# github.com/docker/go-units v0.4.0
+github.com/docker/go-units
+# github.com/ghodss/yaml v1.0.0
+github.com/ghodss/yaml
+# github.com/jroimartin/gocui v0.4.0
+github.com/jroimartin/gocui
+# github.com/konsorten/go-windows-terminal-sequences v1.0.2
+github.com/konsorten/go-windows-terminal-sequences
+# github.com/mattn/go-runewidth v0.0.9
+github.com/mattn/go-runewidth
+# github.com/mattn/go-shellwords v1.0.5
+github.com/mattn/go-shellwords
+# github.com/nsf/termbox-go v0.0.0-20200418040025-38ba6e5628f1 => github.com/gitlawr/termbox-go v0.0.0-20201103025537-250e644d56a6
+github.com/nsf/termbox-go
+# github.com/otiai10/copy v1.0.2
+github.com/otiai10/copy
+# github.com/pkg/errors v0.8.1
+github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/rancher/k3os v0.19.2-dev.4
+github.com/rancher/k3os/pkg/config
+github.com/rancher/k3os/pkg/system
+# github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
+github.com/rancher/mapper
+github.com/rancher/mapper/convert
+github.com/rancher/mapper/convert/merge
+github.com/rancher/mapper/definition
+github.com/rancher/mapper/mappers
+github.com/rancher/mapper/values
+# github.com/rancher/wrangler v0.3.1
+github.com/rancher/wrangler/pkg/name
+# github.com/sirupsen/logrus v1.4.2
+github.com/sirupsen/logrus
+# github.com/stretchr/testify v1.6.1
+github.com/stretchr/testify/assert
+# golang.org/x/sys v0.0.0-20191127021746-63cb32ae39b2
+golang.org/x/sys/unix
+# gopkg.in/yaml.v2 v2.2.4
+gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+gopkg.in/yaml.v3
