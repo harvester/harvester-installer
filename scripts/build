@@ -18,7 +18,7 @@ git clone --branch ${K3OS_VERSION} --single-branch --depth 1 https://github.com/
 
 # Prepare Harvester, Longhorn charts
 mkdir -p k3os/images/70-iso/charts
-harvester_chart_path=../deploy/charts/harvester
+harvester_chart_path=../harvester/deploy/charts/harvester
 if [ ! -d ${harvester_chart_path} ];then
     git clone --branch master --single-branch --depth 1 https://github.com/rancher/harvester.git /tmp/harvester
     harvester_chart_path=/tmp/harvester/deploy/charts/harvester
@@ -61,7 +61,7 @@ git am ../scripts/iso/k3os-patches/*.patch
 # Update vendors
 export GO111MODULE=on
 go mod edit -replace=github.com/nsf/termbox-go=github.com/gitlawr/termbox-go@v0.0.0-20201103025537-250e644d56a6
-go mod edit -replace=github.com/rancher/harvester-installer/pkg/console=../pkg/console
+go mod edit -replace=github.com/rancher/harvester-installer=../
 go get
 go mod vendor
 # make ISO
