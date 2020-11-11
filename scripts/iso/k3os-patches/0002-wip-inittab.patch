@@ -1,0 +1,77 @@
+From 8538f3b74d5fd2f5d951188bc791d76da6d6ae06 Mon Sep 17 00:00:00 2001
+From: gitlawr <lawrleegle@gmail.com>
+Date: Wed, 11 Nov 2020 14:15:43 +0800
+Subject: [PATCH 2/2] wip inittab
+
+---
+ overlay/etc/profile.d/console-profile.sh      |  7 -------
+ .../etc/profile.d/harvester_console_bind.sh   |  4 ++++
+ overlay/libexec/k3os/boot                     | 21 ++++++++++++++++++-
+ 3 files changed, 24 insertions(+), 8 deletions(-)
+ delete mode 100755 overlay/etc/profile.d/console-profile.sh
+ create mode 100755 overlay/etc/profile.d/harvester_console_bind.sh
+
+diff --git a/overlay/etc/profile.d/console-profile.sh b/overlay/etc/profile.d/console-profile.sh
+deleted file mode 100755
+index 94363fb..0000000
+--- a/overlay/etc/profile.d/console-profile.sh
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#!/bin/bash
+-
+-# bind <F12>
+-bind -x '"\e[24~":"harvester-console"'
+-export HARVESTER_DASHBOARD=true
+-export TTY=$(tty)
+-harvester-console
+diff --git a/overlay/etc/profile.d/harvester_console_bind.sh b/overlay/etc/profile.d/harvester_console_bind.sh
+new file mode 100755
+index 0000000..a0113c1
+--- /dev/null
++++ b/overlay/etc/profile.d/harvester_console_bind.sh
+@@ -0,0 +1,4 @@
++#!/bin/bash
++
++# bind <F12>
++bind -x '"\e[24~":"harvester-console"'
+diff --git a/overlay/libexec/k3os/boot b/overlay/libexec/k3os/boot
+index 16f0351..e4baef5 100644
+--- a/overlay/libexec/k3os/boot
++++ b/overlay/libexec/k3os/boot
+@@ -2,13 +2,32 @@
+ 
+ setup_ttys()
+ {
+-    for i in 1 2 3 4 5 6; do
++    for i in 2 3 4 5 6; do
+         if [ -e /dev/tty${i} ]; then
+             echo 'tty'$i'::respawn:/sbin/getty 38400 tty'$i >> /etc/inittab
+             echo tty$i >> /etc/securetty
+         fi
+     done
+ 
++    if [ "$K3OS_MODE" != "local" ]; then
++        echo 'tty1::respawn:/sbin/getty 38400 tty1' >> /etc/inittab
++        echo tty1 >> /etc/securetty
++    else
++        mkdir -p /opt
++        cat > /opt/start_harvester_console.sh << EOF
++#!/bin/bash
++
++export HARVESTER_DASHBOARD=true
++export TTY=$(tty)
++harvester-console
++sudo -u rancher /bin/bash --login
++EOF
++        chmod +x /opt/start_harvester_console.sh
++        # echo ':5:wait:/opt/start_harvester_console.sh' >> /etc/inittab
++        echo 'tty1::respawn:/sbin/getty -l /opt/start_harvester_console.sh -n 38400 tty1' >> /etc/inittab
++        echo tty1 >> /etc/securetty
++    fi
++
+     for x in $(cat /proc/cmdline); do
+     case $x in
+         rescue)
+-- 
+2.20.1 (Apple Git-117)
+
