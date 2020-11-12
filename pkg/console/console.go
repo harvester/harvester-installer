@@ -7,11 +7,25 @@ import (
 
 	"github.com/jroimartin/gocui"
 	"github.com/rancher/harvester-installer/pkg/widgets"
+	"github.com/sirupsen/logrus"
 )
 
 var (
 	Debug bool
 )
+
+func init() {
+	if os.Getenv("DEBUG") == "true" {
+		Debug = true
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+	f, err := os.OpenFile("/var/log/console.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755) //0600)
+	if err != nil {
+		fmt.Println("failed to open log file")
+		return
+	}
+	logrus.SetOutput(f)
+}
 
 // Console is the structure of the harvester console
 type Console struct {
@@ -25,10 +39,6 @@ func RunConsole() error {
 	c, err := NewConsole()
 	if err != nil {
 		return err
-	}
-	debug := os.Getenv("DEBUG")
-	if debug == "true" {
-		Debug = true
 	}
 	return c.doRun()
 }

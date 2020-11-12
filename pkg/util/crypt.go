@@ -3,13 +3,11 @@ package util
 import (
 	"strings"
 
-	"github.com/rancher/harvester-installer/pkg/log"
 	"github.com/tredoe/osutil/user/crypt/common"
 	"github.com/tredoe/osutil/user/crypt/sha512_crypt"
 )
 
 func CompareByShadow(key, shadowLine string) bool {
-	log.Debug(key, shadowLine)
 	shadowSplits := strings.Split(shadowLine, ":")
 	if len(shadowSplits) < 2 {
 		return false

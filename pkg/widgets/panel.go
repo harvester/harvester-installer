@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jroimartin/gocui"
-	"github.com/rancher/harvester-installer/pkg/log"
 )
 
 type Panel struct {
@@ -86,7 +85,6 @@ func (p *Panel) Show() error {
 		}
 
 		if p.Focus {
-			log.Debug("SetCurrentView ", p.Name)
 			if _, err := p.g.SetCurrentView(p.Name); err != nil {
 				return err
 			}

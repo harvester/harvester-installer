@@ -13,10 +13,10 @@ import (
 
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
-	"github.com/rancher/harvester-installer/pkg/log"
 	"github.com/rancher/harvester-installer/pkg/util"
 	"github.com/rancher/harvester-installer/pkg/version"
 	"github.com/rancher/harvester-installer/pkg/widgets"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
@@ -27,9 +27,7 @@ const (
 	colorYellow
 	colorBlue
 
-	harvesterURL           = "harvesterURL"
-	harvesterStatus        = "harvesterStatus"
-	logo            string = `
+	logo string = `
 ██╗░░██╗░█████╗░██████╗░██╗░░░██╗███████╗░██████╗████████╗███████╗██████╗░
 ██║░░██║██╔══██╗██╔══██╗██║░░░██║██╔════╝██╔════╝╚══██╔══╝██╔════╝██╔══██╗
 ███████║███████║█████╔╝╚██╗░░██╔╝█████╗░░╚█████╗░░░░██║░░░█████╗░░██████╔╝
@@ -51,11 +49,12 @@ var (
 func (c *Console) layoutDashboard(g *gocui.Gui) error {
 	once.Do(func() {
 		if err := initState(); err != nil {
-			log.Debug(err)
+			logrus.Error(err)
 		}
 		if err := g.SetKeybinding("", gocui.KeyF12, gocui.ModNone, toShell); err != nil {
-			log.Debug(err)
+			logrus.Error(err)
 		}
+		logrus.Infof("state: %+v", current)
 	})
 	maxX, maxY := g.Size()
 	if v, err := g.SetView("url", maxX/2-40, 10, maxX/2+40, 14); err != nil {
@@ -249,7 +248,7 @@ func nodeIsReady() bool {
 	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Debug(err, string(output))
+		logrus.Error(err, string(output))
 		return false
 	}
 	if string(output) == "" {
@@ -264,7 +263,7 @@ func chartIsInstalled() bool {
 	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Debug(err, string(output))
+		logrus.Error(err, string(output))
 		return false
 	}
 	if string(output) == "Succeeded" {
@@ -284,7 +283,6 @@ func harvesterPodStatus() (string, error) {
 }
 
 func getHarvesterStatus() string {
-	log.Debug("in getHarvesterStatus")
 	if !current.installed {
 		if !nodeIsReady() || !chartIsInstalled() {
 			return "Setting up Harvester"
@@ -292,7 +290,6 @@ func getHarvesterStatus() string {
 		current.installed = true
 	}
 	status, err := harvesterPodStatus()
-	log.Debug("status: " + status)
 	if err != nil {
 		status = wrapColor(err.Error(), colorRed)
 	}

@@ -8,10 +8,10 @@ import (
 
 	"github.com/jroimartin/gocui"
 	cfg "github.com/rancher/harvester-installer/pkg/config"
-	"github.com/rancher/harvester-installer/pkg/log"
 	"github.com/rancher/harvester-installer/pkg/util"
 	"github.com/rancher/harvester-installer/pkg/widgets"
 	"github.com/rancher/k3os/pkg/config"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -193,7 +193,6 @@ func addAskCreatePanel(c *Console) error {
 	}
 	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			log.Debug("hit ask create enter")
 			selected, err := askCreateV.GetData()
 			if err != nil {
 				return err
@@ -524,7 +523,7 @@ func addCloudInitPanel(c *Console) error {
 				options += fmt.Sprintf("proxy address: %v\n", proxy)
 			}
 			options += string(installBytes)
-			log.Debug("cfm cfg: ", fmt.Sprintf("%+v", cfg.Config.K3OS.Install))
+			logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", cfg.Config.K3OS.Install))
 			if cfg.Config.K3OS.Install != nil && !cfg.Config.K3OS.Install.Silent {
 				confirmV.SetContent(options +
 					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
