@@ -1,22 +1,23 @@
-From 50f14a031c9ef3dfda48ef5ac9601ac1d90025ef Mon Sep 17 00:00:00 2001
+From 246415917a886d6cfdde48b347dccd5535b527d6 Mon Sep 17 00:00:00 2001
 From: gitlawr <lawrleegle@gmail.com>
 Date: Mon, 2 Nov 2020 10:30:49 +0800
-Subject: [PATCH 1/2] Add Harvester bundle
+Subject: [PATCH] Add Harvester bundle
 
 ---
- images/20-progs/Dockerfile               |  3 +
- images/20-rootfs/Dockerfile              |  2 +
- images/70-iso/Dockerfile                 | 11 +++
- images/70-iso/grub.cfg                   | 22 +-----
- images/output/01-full/Dockerfile         |  6 --
- install.sh                               | 93 ++++++++++++++++--------
- main.go                                  |  7 ++
- overlay/etc/profile.d/console-profile.sh |  7 ++
- overlay/etc/ssh/sshd_config              |  2 +-
- pkg/cli/install/install.go               |  4 +-
- scripts/images                           |  2 +-
- 11 files changed, 98 insertions(+), 61 deletions(-)
- create mode 100755 overlay/etc/profile.d/console-profile.sh
+ images/20-progs/Dockerfile                    |  3 +
+ images/20-rootfs/Dockerfile                   |  2 +
+ images/70-iso/Dockerfile                      | 11 +++
+ images/70-iso/grub.cfg                        | 22 +----
+ images/output/01-full/Dockerfile              |  6 --
+ install.sh                                    | 94 +++++++++++++------
+ main.go                                       |  7 ++
+ .../etc/profile.d/harvester_console_bind.sh   |  8 ++
+ overlay/etc/ssh/sshd_config                   |  2 +-
+ overlay/libexec/k3os/boot                     | 20 +++-
+ pkg/cli/install/install.go                    |  4 +-
+ scripts/images                                |  2 +-
+ 12 files changed, 119 insertions(+), 62 deletions(-)
+ create mode 100755 overlay/etc/profile.d/harvester_console_bind.sh
 
 diff --git a/images/20-progs/Dockerfile b/images/20-progs/Dockerfile
 index a4a5e50..eb3260c 100644
@@ -132,7 +133,7 @@ index 317b0e5..ff28f92 100644
 -COPY --from=tar /output/userspace.tar /output/k3os-rootfs-${ARCH}.tar
 -RUN gzip /output/k3os-rootfs-${ARCH}.tar
 diff --git a/install.sh b/install.sh
-index 2d931ba..211d5fa 100755
+index 2d931ba..71c1cbd 100755
 --- a/install.sh
 +++ b/install.sh
 @@ -81,11 +81,11 @@ do_format()
@@ -149,7 +150,7 @@ index 2d931ba..211d5fa 100755
      fi
      parted -s ${DEVICE} set 1 ${BOOTFLAG} on
      partprobe ${DEVICE} 2>/dev/null || true
-@@ -147,6 +147,63 @@ do_copy()
+@@ -147,6 +147,64 @@ do_copy()
              touch ${TARGET}/k3os/system/poweroff
          fi
      fi
@@ -170,6 +171,7 @@ index 2d931ba..211d5fa 100755
 +        zstd -d --rm "${root_path}/${offline_image_path}.zst" -o "${root_path}/${offline_image_path}" > /dev/null
 +    fi
 +    echo "Loading images"
++    echo "This may take a few minutes"
 +    cd ${root_path}
 +    mkdir lib bin sbin k3os dev proc etc sys
 +    mount --bind /bin bin
@@ -213,7 +215,7 @@ index 2d931ba..211d5fa 100755
  }
  
  install_grub()
-@@ -165,7 +222,7 @@ set gfxpayload=keep
+@@ -165,7 +223,7 @@ set gfxpayload=keep
  insmod all_video
  insmod gfxterm
  
@@ -222,7 +224,7 @@ index 2d931ba..211d5fa 100755
    search.fs_label K3OS_STATE root
    set sqfile=/k3os/system/kernel/current/kernel.squashfs
    loopback loop0 /\$sqfile
-@@ -173,33 +230,6 @@ menuentry "k3OS Current" {
+@@ -173,33 +231,6 @@ menuentry "k3OS Current" {
    linux (loop0)/vmlinuz printk.devkmsg=on console=tty1 $GRUB_DEBUG
    initrd /k3os/system/kernel/current/initrd
  }
@@ -256,7 +258,7 @@ index 2d931ba..211d5fa 100755
  EOF
      if [ -z "${K3OS_INSTALL_TTY}" ]; then
          TTY=$(tty | sed 's!/dev/!!')
-@@ -371,7 +401,8 @@ fi
+@@ -371,7 +402,8 @@ fi
  if [ "$K3OS_INSTALL_POWER_OFF" = true ] || grep -q 'k3os.install.power_off=true' /proc/cmdline; then
      poweroff -f
  else
@@ -291,19 +293,21 @@ index af87796..da4c5b4 100644
  
  	if !reexec.Init() {
  		app := app.New()
-diff --git a/overlay/etc/profile.d/console-profile.sh b/overlay/etc/profile.d/console-profile.sh
+diff --git a/overlay/etc/profile.d/harvester_console_bind.sh b/overlay/etc/profile.d/harvester_console_bind.sh
 new file mode 100755
-index 0000000..94363fb
+index 0000000..bb06845
 --- /dev/null
-+++ b/overlay/etc/profile.d/console-profile.sh
-@@ -0,0 +1,7 @@
++++ b/overlay/etc/profile.d/harvester_console_bind.sh
+@@ -0,0 +1,8 @@
 +#!/bin/bash
 +
 +# bind <F12>
 +bind -x '"\e[24~":"harvester-console"'
++
++# dashboard mode
 +export HARVESTER_DASHBOARD=true
 +export TTY=$(tty)
-+harvester-console
+\ No newline at end of file
 diff --git a/overlay/etc/ssh/sshd_config b/overlay/etc/ssh/sshd_config
 index 4887f7e..b7e11ba 100644
 --- a/overlay/etc/ssh/sshd_config
@@ -317,6 +321,43 @@ index 4887f7e..b7e11ba 100644
  X11Forwarding           no
  PermitRootLogin         no
  LoginGraceTime          30s
+diff --git a/overlay/libexec/k3os/boot b/overlay/libexec/k3os/boot
+index 16f0351..fdda61c 100644
+--- a/overlay/libexec/k3os/boot
++++ b/overlay/libexec/k3os/boot
+@@ -2,13 +2,31 @@
+ 
+ setup_ttys()
+ {
+-    for i in 1 2 3 4 5 6; do
++    for i in 2 3 4 5 6; do
+         if [ -e /dev/tty${i} ]; then
+             echo 'tty'$i'::respawn:/sbin/getty 38400 tty'$i >> /etc/inittab
+             echo tty$i >> /etc/securetty
+         fi
+     done
+ 
++    if [ "$K3OS_MODE" != "local" ]; then
++        echo 'tty1::respawn:/sbin/getty 38400 tty1' >> /etc/inittab
++        echo tty1 >> /etc/securetty
++    else
++        mkdir -p /opt
++        cat > /opt/start_harvester_console.sh << EOF
++#!/bin/bash
++
++export HARVESTER_DASHBOARD=true
++export TTY=$(tty)
++harvester-console
++/bin/bash --login
++EOF
++        chmod +x /opt/start_harvester_console.sh
++        echo 'tty1::respawn:/sbin/getty -l /opt/start_harvester_console.sh -n 38400 tty1' >> /etc/inittab
++        echo tty1 >> /etc/securetty
++    fi
++
+     for x in $(cat /proc/cmdline); do
+     case $x in
+         rescue)
 diff --git a/pkg/cli/install/install.go b/pkg/cli/install/install.go
 index 3a2f346..b61ce6b 100644
 --- a/pkg/cli/install/install.go
