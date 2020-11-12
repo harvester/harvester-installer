@@ -71,7 +71,7 @@ func customizeConfig() {
 	//common configs for both server and agent
 	cfg.Config.K3OS.DNSNameservers = []string{"8.8.8.8"}
 	cfg.Config.K3OS.NTPServers = []string{"ntp.ubuntu.com"}
-	cfg.Config.K3OS.Modules = []string{"kvm"}
+	cfg.Config.K3OS.Modules = []string{"kvm", "vhost_net"}
 
 	if installMode == modeJoin && nodeRole == nodeRoleCompute {
 		return
