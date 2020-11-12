@@ -7,9 +7,10 @@ import (
 	"sync"
 
 	"github.com/jroimartin/gocui"
-	cfg "github.com/rancher/harvester-installer/pkg/console/config"
-	"github.com/rancher/harvester-installer/pkg/console/log"
-	"github.com/rancher/harvester-installer/pkg/console/widgets"
+	cfg "github.com/rancher/harvester-installer/pkg/config"
+	"github.com/rancher/harvester-installer/pkg/log"
+	"github.com/rancher/harvester-installer/pkg/util"
+	"github.com/rancher/harvester-installer/pkg/widgets"
 	"github.com/rancher/k3os/pkg/config"
 )
 
@@ -192,7 +193,7 @@ func addAskCreatePanel(c *Console) error {
 	}
 	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			log.Debug(g, "hit ask create enter")
+			log.Debug("hit ask create enter")
 			selected, err := askCreateV.GetData()
 			if err != nil {
 				return err
@@ -322,7 +323,8 @@ func addPasswordPanels(c *Console) error {
 
 	passwordConfirmV.PreShow = func() error {
 		c.Gui.Cursor = true
-		return c.setContentByName(titlePanel, "Configure the password to access the node (user rancher)")
+		c.setContentByName(notePanel, "")
+		return c.setContentByName(titlePanel, "Configure the password to access the node")
 	}
 	passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
@@ -349,7 +351,7 @@ func addPasswordPanels(c *Console) error {
 			}
 			password1V.Close()
 			passwordConfirmV.Close()
-			encrpyted, err := getEncrptedPasswd(password1)
+			encrpyted, err := util.GetEncrptedPasswd(password1)
 			if err != nil {
 				return err
 			}
@@ -522,7 +524,7 @@ func addCloudInitPanel(c *Console) error {
 				options += fmt.Sprintf("proxy address: %v\n", proxy)
 			}
 			options += string(installBytes)
-			log.Debug(g, "cfm cfg: ", fmt.Sprintf("%+v", cfg.Config.K3OS.Install))
+			log.Debug("cfm cfg: ", fmt.Sprintf("%+v", cfg.Config.K3OS.Install))
 			if cfg.Config.K3OS.Install != nil && !cfg.Config.K3OS.Install.Silent {
 				confirmV.SetContent(options +
 					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
@@ -568,7 +570,7 @@ func addConfirmPanel(c *Console) error {
 			if confirmed == "no" {
 				confirmV.Close()
 				c.setContentByName(titlePanel, "")
-				go doReboot()
+				go util.SleepAndReboot()
 				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
 			}
 			confirmV.Close()

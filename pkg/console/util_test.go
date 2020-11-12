@@ -1,6 +1,7 @@
 package console
 
 import (
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,4 +55,17 @@ func TestGetSshKey(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(keys)
+}
+
+func TestF(t *testing.T) {
+	ifaces, _ := net.Interfaces()
+	for _, i := range ifaces {
+		addrs, _ := i.Addrs()
+		// handle err
+		for _, addr := range addrs {
+			if v, ok := addr.(*net.IPNet); ok && !v.IP.IsLoopback() && v.IP.To4() != nil {
+				t.Log(v.IP.String())
+			}
+		}
+	}
 }

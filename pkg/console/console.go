@@ -6,7 +6,11 @@ import (
 	"os"
 
 	"github.com/jroimartin/gocui"
-	"github.com/rancher/harvester-installer/pkg/console/widgets"
+	"github.com/rancher/harvester-installer/pkg/widgets"
+)
+
+var (
+	Debug bool
 )
 
 // Console is the structure of the harvester console
@@ -21,6 +25,10 @@ func RunConsole() error {
 	c, err := NewConsole()
 	if err != nil {
 		return err
+	}
+	debug := os.Getenv("DEBUG")
+	if debug == "true" {
+		Debug = true
 	}
 	return c.doRun()
 }
@@ -72,7 +80,7 @@ func (c *Console) doRun() error {
 	defer c.Close()
 
 	if hd, _ := os.LookupEnv("HARVESTER_DASHBOARD"); hd == "true" {
-		c.SetManagerFunc(layoutDashboard)
+		c.SetManagerFunc(c.layoutDashboard)
 	} else {
 		c.SetManagerFunc(c.layoutInstall)
 	}
@@ -89,11 +97,10 @@ func (c *Console) doRun() error {
 
 func setGlobalKeyBindings(g *gocui.Gui) error {
 	g.InputEsc = true
-	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyF12, gocui.ModNone, quit); err != nil {
-		return err
+	if Debug {
+		if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -1,47 +1,79 @@
 package console
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
-	"github.com/rancher/harvester-installer/pkg/console/log"
+	"github.com/rancher/harvester-installer/pkg/log"
+	"github.com/rancher/harvester-installer/pkg/util"
+	"github.com/rancher/harvester-installer/pkg/version"
+	"github.com/rancher/harvester-installer/pkg/widgets"
+	"k8s.io/apimachinery/pkg/util/net"
 )
 
 const (
-	harvesterURL        = "harvesterURL"
-	harvesterStatus     = "harvesterStatus"
-	colorRed        int = 1
-	colorGreen      int = 2
-	colorYellow     int = 3
+	harvesterURL           = "harvesterURL"
+	harvesterStatus        = "harvesterStatus"
+	colorRed        int    = 1
+	colorGreen      int    = 2
+	colorYellow     int    = 3
+	logo            string = `
+██╗░░██╗░█████╗░██████╗░██╗░░░██╗███████╗░██████╗████████╗███████╗██████╗░
+██║░░██║██╔══██╗██╔══██╗██║░░░██║██╔════╝██╔════╝╚══██╔══╝██╔════╝██╔══██╗
+███████║███████║█████╔╝╚██╗░░██╔╝█████╗░░╚█████╗░░░░██║░░░█████╗░░██████╔╝
+██╔══██║██╔══██║██╔══██╗░╚████╔╝░██╔══╝░░░╚═══██╗░░░██║░░░██╔══╝░░██╔══██╗
+██║░░██║██║░░██║██║░░██║░░╚██╔╝░░███████╗██████╔╝░░░██║░░░███████╗██║░░██║
+╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░╚══════╝╚═════╝░░░░╚═╝░░░╚══════╝╚═╝░░╚═╝`
 )
 
-var installed = false
+type state struct {
+	installed    bool
+	harvesterURL string
+	isMaster     bool
+}
 
-func layoutDashboard(g *gocui.Gui) error {
+var (
+	current state
+)
+
+func (c *Console) layoutDashboard(g *gocui.Gui) error {
+	once.Do(func() {
+		if err := initState(); err != nil {
+			log.Debug(err)
+		}
+		if err := g.SetKeybinding("", gocui.KeyF12, gocui.ModNone, toShell); err != nil {
+			log.Debug(err)
+		}
+	})
 	maxX, maxY := g.Size()
-	if v, err := g.SetView("url", maxX/3, maxY/3, maxX/3*2, maxY/3+5); err != nil {
+	if v, err := g.SetView("url", maxX/2-40, 10, maxX/2+40, 14); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Frame = false
 		v.Wrap = true
-		ip, err := getHarvesterIP()
-		if err != nil {
-			return fmt.Errorf("failed to get IP: %v", err)
+		if current.harvesterURL == "" {
+			fmt.Fprint(v, "Harvester management URL: \n\nUnavailable")
+		} else {
+			fmt.Fprintf(v, "Harvester management URL: \n\n%s", current.harvesterURL)
 		}
-		fmt.Fprintf(v, "Harvester management URL:\n\nhttps://%s:8443", strings.TrimSpace(string(ip)))
 	}
-	if v, err := g.SetView("status", maxX/3, maxY/3+5, maxX/3*2, maxY/3+10); err != nil {
+	if v, err := g.SetView("status", maxX/2-40, 14, maxX/2+40, 18); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Frame = false
 		v.Wrap = true
+		fmt.Fprintf(v, "Current status: ")
 		go syncHarvesterStatus(context.Background(), g)
 	}
 	if v, err := g.SetView("footer", 0, maxY-2, maxX, maxY); err != nil {
@@ -51,21 +83,122 @@ func layoutDashboard(g *gocui.Gui) error {
 		v.Frame = false
 		fmt.Fprintf(v, "<Use F12 to switch between Harvester console and Shell>")
 	}
-
+	if err := logoPanel(g); err != nil {
+		return err
+	}
 	return nil
 }
 
-func getHarvesterIP() (string, error) {
-	// ip, err := exec.Command("/bin/sh", "-c", `sudo cat /etc/rancher/k3s/k3s-service.env|grep K3S_URL|grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}"`).CombinedOutput()
-	// if err != nil {
-	// 	return "", errors.Wrap(err, string(ip))
-	// }
-	// if string(ip) != "" {
-	// 	return string(ip), nil
-	// }
-	//it's the master,get the node ip
-	ip, err := exec.Command("/bin/sh", "-c", `ifconfig eth0| grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*'`).CombinedOutput()
-	return string(ip), err
+func logoPanel(g *gocui.Gui) error {
+	maxX, _ := g.Size()
+	if v, err := g.SetView("logo", maxX/2-40, 1, maxX/2+40, 9); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Frame = false
+		fmt.Fprintf(v, logo)
+		versionStr := "version: " + version.Version
+		logoLength := 74
+		nSpace := logoLength - len(versionStr)
+		fmt.Fprintf(v, "\n%*s", nSpace, "")
+		fmt.Fprintf(v, "%s", versionStr)
+	}
+	return nil
+}
+
+func toShell(g *gocui.Gui, v *gocui.View) error {
+	g.Cursor = true
+	maxX, _ := g.Size()
+	adminPasswordFrameV := widgets.NewPanel(g, "adminPasswordFrame")
+	adminPasswordFrameV.Frame = true
+	adminPasswordFrameV.SetLocation(maxX/2-35, 10, maxX/2+35, 17)
+	if err := adminPasswordFrameV.Show(); err != nil {
+		return err
+	}
+	adminPasswordV, err := widgets.NewInput(g, "adminPassword", "Input password: ", true)
+	if err != nil {
+		return err
+	}
+	adminPasswordV.SetLocation(maxX/2-30, 12, maxX/2+30, 14)
+	validatorV := widgets.NewPanel(g, validatorPanel)
+	validatorV.SetLocation(maxX/2-30, 14, maxX/2+30, 16)
+	validatorV.FgColor = gocui.ColorRed
+	validatorV.Focus = false
+
+	adminPasswordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			passwd, err := adminPasswordV.GetData()
+			if err != nil {
+				return err
+			}
+			if validateAdminPassword(passwd) {
+				return gocui.ErrQuit
+			}
+			if err := validatorV.Show(); err != nil {
+				return err
+			}
+			validatorV.SetContent("Invalid credential")
+			return nil
+		},
+		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+			g.Cursor = false
+			if err := adminPasswordFrameV.Close(); err != nil {
+				return err
+			}
+			if err := adminPasswordV.Close(); err != nil {
+				return err
+			}
+			return validatorV.Close()
+		},
+	}
+	return adminPasswordV.Show()
+}
+
+func validateAdminPassword(passwd string) bool {
+	file, err := os.Open("/etc/shadow")
+	if err != nil {
+		return false
+	}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "rancher:") {
+			if util.CompareByShadow(passwd, line) {
+				return true
+			}
+			return false
+		}
+	}
+	return false
+}
+
+func initState() error {
+	envFile := "/etc/rancher/k3s/k3s-service.env"
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		return err
+	}
+	content, err := ioutil.ReadFile(envFile)
+	if err != nil {
+		return err
+	}
+	regexp, err := regexp.Compile("K3S_URL=\"(.*)\"")
+	if err != nil {
+		return err
+	}
+	matches := regexp.FindSubmatch(content)
+	if len(matches) == 2 {
+		os.Setenv("KUBECONFIG", "/var/lib/rancher/k3s/agent/kubelet.kubeconfig")
+		current.harvesterURL = string(matches[1])
+		return nil
+	}
+
+	current.isMaster = true
+	ip, err := net.ChooseHostInterface()
+	if err != nil {
+		return err
+	}
+	current.harvesterURL = fmt.Sprintf("https://%s:8443", ip.String())
+	return nil
 }
 
 func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
@@ -85,29 +218,23 @@ func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
 
 func doSyncHarvesterStatus(g *gocui.Gui) {
 	status := getHarvesterStatus()
-	log.Debug(g, status)
 	g.Update(func(g *gocui.Gui) error {
 		v, err := g.View("status")
 		if err != nil {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintln(v, "Current status: "+status)
+		fmt.Fprintln(v, "Current status: \n\n"+status)
 		return nil
 	})
 }
 
-func k8sIsReady() bool {
-	_, err := exec.Command("/bin/sh", "-c", `kubectl get cs`).CombinedOutput()
-	if err != nil {
-		return false
-	}
-	return true
-}
-
 func nodeIsReady() bool {
-	output, err := exec.Command("/bin/sh", "-c", `kubectl get no -o jsonpath='{.items[*].metadata.name}'`).CombinedOutput()
+	cmd := exec.Command("/bin/sh", "-c", `kubectl get no -o jsonpath='{.items[*].metadata.name}'`)
+	cmd.Env = os.Environ()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Debug(err, string(output))
 		return false
 	}
 	if string(output) == "" {
@@ -118,8 +245,11 @@ func nodeIsReady() bool {
 }
 
 func chartIsInstalled() bool {
-	output, err := exec.Command("/bin/sh", "-c", `kubectl get po -n kube-system -l "job-name=helm-install-harvester" -o jsonpath='{.items[*].status.phase}'`).CombinedOutput()
+	cmd := exec.Command("/bin/sh", "-c", `kubectl get po -n kube-system -l "job-name=helm-install-harvester" -o jsonpath='{.items[*].status.phase}'`)
+	cmd.Env = os.Environ()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Debug(err, string(output))
 		return false
 	}
 	if string(output) == "Succeeded" {
@@ -129,7 +259,9 @@ func chartIsInstalled() bool {
 }
 
 func harvesterPodStatus() (string, error) {
-	output, err := exec.Command("/bin/sh", "-c", `kubectl get po -n harvester-system -l "app.kubernetes.io/name=harvester" -o jsonpath='{.items[*].status.phase}'`).CombinedOutput()
+	cmd := exec.Command("/bin/sh", "-c", `kubectl get po -n harvester-system -l "app.kubernetes.io/name=harvester" -o jsonpath='{.items[*].status.phase}'`)
+	cmd.Env = os.Environ()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", errors.Wrap(err, string(output))
 	}
@@ -137,15 +269,17 @@ func harvesterPodStatus() (string, error) {
 }
 
 func getHarvesterStatus() string {
-	if !installed {
-		if !k8sIsReady() || !nodeIsReady() || !chartIsInstalled() {
-			return "Harvester is installing"
+	log.Debug("in getHarvesterStatus")
+	if !current.installed {
+		if !nodeIsReady() || !chartIsInstalled() {
+			return "Setting up Harvester"
 		}
+		current.installed = true
 	}
-	installed = true
 	status, err := harvesterPodStatus()
+	log.Debug("status: " + status)
 	if err != nil {
-		wrapColor(err.Error(), colorRed)
+		status = wrapColor(err.Error(), colorRed)
 	}
 	if status == "" {
 		status = wrapColor("Unknown", colorYellow)
