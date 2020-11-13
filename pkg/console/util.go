@@ -77,12 +77,11 @@ func customizeConfig() {
 		return
 	}
 
-	harvesterChartValues["minio.persistence.size"] = "20Gi"
+	harvesterChartValues["minio.persistence.size"] = "100Gi"
 	harvesterChartValues["containers.apiserver.image.imagePullPolicy"] = "IfNotPresent"
-	harvesterChartValues["containers.apiserver.image.tag"] = "master-head"
+	harvesterChartValues["harvester-network-controller.image.pullPolicy"] = "IfNotPresent"
 	harvesterChartValues["service.harvester.type"] = "LoadBalancer"
 	harvesterChartValues["containers.apiserver.authMode"] = "localUser"
-	harvesterChartValues["minio.mode"] = "distributed"
 
 	cfg.Config.WriteFiles = []config.File{
 		{
