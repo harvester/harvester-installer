@@ -1,16 +1,13 @@
 harvester-installer
 ========
 
-## ***FILL THIS OUT WITH A USEFUL DESCRIPTION OF THIS REPO***
+Repo for building the [harvester](https://github.com/rancher/harvester) ISO image.
 
 ## Building
 
 `make`
 
-
-## Running
-
-`./bin/harvester-installer`
+Built ISO image is located in the `dist/artifacts` directory.
 
 ## License
 Copyright (c) 2019 [Rancher Labs, Inc.](http://rancher.com)
