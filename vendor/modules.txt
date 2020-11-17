@@ -63,6 +63,7 @@ gopkg.in/yaml.v2
 gopkg.in/yaml.v3
 # k8s.io/apimachinery v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
 k8s.io/apimachinery/pkg/util/net
+k8s.io/apimachinery/pkg/util/rand
 k8s.io/apimachinery/pkg/util/sets
 # k8s.io/klog/v2 v2.2.0
 k8s.io/klog/v2

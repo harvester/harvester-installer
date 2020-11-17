@@ -9,6 +9,7 @@ require (
 	github.com/nsf/termbox-go v0.0.0-20200418040025-38ba6e5628f1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/k3os v0.19.2-dev.4
+	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
 	github.com/tredoe/osutil v1.0.5
 	k8s.io/apimachinery v0.0.0
