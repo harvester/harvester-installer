@@ -98,6 +98,13 @@ func customizeConfig() {
 		"--flannel-backend",
 		"none",
 	}
+
+	if installMode == modeCreate {
+		cfg.Config.K3OS.K3sArgs = append(cfg.Config.K3OS.K3sArgs,
+			"--node-label",
+			"svccontroller.k3s.cattle.io/enablelb=true",
+		)
+	}
 }
 
 func doInstall(g *gocui.Gui) error {
