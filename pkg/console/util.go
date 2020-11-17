@@ -15,6 +15,7 @@ import (
 	"github.com/jroimartin/gocui"
 	cfg "github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/k3os/pkg/config"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 func getSSHKeysFromURL(url string) ([]string, error) {
@@ -72,6 +73,7 @@ func customizeConfig() {
 	cfg.Config.K3OS.DNSNameservers = []string{"8.8.8.8"}
 	cfg.Config.K3OS.NTPServers = []string{"ntp.ubuntu.com"}
 	cfg.Config.K3OS.Modules = []string{"kvm", "vhost_net"}
+	cfg.Config.Hostname = "harvester-" + rand.String(5)
 
 	if installMode == modeJoin && nodeRole == nodeRoleCompute {
 		return
