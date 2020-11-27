@@ -5,7 +5,6 @@ const (
 	debugPanel           = "debug"
 	diskPanel            = "disk"
 	askCreatePanel       = "askCreate"
-	nodeRolePanel        = "nodeRole"
 	serverURLPanel       = "serverUrl"
 	passwordPanel        = "osPassword"
 	passwordConfirmPanel = "osPasswordConfirm"
@@ -19,10 +18,8 @@ const (
 	installPanel         = "install"
 	footerPanel          = "footer"
 
-	modeCreate         = "create"
-	modeJoin           = "join"
-	nodeRoleCompute    = "compute"
-	nodeRoleManagement = "management"
+	modeCreate = "create"
+	modeJoin   = "join"
 
 	clusterTokenNote = "Note: The token is used for adding nodes to the cluster"
 	serverURLNote    = "Note: Input IP/domain name of the management node"

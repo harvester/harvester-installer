@@ -16,7 +16,6 @@ import (
 
 var (
 	installMode          string
-	nodeRole             string
 	harvesterChartValues = make(map[string]string)
 	once                 sync.Once
 )
@@ -54,7 +53,6 @@ func setPanels(c *Console) error {
 		addFooterPanel,
 		addDiskPanel,
 		addAskCreatePanel,
-		addNodeRolePanel,
 		addServerURLPanel,
 		addPasswordPanels,
 		addSSHKeyPanel,
@@ -132,10 +130,7 @@ func addDiskPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			diskV.Close()
-			if installMode == modeCreate {
-				return showNext(c, askCreatePanel)
-			}
-			return showNext(c, nodeRolePanel)
+			return showNext(c, askCreatePanel)
 		},
 	}
 	diskV.PreShow = func() error {
@@ -200,58 +195,13 @@ func addAskCreatePanel(c *Console) error {
 			askCreateV.Close()
 			if selected == modeCreate {
 				installMode = modeCreate
-				return showNext(c, diskPanel)
+			} else {
+				installMode = modeJoin
 			}
-			// joining an existing cluster
-			installMode = modeJoin
-			return showNext(c, nodeRolePanel)
+			return showNext(c, diskPanel)
 		},
 	}
 	c.AddElement(askCreatePanel, askCreateV)
-	return nil
-}
-
-func addNodeRolePanel(c *Console) error {
-	askOptionsFunc := func() ([]widgets.Option, error) {
-		return []widgets.Option{
-			{
-				Value: nodeRoleCompute,
-				Text:  "Join as a compute node",
-			}, {
-				Value: nodeRoleManagement,
-				Text:  "Join as a management node",
-			},
-		}, nil
-	}
-	// ask node role on join
-	nodeRoleV, err := widgets.NewSelect(c.Gui, nodeRolePanel, "", askOptionsFunc)
-	if err != nil {
-		return err
-	}
-	nodeRoleV.PreShow = func() error {
-		return c.setContentByName(titlePanel, "Choose role for the node")
-	}
-	nodeRoleV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			selected, err := nodeRoleV.GetData()
-			if err != nil {
-				return err
-			}
-			nodeRole = selected
-			nodeRoleV.Close()
-			return showNext(c, diskPanel)
-		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			nodeRoleV.Close()
-			footerV, err := c.GetElement(footerPanel)
-			if err != nil {
-				return err
-			}
-			footerV.Close()
-			return showNext(c, askCreatePanel)
-		},
-	}
-	c.AddElement(nodeRolePanel, nodeRoleV)
 	return nil
 }
 
@@ -516,9 +466,6 @@ func addCloudInitPanel(c *Console) error {
 				return err
 			}
 			options := fmt.Sprintf("install mode: %v\n", installMode)
-			if installMode == modeJoin {
-				options += fmt.Sprintf("node role: %v\n", nodeRole)
-			}
 			if proxy, ok := cfg.Config.K3OS.Environment["http_proxy"]; ok {
 				options += fmt.Sprintf("proxy address: %v\n", proxy)
 			}
@@ -552,7 +499,6 @@ func addConfirmPanel(c *Console) error {
 			},
 		}, nil
 	}
-	// ask node role on join
 	confirmV, err := widgets.NewSelect(c.Gui, confirmPanel, "", askOptionsFunc)
 	if err != nil {
 		return err

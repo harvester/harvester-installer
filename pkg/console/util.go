@@ -75,7 +75,7 @@ func customizeConfig() {
 	cfg.Config.K3OS.Modules = []string{"kvm", "vhost_net"}
 	cfg.Config.Hostname = "harvester-" + rand.String(5)
 
-	if installMode == modeJoin && nodeRole == nodeRoleCompute {
+	if installMode == modeJoin {
 		return
 	}
 
