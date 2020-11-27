@@ -81,11 +81,11 @@ do_format()
         BOOT_NUM=1
         STATE_NUM=2
         parted -s ${DEVICE} mkpart primary fat32 0% 50MB
-        parted -s ${DEVICE} mkpart primary ext4 50MB 750MB
+        parted -s ${DEVICE} mkpart primary ext4 50MB 20480MB
     else
         BOOT_NUM=
         STATE_NUM=1
-        parted -s ${DEVICE} mkpart primary ext4 0% 700MB
+        parted -s ${DEVICE} mkpart primary ext4 0% 20430MB
     fi
     parted -s ${DEVICE} set 1 ${BOOTFLAG} on
     partprobe ${DEVICE} 2>/dev/null || true
@@ -147,6 +147,63 @@ do_copy()
             touch ${TARGET}/k3os/system/poweroff
         fi
     fi
+
+
+    #copy offline artifacts and decompress offline images
+    echo "Copying ISO artifacts"
+    root_path="${TARGET}/k3os/data"
+    mkdir -p "${root_path}"
+    cp -r "${DISTRO}/var" "${root_path}"
+    # CNI
+    mkdir -p "${root_path}/opt/cni/bin"
+    cp ${DISTRO}/cni/* "${root_path}/opt/cni/bin"
+
+    offline_image_path="var/lib/rancher/k3s/agent/images/harvester-images.tar"
+    if [ -f "${root_path}/${offline_image_path}.zst" ]; then
+        echo "Decompressing container images"
+        zstd -d --rm "${root_path}/${offline_image_path}.zst" -o "${root_path}/${offline_image_path}" > /dev/null
+    fi
+    echo "Loading images. This may take a few minutes"
+    cd ${root_path}
+    mkdir lib bin sbin k3os dev proc etc sys
+    mount --bind /bin bin
+    mount --bind /sbin sbin
+    mount --bind /run/k3os/iso/k3os k3os
+    mount --bind /dev dev
+    mount --bind /proc proc
+    mount --bind /etc etc
+    mount -r --rbind /lib lib
+    mount -r --rbind /sys sys
+    chroot . /bin/bash <<"EOF"
+    # invoke k3s to set up data dir
+    k3s agent --no-flannel &>/dev/null || true
+    # start containerd
+    /var/lib/rancher/k3s/data/*/bin/containerd \
+    -c /var/lib/rancher/k3s/agent/etc/containerd/config.toml \
+    -a /run/k3s/containerd/containerd.sock \
+    --state /run/k3s/containerd \
+    --root /var/lib/rancher/k3s/agent/containerd &>/dev/null &
+
+    #wait for containerd to be ready
+    until ctr --connect-timeout 1s version>/dev/null
+    do
+      sleep 1
+    done
+    # import images
+    ctr -n k8s.io images import /var/lib/rancher/k3s/agent/images/harvester*
+    rm /var/lib/rancher/k3s/agent/images/harvester*
+    # stop containerd
+    pkill containerd
+    exit
+EOF
+    sleep 5
+    #cleanup
+    umount bin sbin k3os dev proc etc
+    mount --make-rslave lib
+    mount --make-rslave sys
+    umount -R lib
+    umount -R sys
+    rm -r lib bin sbin k3os dev proc etc sys
 }
 
 install_grub()
@@ -165,40 +222,13 @@ set gfxpayload=keep
 insmod all_video
 insmod gfxterm
 
-menuentry "k3OS Current" {
+menuentry "Start Harvester" {
   search.fs_label K3OS_STATE root
   set sqfile=/k3os/system/kernel/current/kernel.squashfs
   loopback loop0 /\$sqfile
   set root=(\$root)
   linux (loop0)/vmlinuz printk.devkmsg=on console=tty1 $GRUB_DEBUG
   initrd /k3os/system/kernel/current/initrd
-}
-
-menuentry "k3OS Previous" {
-  search.fs_label K3OS_STATE root
-  set sqfile=/k3os/system/kernel/previous/kernel.squashfs
-  loopback loop0 /\$sqfile
-  set root=(\$root)
-  linux (loop0)/vmlinuz printk.devkmsg=on console=tty1 $GRUB_DEBUG
-  initrd /k3os/system/kernel/previous/initrd
-}
-
-menuentry "k3OS Rescue (current)" {
-  search.fs_label K3OS_STATE root
-  set sqfile=/k3os/system/kernel/current/kernel.squashfs
-  loopback loop0 /\$sqfile
-  set root=(\$root)
-  linux (loop0)/vmlinuz printk.devkmsg=on rescue console=tty1
-  initrd /k3os/system/kernel/current/initrd
-}
-
-menuentry "k3OS Rescue (previous)" {
-  search.fs_label K3OS_STATE root
-  set sqfile=/k3os/system/kernel/previous/kernel.squashfs
-  loopback loop0 /\$sqfile
-  set root=(\$root)
-  linux (loop0)/vmlinuz printk.devkmsg=on rescue console=tty1
-  initrd /k3os/system/kernel/previous/initrd
 }
 EOF
     if [ -z "${K3OS_INSTALL_TTY}" ]; then
@@ -371,7 +401,8 @@ fi
 if [ "$K3OS_INSTALL_POWER_OFF" = true ] || grep -q 'k3os.install.power_off=true' /proc/cmdline; then
     poweroff -f
 else
-    echo " * Rebooting system in 5 seconds (CTRL+C to cancel)"
+    echo " * Installation completed"
+    echo " * Rebooting system in 5 seconds"
     sleep 5
     reboot -f
 fi
