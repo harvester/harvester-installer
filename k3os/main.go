@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/rancher/harvester-installer/pkg/console"
 	"github.com/rancher/k3os/pkg/cli/app"
 	"github.com/rancher/k3os/pkg/enterchroot"
 	"github.com/rancher/k3os/pkg/transferroot"
@@ -19,6 +20,12 @@ func main() {
 	reexec.Register("/init", initrd)      // mode=live
 	reexec.Register("/sbin/init", initrd) // mode=local
 	reexec.Register("enter-root", enterchroot.Enter)
+	// console
+	reexec.Register("harvester-console", func() {
+		if err := console.RunConsole(); err != nil {
+			logrus.Fatal(err)
+		}
+	})
 
 	if !reexec.Init() {
 		app := app.New()
