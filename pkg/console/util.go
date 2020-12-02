@@ -85,6 +85,7 @@ func customizeConfig() {
 	harvesterChartValues["harvester-network-controller.image.pullPolicy"] = "IfNotPresent"
 	harvesterChartValues["service.harvester.type"] = "LoadBalancer"
 	harvesterChartValues["containers.apiserver.authMode"] = "localUser"
+	harvesterChartValues["multus.enabled"] = "true"
 
 	cfg.Config.WriteFiles = []config.File{
 		{
@@ -98,8 +99,6 @@ func customizeConfig() {
 		"server",
 		"--disable",
 		"local-storage",
-		"--flannel-backend",
-		"none",
 		"--node-label",
 		"svccontroller.k3s.cattle.io/enablelb=true",
 	}, cfg.Config.ExtraK3sArgs...)
