@@ -2,30 +2,12 @@
 
 setup_ttys()
 {
-    for i in 2 3 4 5 6; do
+    for i in 1 2 3 4 5 6; do
         if [ -e /dev/tty${i} ]; then
             echo 'tty'$i'::respawn:/sbin/getty 38400 tty'$i >> /etc/inittab
             echo tty$i >> /etc/securetty
         fi
     done
-
-    if [ "$K3OS_MODE" != "local" ]; then
-        echo 'tty1::respawn:/sbin/getty 38400 tty1' >> /etc/inittab
-        echo tty1 >> /etc/securetty
-    else
-        mkdir -p /opt
-        cat > /opt/start_harvester_console.sh << EOF
-#!/bin/bash
-
-export HARVESTER_DASHBOARD=true
-export TTY=$(tty)
-harvester-console
-/bin/bash --login
-EOF
-        chmod +x /opt/start_harvester_console.sh
-        echo 'tty1::respawn:/sbin/getty -l /opt/start_harvester_console.sh -n 38400 tty1' >> /etc/inittab
-        echo tty1 >> /etc/securetty
-    fi
 
     for x in $(cat /proc/cmdline); do
     case $x in

@@ -21,7 +21,7 @@ from Kubernetes. Both k3OS and k3s upgrades are handled by the k3OS operator.
 ## Quick Start
 
 Download the ISO from the latest [release](https://github.com/rancher/k3os/releases) and run
-in VMware, VirtualBox, or KVM.  The server will automatically start a single node Kubernetes cluster.
+in VMware, VirtualBox, KVM, or bhyve.  The server will automatically start a single node Kubernetes cluster.
 Log in with the user `rancher` and run `kubectl`.  This is a "live install" running from the ISO media
 and changes will not persist after reboot.
 
@@ -78,7 +78,7 @@ Persistent changes should be kept in `/var`, `/usr/local`, `/home`, or `/opt`.
 ### Upstream Distros
 
 Most of the user-space binaries comes from Alpine and are repackaged for k3OS.  Currently the
-kernel source is coming from Ubuntu 18.04 LTS. Some code and a lot of inspiration came from
+kernel source is coming from Ubuntu 20.04 LTS. Some code and a lot of inspiration came from
 [LinuxKit](https://github.com/linuxkit/linuxkit)
 
 ## Installation
@@ -109,7 +109,7 @@ Below is a reference of all cmdline args used to automate installation
 | k3os.install.silent     | false   | true                                              | Ensure no questions will be asked |
 | k3os.install.force_efi  | false   | true                                              | Force EFI installation even when EFI is not detected |
 | k3os.install.device     |         | /dev/vda                                          | Device to partition and format (/dev/sda, /dev/vda) |
-| k3os.install.config_url |         | https://gist.github.com/something                 | The URL of the config to be installed at `/k3os/system/config.yaml` |
+| k3os.install.config_url |         | [https://gist.github.com/.../dweomer.yaml](https://gist.github.com/dweomer/8750d56fb21a3fbc8d888609d6e74296#file-dweomer-yaml) | The URL of the config to be installed at `/k3os/system/config.yaml` |
 | k3os.install.iso_url    |         | https://github.com/rancher/k3os/../k3os-amd64.iso | ISO to download and install from if booting from kernel/vmlinuz and not ISO. |
 | k3os.install.no_format  |         | true                                              | Do not partition and format, assume layout exists already |
 | k3os.install.tty        | auto    | ttyS0                                             | The tty device used for console |
@@ -295,7 +295,7 @@ as `k3os.install.efi=true`.
 
 Configuration is applied in three distinct phases: `initrd`, `boot`, `runtime`. `initrd`
 is run during the initrd phase before the root disk has been mounted.  `boot` is run after
-the root disk is mounted an the file system is setup, but before any services have started.
+the root disk is mounted and the file system is setup, but before any services have started.
 There is no networking available yet at this point. The final stage `runtime` is executed after
 networking has come online.  If you are using a configuration from a cloud provider (like AWS
 userdata) it will only be ran in the `runtime` phase.  Below is a table of which config keys
@@ -344,7 +344,7 @@ the cluster.
 
 Integration with [rancher/system-upgrade-controller](https://github.com/rancher/system-upgrade-controller) has been implemented as of [v0.9.0](https://github.com/rancher/k3os/releases/tag/v0.9.0).
 To enable a k3OS node to automatically upgrade from the [latest GitHub release](https://github.com/rancher/k3os/releases/latest) you will need to make sure it has the label 
-`plan.upgrade.cattle.io/k3os-latest` with a value anything other than `disabled`. The upgrade controller will then spawn an upgrade job
+`k3os.io/upgrade` with value `enabled` (for k3OS versions prior to v0.11.x please use label `plan.upgrade.cattle.io/k3os-latest`). The upgrade controller will then spawn an upgrade job
 that will drain most pods, upgrade the k3OS content under `/k3os/system`, and then reboot. The system should come back up running the latest
 kernel and k3s version bundled with k3OS and ready to schedule pods.
 
@@ -454,16 +454,17 @@ disk and run it from these commands.  That often makes it easier to do longer fo
 
 ### `k3os.data_sources`
 
-These are the data sources used for download config from cloud provider. The valid options are
+These are the data sources used for download config from cloud provider. The valid options are:
 
     aws
+    cdrom
+    digitalocean
     gcp
+    hetzner
     openstack
     packet
     scaleway
     vultr
-    hetzner
-    cdrom
 
 More than one can be supported at a time, for example:
 
