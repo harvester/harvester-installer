@@ -2,6 +2,7 @@ package console
 
 import (
 	"fmt"
+	"net"
 	"os/exec"
 	"strings"
 	"sync"
@@ -56,6 +57,7 @@ func setPanels(c *Console) error {
 		addServerURLPanel,
 		addPasswordPanels,
 		addSSHKeyPanel,
+		addNetworkPanel,
 		addTokenPanel,
 		addProxyPanel,
 		addCloudInitPanel,
@@ -328,6 +330,7 @@ func addSSHKeyPanel(c *Console) error {
 		return err
 	}
 	sshKeyV.PreShow = func() error {
+		c.Gui.Cursor = true
 		if err := c.setContentByName(titlePanel, "Optional: import SSH keys"); err != nil {
 			return err
 		}
@@ -349,7 +352,7 @@ func addSSHKeyPanel(c *Console) error {
 				cfg.Config.SSHAuthorizedKeys = keys
 			}
 			sshKeyV.Close()
-			return showNext(c, proxyPanel)
+			return showNext(c, networkPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			sshKeyV.Close()
@@ -400,12 +403,77 @@ func addTokenPanel(c *Console) error {
 	return nil
 }
 
+func addNetworkPanel(c *Console) error {
+	networkV, err := widgets.NewSelect(c.Gui, networkPanel, "", getNetworkInterfaceOptions)
+	if err != nil {
+		return err
+	}
+	networkV.PreShow = func() error {
+		c.Gui.Cursor = false
+		return c.setContentByName(titlePanel, "Select interface for the management network")
+	}
+	networkV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			iface, err := networkV.GetData()
+			if err != nil {
+				return err
+			}
+			if iface != "" {
+				cfg.Config.ExtraK3sArgs = append(cfg.Config.ExtraK3sArgs, "--flannel-iface", iface)
+			}
+			networkV.Close()
+			return showNext(c, proxyPanel)
+		},
+		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+			networkV.Close()
+			return showNext(c, sshKeyPanel)
+		},
+	}
+	c.AddElement(networkPanel, networkV)
+	return nil
+}
+
+func getNetworkInterfaceOptions() ([]widgets.Option, error) {
+	var options = []widgets.Option{}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range ifaces {
+		if i.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, err := i.Addrs()
+		if err != nil {
+			return nil, err
+		}
+		var ips []string
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok {
+				if ipnet.IP.To4() != nil {
+					ips = append(ips, ipnet.String())
+				}
+			}
+		}
+		option := widgets.Option{
+			Value: i.Name,
+			Text:  i.Name,
+		}
+		if len(ips) > 0 {
+			option.Text = fmt.Sprintf("%s (%s)", i.Name, strings.Join(ips, ","))
+		}
+		options = append(options, option)
+	}
+	return options, nil
+}
+
 func addProxyPanel(c *Console) error {
 	proxyV, err := widgets.NewInput(c.Gui, proxyPanel, "Proxy address", false)
 	if err != nil {
 		return err
 	}
 	proxyV.PreShow = func() error {
+		c.Gui.Cursor = true
 		if err := c.setContentByName(titlePanel, "Optional: configure proxy"); err != nil {
 			return err
 		}
@@ -434,7 +502,7 @@ func addProxyPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			proxyV.Close()
-			return showNext(c, sshKeyPanel)
+			return showNext(c, networkPanel)
 		},
 	}
 	c.AddElement(proxyPanel, proxyV)
@@ -461,7 +529,7 @@ func addCloudInitPanel(c *Console) error {
 			}
 			cfg.Config.K3OS.Install.ConfigURL = configURL
 			cloudInitV.Close()
-			installBytes, err := config.PrintInstall(cfg.Config)
+			installBytes, err := config.PrintInstall(cfg.Config.CloudConfig)
 			if err != nil {
 				return err
 			}

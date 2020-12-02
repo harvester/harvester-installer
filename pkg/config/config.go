@@ -5,5 +5,11 @@ import (
 )
 
 var (
-	Config = config.CloudConfig{}
+	Config = InstallConfig{}
 )
+
+type InstallConfig struct {
+	config.CloudConfig
+
+	ExtraK3sArgs []string
+}
