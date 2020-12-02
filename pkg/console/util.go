@@ -76,6 +76,7 @@ func customizeConfig() {
 	cfg.Config.Hostname = "harvester-" + rand.String(5)
 
 	if installMode == modeJoin {
+		cfg.Config.K3OS.K3sArgs = append([]string{"agent"}, cfg.Config.ExtraK3sArgs...)
 		return
 	}
 
@@ -93,20 +94,15 @@ func customizeConfig() {
 			Content:            getHarvesterManifestContent(harvesterChartValues),
 		},
 	}
-	cfg.Config.K3OS.K3sArgs = []string{
+	cfg.Config.K3OS.K3sArgs = append([]string{
 		"server",
 		"--disable",
 		"local-storage",
 		"--flannel-backend",
 		"none",
-	}
-
-	if installMode == modeCreate {
-		cfg.Config.K3OS.K3sArgs = append(cfg.Config.K3OS.K3sArgs,
-			"--node-label",
-			"svccontroller.k3s.cattle.io/enablelb=true",
-		)
-	}
+		"--node-label",
+		"svccontroller.k3s.cattle.io/enablelb=true",
+	}, cfg.Config.ExtraK3sArgs...)
 }
 
 func doInstall(g *gocui.Gui) error {
@@ -123,7 +119,7 @@ func doInstall(g *gocui.Gui) error {
 
 		cfg.Config.K3OS.Install.ConfigURL = tempFile.Name()
 	}
-	ev, err := config.ToEnv(cfg.Config)
+	ev, err := config.ToEnv(cfg.Config.CloudConfig)
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ const (
 	sshKeyPanel          = "sshKey"
 	tokenPanel           = "token"
 	proxyPanel           = "proxy"
+	networkPanel         = "network"
 	cloudInitPanel       = "cloudInit"
 	validatorPanel       = "validator"
 	notePanel            = "note"
