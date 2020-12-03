@@ -49,14 +49,6 @@ func TestGetFormattedServerURL(t *testing.T) {
 	}
 }
 
-func TestGetSshKey(t *testing.T) {
-	keys, err := getSSHKeysFromURL("https://github.com/gitlawr.keys")
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log(keys)
-}
-
 func TestF(t *testing.T) {
 	ifaces, _ := net.Interfaces()
 	for _, i := range ifaces {
