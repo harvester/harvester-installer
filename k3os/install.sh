@@ -178,7 +178,7 @@ do_copy()
     # invoke k3s to set up data dir
     k3s agent --no-flannel &>/dev/null || true
     # start containerd
-    /var/lib/rancher/k3s/data/*/bin/containerd \
+    /var/lib/rancher/k3s/data/current/bin/containerd \
     -c /var/lib/rancher/k3s/agent/etc/containerd/config.toml \
     -a /run/k3s/containerd/containerd.sock \
     --state /run/k3s/containerd \
