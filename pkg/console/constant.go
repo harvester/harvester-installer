@@ -26,4 +26,6 @@ const (
 	serverURLNote    = "Note: Input IP/domain name of the management node"
 	proxyNote        = "Note: In the form of \"http://[[user][:pass]@]host[:port]/\"."
 	sshKeyNote       = "For example: https://github.com/<username>.keys"
+
+	authorizedFile = "/home/rancher/.ssh/authorized_keys"
 )

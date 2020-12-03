@@ -16,9 +16,7 @@ import (
 )
 
 var (
-	installMode          string
-	harvesterChartValues = make(map[string]string)
-	once                 sync.Once
+	once sync.Once
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -125,7 +123,7 @@ func addDiskPanel(c *Console) error {
 				Device: device,
 			}
 			diskV.Close()
-			if installMode == modeCreate {
+			if cfg.Config.InstallMode == modeCreate {
 				return showNext(c, tokenPanel)
 			}
 			return showNext(c, serverURLPanel)
@@ -196,9 +194,9 @@ func addAskCreatePanel(c *Console) error {
 			}
 			askCreateV.Close()
 			if selected == modeCreate {
-				installMode = modeCreate
+				cfg.Config.InstallMode = modeCreate
 			} else {
-				installMode = modeJoin
+				cfg.Config.InstallMode = modeJoin
 			}
 			return showNext(c, diskPanel)
 		},
@@ -343,13 +341,7 @@ func addSSHKeyPanel(c *Console) error {
 				return err
 			}
 			if url != "" {
-				//TODO async
-				keys, err := getSSHKeysFromURL(url)
-				if err != nil {
-					c.setContentByName(validatorPanel, err.Error())
-					return nil
-				}
-				cfg.Config.SSHAuthorizedKeys = keys
+				cfg.Config.SSHKeyURL = url
 			}
 			sshKeyV.Close()
 			return showNext(c, networkPanel)
@@ -370,7 +362,7 @@ func addTokenPanel(c *Console) error {
 	}
 	tokenV.PreShow = func() error {
 		c.Gui.Cursor = true
-		if installMode == modeCreate {
+		if cfg.Config.InstallMode == modeCreate {
 			if err := c.setContentByName(notePanel, clusterTokenNote); err != nil {
 				return err
 			}
@@ -392,7 +384,7 @@ func addTokenPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			tokenV.Close()
-			if installMode == modeCreate {
+			if cfg.Config.InstallMode == modeCreate {
 				g.Cursor = false
 				return showNext(c, diskPanel)
 			}
@@ -533,7 +525,7 @@ func addCloudInitPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			options := fmt.Sprintf("install mode: %v\n", installMode)
+			options := fmt.Sprintf("install mode: %v\n", cfg.Config.InstallMode)
 			if proxy, ok := cfg.Config.K3OS.Environment["http_proxy"]; ok {
 				options += fmt.Sprintf("proxy address: %v\n", proxy)
 			}

@@ -92,17 +92,23 @@ func customizeConfig() {
 	cfg.Config.K3OS.Modules = []string{"kvm", "vhost_net"}
 	cfg.Config.Hostname = "harvester-" + rand.String(5)
 
-	if installMode == modeJoin {
+	if cfg.Config.SSHKeyURL != "" {
+		cfg.Config.Runcmd = append(cfg.Config.Runcmd, fmt.Sprintf(`keys=$(curl -sfL --connect-timeout 30 %q) && echo "$keys">>%s`, cfg.Config.SSHKeyURL, authorizedFile))
+	}
+
+	if cfg.Config.InstallMode == modeJoin {
 		cfg.Config.K3OS.K3sArgs = append([]string{"agent"}, cfg.Config.ExtraK3sArgs...)
 		return
 	}
 
-	harvesterChartValues["minio.persistence.size"] = "100Gi"
-	harvesterChartValues["containers.apiserver.image.imagePullPolicy"] = "IfNotPresent"
-	harvesterChartValues["harvester-network-controller.image.pullPolicy"] = "IfNotPresent"
-	harvesterChartValues["service.harvester.type"] = "LoadBalancer"
-	harvesterChartValues["containers.apiserver.authMode"] = "localUser"
-	harvesterChartValues["multus.enabled"] = "true"
+	var harvesterChartValues = map[string]string{
+		"minio.persistence.size":                        "100Gi",
+		"containers.apiserver.image.imagePullPolicy":    "IfNotPresent",
+		"harvester-network-controller.image.pullPolicy": "IfNotPresent",
+		"service.harvester.type":                        "LoadBalancer",
+		"containers.apiserver.authMode":                 "localUser",
+		"multus.enabled":                                "true",
+	}
 
 	cfg.Config.WriteFiles = []config.File{
 		{
