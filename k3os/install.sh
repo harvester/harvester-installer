@@ -154,9 +154,6 @@ do_copy()
     root_path="${TARGET}/k3os/data"
     mkdir -p "${root_path}"
     cp -r "${DISTRO}/var" "${root_path}"
-    # CNI
-    mkdir -p "${root_path}/opt/cni/bin"
-    cp ${DISTRO}/cni/* "${root_path}/opt/cni/bin"
 
     offline_image_path="var/lib/rancher/k3s/agent/images/harvester-images.tar"
     if [ -f "${root_path}/${offline_image_path}.zst" ]; then

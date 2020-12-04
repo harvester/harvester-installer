@@ -30,7 +30,6 @@ COPY charts/* /usr/src/iso/var/lib/rancher/k3s/server/static/charts
 COPY manifests/* /usr/src/iso/var/lib/rancher/k3s/server/manifests
 RUN --mount=type=bind,source=/,target=/ctx cp /ctx/harvester-images.tar.zst \
     /usr/src/iso/var/lib/rancher/k3s/agent/images &>/dev/null || true
-COPY cni /usr/src/iso/cni
 
 RUN mkdir -p /output && \
     grub-mkrescue -o /output/k3os.iso /usr/src/iso/. -- -volid K3OS -joliet on && \
