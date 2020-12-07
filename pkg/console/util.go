@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -45,6 +46,22 @@ func getFormattedServerURL(addr string) string {
 		addr = addr + ":6443"
 	}
 	return addr
+}
+
+func getServerURLFromEnvData(data []byte) (string, error) {
+	regexp, err := regexp.Compile("K3S_URL=(.*)\\b")
+	if err != nil {
+		return "", err
+	}
+	matches := regexp.FindSubmatch(data)
+	if len(matches) == 2 {
+		serverURL := string(matches[1])
+		i := strings.LastIndex(serverURL, ":")
+		if i >= 0 {
+			return serverURL[:i] + ":8443", nil
+		}
+	}
+	return "", nil
 }
 
 func showNext(c *Console, names ...string) error {

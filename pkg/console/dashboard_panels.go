@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"time"
 
@@ -183,14 +182,14 @@ func initState() error {
 	if err != nil {
 		return err
 	}
-	regexp, err := regexp.Compile("K3S_URL=\"(.*)\"")
+	serverURL, err := getServerURLFromEnvData(content)
 	if err != nil {
 		return err
 	}
-	matches := regexp.FindSubmatch(content)
-	if len(matches) == 2 {
+
+	if serverURL != "" {
+		current.harvesterURL = serverURL
 		os.Setenv("KUBECONFIG", "/var/lib/rancher/k3s/agent/kubelet.kubeconfig")
-		current.harvesterURL = string(matches[1])
 		return nil
 	}
 
@@ -231,7 +230,7 @@ func doSyncHarvesterStatus(g *gocui.Gui) {
 	})
 }
 
-func nodeIsReady() bool {
+func k8sIsReady() bool {
 	cmd := exec.Command("/bin/sh", "-c", `kubectl get no -o jsonpath='{.items[*].metadata.name}'`)
 	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
@@ -270,13 +269,37 @@ func harvesterPodStatus() (string, error) {
 	return string(output), nil
 }
 
+func nodeIsPresent() bool {
+	hostname, err := os.Hostname()
+	if err != nil {
+		logrus.Errorf("failed to get hostname: %v", err)
+		return false
+	}
+
+	kcmd := fmt.Sprintf("kubectl get no %s", hostname)
+	cmd := exec.Command("/bin/sh", "-c", kcmd)
+	cmd.Env = os.Environ()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(output))
+		return false
+	}
+
+	return true
+}
+
 func getHarvesterStatus() string {
 	if !current.installed {
-		if !nodeIsReady() || !chartIsInstalled() {
+		if !k8sIsReady() || !chartIsInstalled() {
 			return "Setting up Harvester"
 		}
 		current.installed = true
 	}
+
+	if !nodeIsPresent() {
+		return wrapColor("Unknown", colorYellow)
+	}
+
 	status, err := harvesterPodStatus()
 	if err != nil {
 		status = wrapColor(err.Error(), colorRed)

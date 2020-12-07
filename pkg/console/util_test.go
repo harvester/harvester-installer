@@ -69,3 +69,28 @@ func TestF(t *testing.T) {
 		}
 	}
 }
+
+func TestGetServerURLFromEnvData(t *testing.T) {
+	testCases := []struct {
+		input []byte
+		url   string
+		err   error
+	}{
+		{
+			input: []byte("K3S_CLUSTER_SECRET=abc\nK3S_URL=https://172.0.0.1:6443"),
+			url:   "https://172.0.0.1:8443",
+			err:   nil,
+		},
+		{
+			input: []byte("K3S_CLUSTER_SECRET=abc\nK3S_URL=https://172.0.0.1:6443\nK3S_NODE_NAME=abc"),
+			url:   "https://172.0.0.1:8443",
+			err:   nil,
+		},
+	}
+
+	for _, testCase := range testCases {
+		url, err := getServerURLFromEnvData(testCase.input)
+		assert.Equal(t, testCase.url, url)
+		assert.Equal(t, testCase.err, err)
+	}
+}
