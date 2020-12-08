@@ -9,11 +9,11 @@ echo "Start building ISO"
 
 K3S_VERSION=v1.19.4+k3s1
 K3S_IMAGE_URL=https://raw.githubusercontent.com/rancher/k3s/${K3S_VERSION}/scripts/airgap/image-list.txt
-LONGHORN_VERSION=v1.0.2
+LONGHORN_VERSION=v1.1.0-rc1
 LONGHORN_IMAGE_URL=https://raw.githubusercontent.com/longhorn/longhorn/${LONGHORN_VERSION}/deploy/longhorn-images.txt
 OFFLINE_BUILD="1"
 
-# Prepare Harvester, Longhorn charts
+# Prepare Harvester chart
 mkdir -p k3os/images/70-iso/charts
 harvester_chart_path=../harvester/deploy/charts/harvester
 if [ ! -d ${harvester_chart_path} ];then
@@ -21,12 +21,6 @@ if [ ! -d ${harvester_chart_path} ];then
     harvester_chart_path=/tmp/harvester/deploy/charts/harvester
 fi
 helm package ${harvester_chart_path} -d k3os/images/70-iso/charts
-git clone --branch ${LONGHORN_VERSION} --single-branch --depth 1 https://github.com/rancher/longhorn.git /tmp/longhorn
-helm package /tmp/longhorn/chart -d k3os/images/70-iso/charts
-
-# Manifests
-mkdir -p k3os/images/70-iso/manifests
-cp scripts/manifests/* k3os/images/70-iso/manifests
 
 # Offline docker images
 image_list_file='scripts/image-list.txt'
