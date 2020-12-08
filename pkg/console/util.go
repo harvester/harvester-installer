@@ -103,11 +103,13 @@ func customizeConfig() {
 
 	var harvesterChartValues = map[string]string{
 		"minio.persistence.size":                        "100Gi",
+		"minio.persistence.storageClass":                "longhorn",
 		"containers.apiserver.image.imagePullPolicy":    "IfNotPresent",
 		"harvester-network-controller.image.pullPolicy": "IfNotPresent",
 		"service.harvester.type":                        "LoadBalancer",
 		"containers.apiserver.authMode":                 "localUser",
 		"multus.enabled":                                "true",
+		"longhorn.enabled":                              "true",
 	}
 
 	cfg.Config.WriteFiles = []config.File{
@@ -221,6 +223,11 @@ func getHarvesterManifestContent(values map[string]string) string {
 kind: Namespace
 metadata:
   name: harvester-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longhorn-system
 ---
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
