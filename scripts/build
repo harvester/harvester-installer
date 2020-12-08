@@ -54,4 +54,5 @@ go mod vendor
 cd scripts
 ./default
 mkdir -p ../../dist/artifacts
-cp ../dist/artifacts/* ../../dist/artifacts
+mv ../dist/artifacts/* ../../dist/artifacts
+for file in `find ../../dist/artifacts -type f -name '*.iso'`; do mv "$file" "${file/k3os/harvester}"; done
