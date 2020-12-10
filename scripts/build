@@ -9,8 +9,6 @@ echo "Start building ISO"
 
 K3S_VERSION=v1.19.4+k3s1
 K3S_IMAGE_URL=https://raw.githubusercontent.com/rancher/k3s/${K3S_VERSION}/scripts/airgap/image-list.txt
-LONGHORN_VERSION=v1.1.0-rc1
-LONGHORN_IMAGE_URL=https://raw.githubusercontent.com/longhorn/longhorn/${LONGHORN_VERSION}/deploy/longhorn-images.txt
 OFFLINE_BUILD="1"
 
 # Prepare Harvester chart
@@ -23,9 +21,32 @@ fi
 helm package ${harvester_chart_path} -d k3os/images/70-iso/charts
 
 # Offline docker images
-image_list_file='scripts/image-list.txt'
+# get image list from harvester chart's values file
+image_list_file='image-list.txt'
+values_file="${harvester_chart_path}/values.yaml"
+touch ${image_list_file}
+repositories=( $(yq read ${values_file} "**.(tag==*).repository") )
+tags=( $(yq read ${values_file} "**.(repository==*).tag") )
+repositories_length=${#repositories[@]}
+tags_length=${#tags[@]}
+if [ repositories_length -ne tags_length ];then
+  echo "The number of image repositories does not match the number of image tags";
+  exit 1
+fi
+for i in "${!repositories[@]}"; do
+  echo "${repositories[$i]}:${tags[$i]}">>${image_list_file}
+done
+# The following images are not included in chart or k3s/longhorn image list
+echo "rancher/system-upgrade-controller:v0.6.2">>${image_list_file}
+echo  "alpine:3">>${image_list_file}
+
+# get longhorn image list
+longhorn_version=v$(ls ${harvester_chart_path}/charts | grep longhorn| sed -e "s/^longhorn-//" -e "s/.tgz$//")
+longhorn_image_url=https://raw.githubusercontent.com/longhorn/longhorn/${longhorn_version}/deploy/longhorn-images.txt
+curl ${longhorn_image_url}>>${image_list_file}
+
+# get k3s image list
 curl ${K3S_IMAGE_URL}>>${image_list_file}
-curl ${LONGHORN_IMAGE_URL}>>${image_list_file}
 
 output_image_tar_file="k3os/images/70-iso/harvester-images.tar"
 if [ -n "${OFFLINE_BUILD}" ] && [ ! -f $output_image_tar_file.zst ]; then
