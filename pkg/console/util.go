@@ -102,7 +102,6 @@ func customizeConfig() {
 	}
 
 	var harvesterChartValues = map[string]string{
-		"minio.persistence.size":                        "100Gi",
 		"minio.persistence.storageClass":                "longhorn",
 		"containers.apiserver.image.imagePullPolicy":    "IfNotPresent",
 		"harvester-network-controller.image.pullPolicy": "IfNotPresent",
