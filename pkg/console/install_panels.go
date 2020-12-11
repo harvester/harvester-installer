@@ -168,7 +168,7 @@ func addAskCreatePanel(c *Console) error {
 				Text:  "Create a new Harvester cluster",
 			}, {
 				Value: modeJoin,
-				Text:  "Join an existing harvester cluster",
+				Text:  "Join an existing Harvester cluster",
 			},
 		}, nil
 	}
