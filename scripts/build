@@ -38,8 +38,11 @@ for i in "${!repositories[@]}"; do
   echo "${repositories[$i]}:${tags[$i]}">>${image_list_file}
 done
 # The following images are not included in chart or k3s/longhorn image list
-echo "rancher/system-upgrade-controller:v0.6.2">>${image_list_file}
-echo  "alpine:3">>${image_list_file}
+cat <<EOF >> ${image_list_file}
+rancher/system-upgrade-controller:v0.6.2
+alpine:3
+kubevirt/virtio-container-disk
+EOF
 
 # get longhorn image list
 longhorn_version=v$(ls ${harvester_chart_path}/charts | grep longhorn| sed -e "s/^longhorn-//" -e "s/.tgz$//")
