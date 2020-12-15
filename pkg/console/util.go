@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
 	cfg "github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/k3os/pkg/config"
@@ -133,22 +134,30 @@ func doInstall(g *gocui.Gui) error {
 		err      error
 		tempFile *os.File
 	)
-	if cfg.Config.K3OS.Install.ConfigURL == "" {
-		tempFile, err = ioutil.TempFile("/tmp", "k3os.XXXXXXXX")
-		if err != nil {
-			return err
-		}
-		defer tempFile.Close()
 
-		cfg.Config.K3OS.Install.ConfigURL = tempFile.Name()
+	if cfg.Config.K3OS.Install.ConfigURL != "" {
+		remoteConfig, err := getRemoteCloudConfig(cfg.Config.K3OS.Install.ConfigURL)
+		if err != nil {
+			printToInstallPanel(g, err.Error())
+		} else if err := mergo.Merge(&cfg.Config.CloudConfig, remoteConfig, mergo.WithAppendSlice); err != nil {
+			printToInstallPanel(g, err.Error())
+		}
 	}
+
+	tempFile, err = ioutil.TempFile("/tmp", "k3os.XXXXXXXX")
+	if err != nil {
+		return err
+	}
+	defer tempFile.Close()
+	cfg.Config.K3OS.Install.ConfigURL = tempFile.Name()
+
 	ev, err := config.ToEnv(cfg.Config.CloudConfig)
 	if err != nil {
 		return err
 	}
 	if tempFile != nil {
 		cfg.Config.K3OS.Install = nil
-		bytes, err := yaml.Marshal(&cfg.Config)
+		bytes, err := yaml.Marshal(&cfg.Config.CloudConfig)
 		if err != nil {
 			return err
 		}
@@ -177,44 +186,50 @@ func doInstall(g *gocui.Gui) error {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
-		m := scanner.Text()
-		g.Update(func(g *gocui.Gui) error {
-			v, err := g.View(installPanel)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintln(v, m)
-
-			lines := len(v.BufferLines())
-			_, sy := v.Size()
-			if lines > sy {
-				ox, oy := v.Origin()
-				v.SetOrigin(ox, oy+1)
-			}
-			return nil
-		})
+		printToInstallPanel(g, scanner.Text())
 	}
 	scanner = bufio.NewScanner(stderr)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
-		m := scanner.Text()
-		g.Update(func(g *gocui.Gui) error {
-			v, err := g.View(installPanel)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintln(v, m)
-
-			lines := len(v.BufferLines())
-			_, sy := v.Size()
-			if lines > sy {
-				ox, oy := v.Origin()
-				v.SetOrigin(ox, oy+1)
-			}
-			return nil
-		})
+		printToInstallPanel(g, scanner.Text())
 	}
 	return nil
+}
+
+func printToInstallPanel(g *gocui.Gui, message string) {
+	g.Update(func(g *gocui.Gui) error {
+		v, err := g.View(installPanel)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(v, message)
+
+		lines := len(v.BufferLines())
+		_, sy := v.Size()
+		if lines > sy {
+			ox, oy := v.Origin()
+			v.SetOrigin(ox, oy+1)
+		}
+		return nil
+	})
+}
+
+func getRemoteCloudConfig(configURL string) (*config.CloudConfig, error) {
+	client := http.Client{
+		Timeout: 15 * time.Second,
+	}
+	resp, err := client.Get(configURL)
+	if err != nil {
+		return nil, err
+	}
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("got %d status code from %s, body: %s", resp.StatusCode, configURL, string(b))
+	}
+	return cfg.ToCloudConfig(b)
 }
 
 func getHarvesterManifestContent(values map[string]string) string {
