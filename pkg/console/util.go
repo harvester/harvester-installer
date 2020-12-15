@@ -223,11 +223,6 @@ kind: Namespace
 metadata:
   name: harvester-system
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: longhorn-system
----
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
