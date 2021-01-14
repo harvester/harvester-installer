@@ -30,7 +30,7 @@ repositories=( $(yq read ${values_file} "**.(tag==*).repository") )
 tags=( $(yq read ${values_file} "**.(repository==*).tag") )
 repositories_length=${#repositories[@]}
 tags_length=${#tags[@]}
-if [ repositories_length -ne tags_length ];then
+if [ ${repositories_length} -ne ${tags_length} ];then
   echo "The number of image repositories does not match the number of image tags";
   exit 1
 fi
