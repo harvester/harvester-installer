@@ -12,6 +12,6 @@ type InstallConfig struct {
 	config.CloudConfig
 
 	ExtraK3sArgs []string
-	InstallMode string
-	SSHKeyURL   string
+	InstallMode  string
+	SSHKeyURL    string
 }
