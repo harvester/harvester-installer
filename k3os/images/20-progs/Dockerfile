@@ -13,7 +13,6 @@ RUN gobuild -o /output/metadata
 
 FROM gobuild as k3os
 ARG VERSION
-ARG HARVESTER_VERSION
 # COPY /cmd/ $GOPATH/src/github.com/rancher/k3os/cmd/
 COPY /pkg/ $GOPATH/src/github.com/rancher/k3os/pkg/
 COPY /main.go $GOPATH/src/github.com/rancher/k3os/
@@ -27,6 +26,3 @@ COPY --from=k3os /output/ /output/
 WORKDIR /output
 RUN git clone --branch v0.7.0 https://github.com/ahmetb/kubectx.git \
  && chmod -v +x kubectx/kubectx kubectx/kubens
-
-# Additional utils
-RUN apk --no-cache add zstd
