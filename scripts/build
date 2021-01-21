@@ -39,6 +39,7 @@ for i in "${!repositories[@]}"; do
 done
 # The following images are not included in chart or k3s/longhorn image list
 cat <<EOF >> ${image_list_file}
+busybox:1.32.0
 rancher/system-upgrade-controller:v0.6.2
 alpine:3
 kubevirt/virtio-container-disk

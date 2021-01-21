@@ -97,6 +97,10 @@ func customizeConfig() {
 		cfg.Config.Runcmd = append(cfg.Config.Runcmd, fmt.Sprintf(`keys=$(curl -sfL --connect-timeout 30 %q) && echo "$keys">>%s`, cfg.Config.SSHKeyURL, authorizedFile))
 	}
 
+	cfg.Config.K3OS.Labels = map[string]string{
+		"harvester.cattle.io/managed": "true",
+	}
+
 	if cfg.Config.InstallMode == modeJoin {
 		cfg.Config.K3OS.K3sArgs = append([]string{"agent"}, cfg.Config.ExtraK3sArgs...)
 		return
@@ -120,12 +124,12 @@ func customizeConfig() {
 			Content:            getHarvesterManifestContent(harvesterChartValues),
 		},
 	}
+	cfg.Config.K3OS.Labels["svccontroller.k3s.cattle.io/enablelb"] = "true"
 	cfg.Config.K3OS.K3sArgs = append([]string{
 		"server",
+		"--cluster-init",
 		"--disable",
 		"local-storage",
-		"--node-label",
-		"svccontroller.k3s.cattle.io/enablelb=true",
 	}, cfg.Config.ExtraK3sArgs...)
 }
 
