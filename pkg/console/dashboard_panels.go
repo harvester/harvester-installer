@@ -16,7 +16,6 @@ import (
 	"github.com/rancher/harvester-installer/pkg/version"
 	"github.com/rancher/harvester-installer/pkg/widgets"
 	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/net"
 )
 
 const (
@@ -36,9 +35,7 @@ const (
 )
 
 type state struct {
-	installed    bool
-	harvesterURL string
-	isMaster     bool
+	installed bool
 }
 
 var (
@@ -62,11 +59,7 @@ func (c *Console) layoutDashboard(g *gocui.Gui) error {
 		}
 		v.Frame = false
 		v.Wrap = true
-		if current.harvesterURL == "" {
-			fmt.Fprint(v, "Harvester management URL: \n\nUnavailable")
-		} else {
-			fmt.Fprintf(v, "Harvester management URL: \n\n%s", current.harvesterURL)
-		}
+		go syncHarvesterURL(context.Background(), g)
 	}
 	if v, err := g.SetView("status", maxX/2-40, 14, maxX/2+40, 18); err != nil {
 		if err != gocui.ErrUnknownView {
@@ -188,22 +181,58 @@ func initState() error {
 	}
 
 	if serverURL != "" {
-		current.harvesterURL = serverURL
 		os.Setenv("KUBECONFIG", "/var/lib/rancher/k3s/agent/kubelet.kubeconfig")
-		return nil
 	}
 
-	current.isMaster = true
-	ip, err := net.ChooseHostInterface()
-	if err != nil {
-		return err
-	}
-	current.harvesterURL = fmt.Sprintf("https://%s:8443", ip.String())
 	return nil
 }
 
+func syncHarvesterURL(ctx context.Context, g *gocui.Gui) {
+	// sync url at the beginning
+	doSyncHarvesterURL(g)
+
+	syncDuration := 5 * time.Second
+	ticker := time.NewTicker(syncDuration)
+	go func() {
+		<-ctx.Done()
+		ticker.Stop()
+	}()
+	for range ticker.C {
+		doSyncHarvesterURL(g)
+	}
+}
+
+func doSyncHarvesterURL(g *gocui.Gui) {
+	harvesterURL := getHarvesterURL()
+	g.Update(func(g *gocui.Gui) error {
+		v, err := g.View("url")
+		if err != nil {
+			return err
+		}
+		v.Clear()
+		fmt.Fprintf(v, "Harvester management URL: \n\n%s", harvesterURL)
+		return nil
+	})
+}
+
+func getHarvesterURL() string {
+	cmd := exec.Command("/bin/sh", "-c", `kubectl -n harvester-system get svc harvester -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`)
+	cmd.Env = os.Environ()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "Unavailable"
+	}
+
+	harvesterAddress := string(output)
+	if len(harvesterAddress) == 0 {
+		return "Unavailable"
+	}
+
+	return fmt.Sprintf("https://%s:8443", harvesterAddress)
+}
+
 func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
-	//sync status at the begining
+	// sync status at the beginning
 	doSyncHarvesterStatus(g)
 
 	syncDuration := 5 * time.Second
