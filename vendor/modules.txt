@@ -46,12 +46,23 @@ github.com/stretchr/testify/assert
 github.com/tredoe/osutil/user/crypt
 github.com/tredoe/osutil/user/crypt/common
 github.com/tredoe/osutil/user/crypt/sha512_crypt
+# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+golang.org/x/crypto/blowfish
+golang.org/x/crypto/chacha20
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/ed25519
+golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/poly1305
+golang.org/x/crypto/ssh
+golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 # golang.org/x/net v0.0.0-20200707034311-ab3426394381
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 # golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
+golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.3
