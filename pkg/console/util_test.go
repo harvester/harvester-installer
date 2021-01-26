@@ -1,11 +1,62 @@
 package console
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestGetSSHKeysFromURL(t *testing.T) {
+	keys, err := ioutil.ReadFile("testdata/keys")
+	if err != nil {
+		t.Fatalf("Fail to load fixture")
+	}
+
+	testCases := []struct {
+		name         string
+		httpResp     string
+		pubKeysCount int
+		expectError  string
+	}{
+		{
+			name:         "Two public keys",
+			httpResp:     string(keys),
+			pubKeysCount: 2,
+		},
+		{
+			name:        "Invalid public key",
+			httpResp:    "\nooxx",
+			expectError: "fail to parse on line 2: ooxx",
+		},
+		{
+			name:        "No public key",
+			httpResp:    "",
+			expectError: "no key found",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, testCase.httpResp)
+			}))
+			defer ts.Close()
+
+			pubKeys, err := getRemoteSSHKeys(ts.URL)
+			if testCase.expectError != "" {
+				assert.EqualError(t, err, testCase.expectError)
+			} else {
+				assert.Equal(t, nil, err)
+				assert.Equal(t, testCase.pubKeysCount, len(pubKeys))
+			}
+		})
+	}
+}
 
 func TestGetHarvesterManifestContent(t *testing.T) {
 	d := map[string]string{

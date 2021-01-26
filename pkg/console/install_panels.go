@@ -341,7 +341,13 @@ func addSSHKeyPanel(c *Console) error {
 				return err
 			}
 			if url != "" {
-				cfg.Config.SSHKeyURL = url
+				pubKeys, err := getRemoteSSHKeys(url)
+				if err != nil {
+					logrus.Error(err)
+					return c.setContentByName(validatorPanel, err.Error())
+				}
+				logrus.Debug("SSH public keys: ", pubKeys)
+				cfg.Config.SSHAuthorizedKeys = pubKeys
 			}
 			sshKeyV.Close()
 			return showNext(c, networkPanel)

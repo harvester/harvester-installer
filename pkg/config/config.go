@@ -13,5 +13,4 @@ type InstallConfig struct {
 
 	ExtraK3sArgs []string
 	InstallMode  string
-	SSHKeyURL    string
 }
