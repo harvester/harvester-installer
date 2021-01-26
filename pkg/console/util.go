@@ -15,28 +15,61 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
+	"github.com/pkg/errors"
 	cfg "github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/k3os/pkg/config"
+	"golang.org/x/crypto/ssh"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-func getSSHKeysFromURL(url string) ([]string, error) {
+const (
+	defaultHTTPTimeout = 15 * time.Second
+)
+
+func getURL(url string, timeout time.Duration) ([]byte, error) {
 	client := http.Client{
-		Timeout: 15 * time.Second,
+		Timeout: timeout,
 	}
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	body := strings.TrimSuffix(string(b), "\n")
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("got unexpected status code: %d, body: %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("got %d status code from %s, body: %s", resp.StatusCode, url, string(body))
 	}
-	return strings.Split(body, "\n"), nil
+
+	return body, nil
+}
+
+func getRemoteSSHKeys(url string) ([]string, error) {
+	b, err := getURL(url, defaultHTTPTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	var keys []string
+	lines := strings.Split(string(b), "\n")
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
+		if err != nil {
+			return nil, errors.Errorf("fail to parse on line %d: %s", i+1, line)
+		}
+		keys = append(keys, line)
+	}
+	if len(keys) == 0 {
+		return nil, errors.Errorf(("no key found"))
+	}
+	return keys, nil
 }
 
 func getFormattedServerURL(addr string) string {
@@ -92,10 +125,6 @@ func customizeConfig() {
 	cfg.Config.K3OS.NTPServers = []string{"ntp.ubuntu.com"}
 	cfg.Config.K3OS.Modules = []string{"kvm", "vhost_net"}
 	cfg.Config.Hostname = "harvester-" + rand.String(5)
-
-	if cfg.Config.SSHKeyURL != "" {
-		cfg.Config.Runcmd = append(cfg.Config.Runcmd, fmt.Sprintf(`keys=$(curl -sfL --connect-timeout 30 %q) && echo "$keys">>%s`, cfg.Config.SSHKeyURL, authorizedFile))
-	}
 
 	cfg.Config.K3OS.Labels = map[string]string{
 		"harvester.cattle.io/managed": "true",
@@ -219,19 +248,9 @@ func printToInstallPanel(g *gocui.Gui, message string) {
 }
 
 func getRemoteCloudConfig(configURL string) (*config.CloudConfig, error) {
-	client := http.Client{
-		Timeout: 15 * time.Second,
-	}
-	resp, err := client.Get(configURL)
+	b, err := getURL(configURL, defaultHTTPTimeout)
 	if err != nil {
 		return nil, err
-	}
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("got %d status code from %s, body: %s", resp.StatusCode, configURL, string(b))
 	}
 	return cfg.ToCloudConfig(b)
 }
