@@ -61,6 +61,7 @@ func setPanels(c *Console) error {
 		addCloudInitPanel,
 		addConfirmPanel,
 		addInstallPanel,
+		addSpinnerPanel,
 	}
 	for _, f := range funcs {
 		if err := f(c); err != nil {
@@ -340,14 +341,37 @@ func addSSHKeyPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
+			cfg.Config.SSHAuthorizedKeys = []string{}
 			if url != "" {
-				pubKeys, err := getRemoteSSHKeys(url)
+				// focus on task panel to prevent ssh input
+				asyncTaskV, err := c.GetElement(spinnerPanel)
 				if err != nil {
-					logrus.Error(err)
-					return c.setContentByName(validatorPanel, err.Error())
+					return err
 				}
-				logrus.Debug("SSH public keys: ", pubKeys)
-				cfg.Config.SSHAuthorizedKeys = pubKeys
+				asyncTaskV.Close()
+				asyncTaskV.Show()
+
+				spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", url))
+				spinner.Start()
+
+				go func(g *gocui.Gui) {
+					pubKeys, err := getRemoteSSHKeys(url)
+					if err != nil {
+						spinner.Stop(true, err.Error())
+						g.Update(func(g *gocui.Gui) error {
+							return showNext(c, sshKeyPanel)
+						})
+						return
+					}
+					spinner.Stop(false, "")
+					logrus.Debug("SSH public keys: ", pubKeys)
+					cfg.Config.SSHAuthorizedKeys = pubKeys
+					g.Update(func(g *gocui.Gui) error {
+						sshKeyV.Close()
+						return showNext(c, networkPanel)
+					})
+				}(c.Gui)
+				return nil
 			}
 			sshKeyV.Close()
 			return showNext(c, networkPanel)
@@ -356,6 +380,16 @@ func addSSHKeyPanel(c *Console) error {
 			sshKeyV.Close()
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
+	}
+	sshKeyV.PostClose = func() error {
+		if err := c.setContentByName(notePanel, ""); err != nil {
+			return err
+		}
+		asyncTaskV, err := c.GetElement(spinnerPanel)
+		if err != nil {
+			return err
+		}
+		return asyncTaskV.Close()
 	}
 	c.AddElement(sshKeyPanel, sshKeyV)
 	return nil
@@ -608,5 +642,13 @@ func addInstallPanel(c *Console) error {
 	installV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8*7)
 	c.AddElement(installPanel, installV)
 	installV.Frame = true
+	return nil
+}
+
+func addSpinnerPanel(c *Console) error {
+	maxX, maxY := c.Gui.Size()
+	asyncTaskV := widgets.NewPanel(c.Gui, spinnerPanel)
+	asyncTaskV.SetLocation(maxX/4, maxY/4+7, maxX/4*3, maxY/4+9)
+	c.AddElement(spinnerPanel, asyncTaskV)
 	return nil
 }
