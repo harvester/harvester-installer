@@ -18,6 +18,7 @@ const (
 	confirmPanel         = "confirm"
 	installPanel         = "install"
 	footerPanel          = "footer"
+	spinnerPanel         = "spinner"
 
 	modeCreate = "create"
 	modeJoin   = "join"
