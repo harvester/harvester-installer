@@ -66,3 +66,6 @@ RUN apk --no-cache add \
 # replicate the default "no idea, friend" behavior of virt-what
  && touch /usr/sbin/virt-what \
  && chmod +x /usr/sbin/virt-what
+
+# Harvester additional tools
+RUN apk --no-cache add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community

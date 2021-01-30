@@ -3,7 +3,7 @@
 echo "$$" >/var/run/k3s-restarter-trap.pid
 handler(){
     sleep 5
-    /etc/init.d/k3s-service restart
+    rc-service ccapply restart
 }
 trap handler SIGHUP
 tail -f /dev/null & wait $!
