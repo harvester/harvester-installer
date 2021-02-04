@@ -7,15 +7,17 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/harvester-installer/pkg/util"
 	"github.com/rancher/harvester-installer/pkg/version"
 	"github.com/rancher/harvester-installer/pkg/widgets"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -36,6 +38,7 @@ const (
 
 type state struct {
 	installed bool
+	firstHost bool
 }
 
 var (
@@ -182,6 +185,8 @@ func initState() error {
 
 	if serverURL != "" {
 		os.Setenv("KUBECONFIG", "/var/lib/rancher/k3s/agent/kubelet.kubeconfig")
+	} else {
+		current.firstHost = true
 	}
 
 	return nil
@@ -275,21 +280,28 @@ func k8sIsReady() bool {
 }
 
 func chartIsInstalled() bool {
-	cmd := exec.Command("/bin/sh", "-c", `kubectl get po -n kube-system -l "job-name=helm-install-harvester" -o jsonpath='{.items[*].status.phase}'`)
+	cmd := exec.Command("/bin/sh", "-c", `kubectl -n kube-system get job helm-install-harvester -o jsonpath='{.status.succeeded}'`)
 	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
+	outStr := string(output)
 	if err != nil {
-		logrus.Error(err, string(output))
+		logrus.Error(err, outStr)
 		return false
 	}
-	if string(output) == "Succeeded" {
-		return true
+	if len(outStr) == 0 {
+		return false
 	}
-	return false
+	succeeded, err := strconv.Atoi(outStr)
+	if err != nil {
+		logrus.Error(err, outStr)
+		return false
+	}
+
+	return succeeded >= 1
 }
 
 func harvesterPodStatus() (string, error) {
-	cmd := exec.Command("/bin/sh", "-c", `kubectl get po -n harvester-system -l "app.kubernetes.io/name=harvester" -o jsonpath='{.items[*].status.phase}'`)
+	cmd := exec.Command("/bin/sh", "-c", `kubectl get po -n harvester-system -l "app.kubernetes.io/name=harvester" -o jsonpath='{.items[*].status.phase}' | tr ' ' '\n' | sort -u | xargs echo -n`)
 	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -318,7 +330,7 @@ func nodeIsPresent() bool {
 }
 
 func getHarvesterStatus() string {
-	if !current.installed {
+	if current.firstHost && !current.installed {
 		if !k8sIsReady() || !chartIsInstalled() {
 			return "Setting up Harvester"
 		}
@@ -333,9 +345,7 @@ func getHarvesterStatus() string {
 	if err != nil {
 		status = wrapColor(err.Error(), colorRed)
 	}
-	if status == "" {
-		status = wrapColor("Unknown", colorYellow)
-	} else if status == "Running" {
+	if status == "Running" {
 		status = wrapColor(status, colorGreen)
 	} else {
 		status = wrapColor(status, colorYellow)
