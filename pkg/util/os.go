@@ -12,5 +12,5 @@ var (
 // SleepAndReboot do sleep and exec reboot
 func SleepAndReboot() error {
 	time.Sleep(sleepInterval)
-	return exec.Command("reboot").Run()
+	return exec.Command("/usr/sbin/reboot", "-f").Run()
 }

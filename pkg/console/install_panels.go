@@ -615,6 +615,7 @@ func addConfirmPanel(c *Console) error {
 			if confirmed == "no" {
 				confirmV.Close()
 				c.setContentByName(titlePanel, "")
+				c.setContentByName(footerPanel, "")
 				go util.SleepAndReboot()
 				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
 			}
