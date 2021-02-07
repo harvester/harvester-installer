@@ -221,19 +221,23 @@ func doSyncHarvesterURL(g *gocui.Gui) {
 }
 
 func getHarvesterURL() string {
-	cmd := exec.Command("/bin/sh", "-c", `kubectl -n harvester-system get svc harvester -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`)
+	// get first ready master node's internal ip
+	cmd := exec.Command("/bin/sh", "-c", `kubectl get no -l 'node-role.kubernetes.io/master=true' --sort-by='.metadata.creationTimestamp' \
+-o jsonpath='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{range @.status.addresses[*]}{@.type}={@.address};{end}{"\n"}{end}' 2>/dev/null \
+| grep 'Ready=True' | head -n 1 | tr ';' '\n' | awk -F '=' '/InternalIP/{printf $2}'`)
 	cmd.Env = os.Environ()
-	output, err := cmd.CombinedOutput()
+	output, err := cmd.Output()
+	outStr := string(output)
 	if err != nil {
+		logrus.Error(err, outStr)
 		return "Unavailable"
 	}
 
-	harvesterAddress := string(output)
-	if len(harvesterAddress) == 0 {
+	if len(outStr) == 0 {
 		return "Unavailable"
 	}
 
-	return fmt.Sprintf("https://%s:8443", harvesterAddress)
+	return fmt.Sprintf("https://%s:%s", outStr, harvesterNodePort)
 }
 
 func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {

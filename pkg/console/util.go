@@ -17,14 +17,16 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
-	cfg "github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/k3os/pkg/config"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/apimachinery/pkg/util/rand"
+
+	cfg "github.com/rancher/harvester-installer/pkg/config"
 )
 
 const (
 	defaultHTTPTimeout = 15 * time.Second
+	harvesterNodePort  = "30443"
 )
 
 func getURL(client http.Client, url string) ([]byte, error) {
@@ -150,13 +152,14 @@ func customizeConfig() {
 	}
 
 	var harvesterChartValues = map[string]string{
-		"minio.persistence.storageClass":                "longhorn",
-		"containers.apiserver.image.imagePullPolicy":    "IfNotPresent",
-		"harvester-network-controller.image.pullPolicy": "IfNotPresent",
-		"service.harvester.type":                        "LoadBalancer",
-		"containers.apiserver.authMode":                 "localUser",
 		"multus.enabled":                                "true",
 		"longhorn.enabled":                              "true",
+		"minio.persistence.storageClass":                "longhorn",
+		"harvester-network-controller.image.pullPolicy": "IfNotPresent",
+		"containers.apiserver.image.imagePullPolicy":    "IfNotPresent",
+		"containers.apiserver.authMode":                 "localUser",
+		"service.harvester.type":                        "NodePort",
+		"service.harvester.httpsNodePort":               harvesterNodePort,
 	}
 
 	cfg.Config.WriteFiles = []config.File{
