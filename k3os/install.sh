@@ -158,50 +158,50 @@ do_copy()
 
     offline_image_path="var/lib/rancher/k3s/agent/images/harvester-images.tar"
     if [ -f "${root_path}/${offline_image_path}.zst" ]; then
-        echo "Decompressing container images"
-        zstd -d --rm "${root_path}/${offline_image_path}.zst" -o "${root_path}/${offline_image_path}" > /dev/null
-    fi
-    echo "Loading images. This may take a few minutes"
-    cd ${root_path}
-    mkdir lib bin sbin k3os dev proc etc sys
-    mount --bind /bin bin
-    mount --bind /sbin sbin
-    mount --bind /run/k3os/iso/k3os k3os
-    mount --bind /dev dev
-    mount --bind /proc proc
-    mount --bind /etc etc
-    mount -r --rbind /lib lib
-    mount -r --rbind /sys sys
-    chroot . /bin/bash <<"EOF"
-    # invoke k3s to set up data dir
-    k3s agent --no-flannel &>/dev/null || true
-    # start containerd
-    /var/lib/rancher/k3s/data/current/bin/containerd \
-    -c /var/lib/rancher/k3s/agent/etc/containerd/config.toml \
-    -a /run/k3s/containerd/containerd.sock \
-    --state /run/k3s/containerd \
-    --root /var/lib/rancher/k3s/agent/containerd &>/dev/null &
+      echo "Decompressing container images"
+      zstd -d --rm "${root_path}/${offline_image_path}.zst" -o "${root_path}/${offline_image_path}" > /dev/null
+      cd ${root_path}
+      mkdir lib bin sbin k3os dev proc etc sys
+      mount --bind /bin bin
+      mount --bind /sbin sbin
+      mount --bind /run/k3os/iso/k3os k3os
+      mount --bind /dev dev
+      mount --bind /proc proc
+      mount --bind /etc etc
+      mount -r --rbind /lib lib
+      mount -r --rbind /sys sys
+      echo "Loading images. This may take a few minutes"
+      chroot . /bin/bash <<"EOF"
+      # invoke k3s to set up data dir
+      k3s agent --no-flannel &>/dev/null || true
+      # start containerd
+      /var/lib/rancher/k3s/data/current/bin/containerd \
+      -c /var/lib/rancher/k3s/agent/etc/containerd/config.toml \
+      -a /run/k3s/containerd/containerd.sock \
+      --state /run/k3s/containerd \
+      --root /var/lib/rancher/k3s/agent/containerd &>/dev/null &
 
-    #wait for containerd to be ready
-    until ctr --connect-timeout 1s version>/dev/null
-    do
-      sleep 1
-    done
-    # import images
-    ctr -n k8s.io images import /var/lib/rancher/k3s/agent/images/harvester*
-    rm /var/lib/rancher/k3s/agent/images/harvester*
-    # stop containerd
-    pkill containerd
-    exit
+      #wait for containerd to be ready
+      until ctr --connect-timeout 1s version>/dev/null
+      do
+        sleep 1
+      done
+      # import images
+      ctr -n k8s.io images import /var/lib/rancher/k3s/agent/images/harvester*
+      rm /var/lib/rancher/k3s/agent/images/harvester*
+      # stop containerd
+      pkill containerd
+      exit
 EOF
-    sleep 5
-    #cleanup
-    umount bin sbin k3os dev proc etc
-    mount --make-rslave lib
-    mount --make-rslave sys
-    umount -R lib
-    umount -R sys
-    rm -r lib bin sbin k3os dev proc etc sys
+      sleep 5
+      #cleanup
+      umount bin sbin k3os dev proc etc
+      mount --make-rslave lib
+      mount --make-rslave sys
+      umount -R lib
+      umount -R sys
+      rm -r lib bin sbin k3os dev proc etc sys
+    fi
 }
 
 install_grub()
