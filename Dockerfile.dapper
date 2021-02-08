@@ -1,5 +1,15 @@
 FROM golang:1.13.4-alpine3.10
 
+ARG http_proxy=$http_proxy
+ARG https_proxy=$https_proxy
+ARG no_proxy=$no_proxy
+ENV http_proxy=$http_proxy
+ENV https_proxy=$https_proxy
+ENV no_proxy=$no_proxy
+
+ARG HARVESTER_INSTALLER_OFFLINE_BUILD
+ENV HARVESTER_INSTALLER_OFFLINE_BUILD=$HARVESTER_INSTALLER_OFFLINE_BUILD
+
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
