@@ -3,6 +3,7 @@ package console
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -26,10 +27,7 @@ const (
 	defaultHTTPTimeout = 15 * time.Second
 )
 
-func getURL(url string, timeout time.Duration) ([]byte, error) {
-	client := http.Client{
-		Timeout: timeout,
-	}
+func getURL(client http.Client, url string) ([]byte, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
@@ -48,8 +46,24 @@ func getURL(url string, timeout time.Duration) ([]byte, error) {
 	return body, nil
 }
 
+func validateInsecureURL(url string) error {
+	client := http.Client{
+		Timeout: defaultHTTPTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+	_, err := getURL(client, url)
+	return err
+}
+
 func getRemoteSSHKeys(url string) ([]string, error) {
-	b, err := getURL(url, defaultHTTPTimeout)
+	client := http.Client{
+		Timeout: defaultHTTPTimeout,
+	}
+	b, err := getURL(client, url)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +262,10 @@ func printToInstallPanel(g *gocui.Gui, message string) {
 }
 
 func getRemoteCloudConfig(configURL string) (*config.CloudConfig, error) {
-	b, err := getURL(configURL, defaultHTTPTimeout)
+	client := http.Client{
+		Timeout: defaultHTTPTimeout,
+	}
+	b, err := getURL(client, configURL)
 	if err != nil {
 		return nil, err
 	}
