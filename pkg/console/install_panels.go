@@ -227,15 +227,48 @@ func addServerURLPanel(c *Console) error {
 			if serverURL == "" {
 				return c.setContentByName(validatorPanel, "Management address is required")
 			}
-			serverURLV.Close()
-			cfg.Config.K3OS.ServerURL = getFormattedServerURL(serverURL)
-			return showNext(c, tokenPanel)
+
+			// focus on task panel to prevent input
+			asyncTaskV, err := c.GetElement(spinnerPanel)
+			if err != nil {
+				return err
+			}
+			asyncTaskV.Close()
+			asyncTaskV.Show()
+
+			fmtServerURL := getFormattedServerURL(serverURL)
+			pingServerURL := fmtServerURL + "/ping"
+			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", pingServerURL))
+			spinner.Start()
+			go func(g *gocui.Gui) {
+				err := validateInsecureURL(pingServerURL)
+				if err != nil {
+					spinner.Stop(true, err.Error())
+					g.Update(func(g *gocui.Gui) error {
+						return showNext(c, serverURLPanel)
+					})
+					return
+				}
+				spinner.Stop(false, "")
+				cfg.Config.K3OS.ServerURL = fmtServerURL
+				g.Update(func(g *gocui.Gui) error {
+					return showNext(c, tokenPanel)
+				})
+			}(c.Gui)
+			return nil
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			g.Cursor = false
 			serverURLV.Close()
 			return showNext(c, diskPanel)
 		},
+	}
+	serverURLV.PostClose = func() error {
+		asyncTaskV, err := c.GetElement(spinnerPanel)
+		if err != nil {
+			return err
+		}
+		return asyncTaskV.Close()
 	}
 	c.AddElement(serverURLPanel, serverURLV)
 	return nil
