@@ -6,8 +6,6 @@ github.com/docker/docker/pkg/mount
 github.com/docker/go-units
 # github.com/ghodss/yaml v1.0.0
 github.com/ghodss/yaml
-# github.com/go-logr/logr v0.2.0
-github.com/go-logr/logr
 # github.com/imdario/mergo v0.3.11
 github.com/imdario/mergo
 # github.com/jroimartin/gocui v0.4.0
@@ -46,6 +44,11 @@ github.com/stretchr/testify/assert
 github.com/tredoe/osutil/user/crypt
 github.com/tredoe/osutil/user/crypt/common
 github.com/tredoe/osutil/user/crypt/sha512_crypt
+# github.com/vishvananda/netlink v1.1.0
+github.com/vishvananda/netlink
+github.com/vishvananda/netlink/nl
+# github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
+github.com/vishvananda/netns
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
@@ -56,27 +59,17 @@ golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
-# golang.org/x/net v0.0.0-20200707034311-ab3426394381
-golang.org/x/net/http/httpguts
-golang.org/x/net/http2
-golang.org/x/net/http2/hpack
-golang.org/x/net/idna
 # golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.3
-golang.org/x/text/secure/bidirule
-golang.org/x/text/transform
-golang.org/x/text/unicode/bidi
-golang.org/x/text/unicode/norm
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 gopkg.in/yaml.v3
 # k8s.io/apimachinery v0.0.0 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
-k8s.io/apimachinery/pkg/util/net
+k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/rand
 k8s.io/apimachinery/pkg/util/sets
-# k8s.io/klog/v2 v2.2.0
-k8s.io/klog/v2
+k8s.io/apimachinery/pkg/util/validation
+k8s.io/apimachinery/pkg/util/validation/field
