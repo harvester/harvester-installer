@@ -27,6 +27,7 @@ import (
 const (
 	defaultHTTPTimeout = 15 * time.Second
 	harvesterNodePort  = "30443"
+	harvesterReplicas  = "3"
 )
 
 func getURL(client http.Client, url string) ([]byte, error) {
@@ -160,6 +161,7 @@ func customizeConfig() {
 		"containers.apiserver.authMode":                 "localUser",
 		"service.harvester.type":                        "NodePort",
 		"service.harvester.httpsNodePort":               harvesterNodePort,
+		"replicas":                                      harvesterReplicas,
 	}
 
 	cfg.Config.WriteFiles = []config.File{
