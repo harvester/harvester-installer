@@ -9,12 +9,22 @@ import (
 )
 
 type FakeValidator struct {
-	interfaces []string
-	devices    []string
+	hasInterfaces []string
+	hasDevices    []string
+}
+
+func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
+	if err := v.checkMgmtInterface(cfg.Install.MgmtInterface); err != nil {
+		return err
+	}
+	if err := v.checkDevice(cfg.Install.Device); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (v FakeValidator) checkMgmtInterface(name string) error {
-	for _, i := range v.interfaces {
+	for _, i := range v.hasInterfaces {
 		if i == name {
 			return nil
 		}
@@ -23,7 +33,7 @@ func (v FakeValidator) checkMgmtInterface(name string) error {
 }
 
 func (v FakeValidator) checkDevice(device string) error {
-	for _, d := range v.devices {
+	for _, d := range v.hasDevices {
 		if d == device {
 			return nil
 		}
@@ -33,8 +43,8 @@ func (v FakeValidator) checkDevice(device string) error {
 
 func createDefaultFakeValidator() FakeValidator {
 	return FakeValidator{
-		interfaces: []string{"eth0"},
-		devices:    []string{"/dev/vda"},
+		hasInterfaces: []string{"eth0"},
+		hasDevices:    []string{"/dev/vda"},
 	}
 }
 
