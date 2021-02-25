@@ -2,21 +2,18 @@ package console
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/rancher/harvester-installer/pkg/config"
+	"github.com/rancher/harvester-installer/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetSSHKeysFromURL(t *testing.T) {
-	keys, err := ioutil.ReadFile("testdata/keys")
-	if err != nil {
-		t.Fatalf("Fail to load fixture")
-	}
-
 	testCases := []struct {
 		name         string
 		httpResp     string
@@ -25,7 +22,7 @@ func TestGetSSHKeysFromURL(t *testing.T) {
 	}{
 		{
 			name:         "Two public keys",
-			httpResp:     string(keys),
+			httpResp:     string(util.LoadFixture(t, "keys")),
 			pubKeysCount: 2,
 		},
 		{
@@ -135,5 +132,47 @@ func TestGetServerURLFromEnvData(t *testing.T) {
 		url, err := getServerURLFromEnvData(testCase.input)
 		assert.Equal(t, testCase.url, url)
 		assert.Equal(t, testCase.err, err)
+	}
+}
+
+func TestToCloudConfig(t *testing.T) {
+	testCases := []struct {
+		name       string
+		file       string
+		resultFile string
+	}{
+		{
+			name:       "convert create config",
+			file:       "create.yaml",
+			resultFile: "create-cc.yaml",
+		},
+		{
+			name:       "convert join config",
+			file:       "join.yaml",
+			resultFile: "join-cc.yaml",
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			cfg, err := config.LoadHarvesterConfig(util.LoadFixture(t, testCase.file))
+			if err != nil {
+				t.Fatalf("fail to load %q", testCase.file)
+			}
+			expected, err := util.LoadCloudConfig(util.LoadFixture(t, testCase.resultFile))
+			if err != nil {
+				t.Fatalf("fail to load %q", testCase.resultFile)
+			}
+			cloudConfig := toCloudConfig(cfg)
+
+			if cfg.Mode == modeCreate {
+				// line order in the write file content is random, do our best
+				content := cloudConfig.WriteFiles[0].Content
+				assert.True(t, strings.HasPrefix(content, "apiVersion: v1"))
+				cloudConfig.WriteFiles[0].Content = ""
+				expected.WriteFiles[0].Content = ""
+			}
+
+			assert.Equal(t, expected, cloudConfig)
+		})
 	}
 }

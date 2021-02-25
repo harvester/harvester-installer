@@ -7,12 +7,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
-	cfg "github.com/rancher/harvester-installer/pkg/config"
+	"github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/harvester-installer/pkg/util"
 	"github.com/rancher/harvester-installer/pkg/widgets"
-	"github.com/rancher/k3os/pkg/config"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 var (
@@ -23,12 +24,27 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 	var err error
 	once.Do(func() {
 		setPanels(c)
+		initPanel := askCreatePanel
+
+		// FIXME: need new UI elements to remove these hard-coding values
+		c.config.OS.DNSNameservers = []string{"8.8.8.8"}
+		c.config.OS.NTPServers = []string{"ntp.ubuntu.com"}
+		c.config.OS.Modules = []string{"kvm", "vhost_net"}
+
+		if cfg, err := config.ReadConfig(); err == nil {
+			if cfg.Install.Automatic {
+				logrus.Info("Start automatic installation...")
+				mergo.Merge(c.config, cfg, mergo.WithAppendSlice)
+				initPanel = installPanel
+			}
+		}
+
 		initElements := []string{
 			titlePanel,
 			validatorPanel,
 			notePanel,
 			footerPanel,
-			askCreatePanel,
+			initPanel,
 		}
 		var e widgets.Element
 		for _, name := range initElements {
@@ -120,11 +136,9 @@ func addDiskPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			cfg.Config.K3OS.Install = &config.Install{
-				Device: device,
-			}
+			c.config.Install.Device = device
 			diskV.Close()
-			if cfg.Config.InstallMode == modeCreate {
+			if c.config.Install.Mode == modeCreate {
 				return showNext(c, tokenPanel)
 			}
 			return showNext(c, serverURLPanel)
@@ -195,9 +209,9 @@ func addAskCreatePanel(c *Console) error {
 			}
 			askCreateV.Close()
 			if selected == modeCreate {
-				cfg.Config.InstallMode = modeCreate
+				c.config.Install.Mode = modeCreate
 			} else {
-				cfg.Config.InstallMode = modeJoin
+				c.config.Install.Mode = modeJoin
 			}
 			return showNext(c, diskPanel)
 		},
@@ -250,7 +264,7 @@ func addServerURLPanel(c *Console) error {
 					return
 				}
 				spinner.Stop(false, "")
-				cfg.Config.K3OS.ServerURL = fmtServerURL
+				c.config.ServerURL = fmtServerURL
 				g.Update(func(g *gocui.Gui) error {
 					serverURLV.Close()
 					return showNext(c, tokenPanel)
@@ -339,7 +353,7 @@ func addPasswordPanels(c *Console) error {
 			if err != nil {
 				return err
 			}
-			cfg.Config.K3OS.Password = encrpyted
+			c.config.Password = encrpyted
 			return showNext(c, sshKeyPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
@@ -375,7 +389,7 @@ func addSSHKeyPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			cfg.Config.SSHAuthorizedKeys = []string{}
+			c.config.SSHAuthorizedKeys = []string{}
 			if url != "" {
 				// focus on task panel to prevent ssh input
 				asyncTaskV, err := c.GetElement(spinnerPanel)
@@ -399,7 +413,7 @@ func addSSHKeyPanel(c *Console) error {
 					}
 					spinner.Stop(false, "")
 					logrus.Debug("SSH public keys: ", pubKeys)
-					cfg.Config.SSHAuthorizedKeys = pubKeys
+					c.config.SSHAuthorizedKeys = pubKeys
 					g.Update(func(g *gocui.Gui) error {
 						sshKeyV.Close()
 						return showNext(c, networkPanel)
@@ -436,7 +450,7 @@ func addTokenPanel(c *Console) error {
 	}
 	tokenV.PreShow = func() error {
 		c.Gui.Cursor = true
-		if cfg.Config.InstallMode == modeCreate {
+		if c.config.Install.Mode == modeCreate {
 			if err := c.setContentByName(notePanel, clusterTokenNote); err != nil {
 				return err
 			}
@@ -452,13 +466,13 @@ func addTokenPanel(c *Console) error {
 			if token == "" {
 				return c.setContentByName(validatorPanel, "Cluster token is required")
 			}
-			cfg.Config.K3OS.Token = token
+			c.config.Token = token
 			tokenV.Close()
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			tokenV.Close()
-			if cfg.Config.InstallMode == modeCreate {
+			if c.config.Install.Mode == modeCreate {
 				g.Cursor = false
 				return showNext(c, diskPanel)
 			}
@@ -485,7 +499,7 @@ func addNetworkPanel(c *Console) error {
 				return err
 			}
 			if iface != "" {
-				cfg.Config.ExtraK3sArgs = append(cfg.Config.ExtraK3sArgs, "--flannel-iface", iface)
+				c.config.Install.MgmtInterface = iface
 			}
 			networkV.Close()
 			return showNext(c, proxyPanel)
@@ -552,11 +566,11 @@ func addProxyPanel(c *Console) error {
 				return err
 			}
 			if proxy != "" {
-				if cfg.Config.K3OS.Environment == nil {
-					cfg.Config.K3OS.Environment = make(map[string]string)
+				if c.config.Environment == nil {
+					c.config.Environment = make(map[string]string)
 				}
-				cfg.Config.K3OS.Environment["http_proxy"] = proxy
-				cfg.Config.K3OS.Environment["https_proxy"] = proxy
+				c.config.Environment["http_proxy"] = proxy
+				c.config.Environment["https_proxy"] = proxy
 			}
 			proxyV.Close()
 			noteV, err := c.GetElement(notePanel)
@@ -581,7 +595,7 @@ func addCloudInitPanel(c *Console) error {
 		return err
 	}
 	cloudInitV.PreShow = func() error {
-		return c.setContentByName(titlePanel, "Optional: configure cloud-init")
+		return c.setContentByName(titlePanel, "Optional: remote Harvester config")
 	}
 	cloudInitV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
@@ -593,19 +607,19 @@ func addCloudInitPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			cfg.Config.K3OS.Install.ConfigURL = configURL
+			c.config.Install.ConfigURL = configURL
 			cloudInitV.Close()
-			installBytes, err := config.PrintInstall(cfg.Config.CloudConfig)
+			installBytes, err := config.PrintInstall(*c.config)
 			if err != nil {
 				return err
 			}
-			options := fmt.Sprintf("install mode: %v\n", cfg.Config.InstallMode)
-			if proxy, ok := cfg.Config.K3OS.Environment["http_proxy"]; ok {
+			options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
+			if proxy, ok := c.config.Environment["http_proxy"]; ok {
 				options += fmt.Sprintf("proxy address: %v\n", proxy)
 			}
 			options += string(installBytes)
-			logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", cfg.Config.K3OS.Install))
-			if cfg.Config.K3OS.Install != nil && !cfg.Config.K3OS.Install.Silent {
+			logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))
+			if !c.config.Install.Silent {
 				confirmV.SetContent(options +
 					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
 			}
@@ -654,7 +668,6 @@ func addConfirmPanel(c *Console) error {
 				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
 			}
 			confirmV.Close()
-			customizeConfig()
 			return showNext(c, installPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
@@ -670,7 +683,31 @@ func addInstallPanel(c *Console) error {
 	maxX, maxY := c.Gui.Size()
 	installV := widgets.NewPanel(c.Gui, installPanel)
 	installV.PreShow = func() error {
-		go doInstall(c.Gui)
+		go func() {
+			logrus.Info("Local config: ", c.config)
+			if c.config.Install.ConfigURL != "" {
+				remoteConfig, err := getRemoteConfig(c.config.Install.ConfigURL)
+				if err != nil {
+					logrus.Error(err.Error())
+					printToInstallPanel(c.Gui, err.Error())
+					return
+				}
+				logrus.Info("Remote config: ", remoteConfig)
+				if err := mergo.Merge(c.config, remoteConfig, mergo.WithAppendSlice); err != nil {
+					printToInstallPanel(c.Gui, fmt.Sprintf("fail to merge config: %s", err))
+					return
+				}
+				logrus.Info("Local config (merged): ", c.config)
+			}
+			if c.config.Hostname == "" {
+				c.config.Hostname = "harvester-" + rand.String(5)
+			}
+			if err := validateConfig(Validator{}, c.config); err != nil {
+				printToInstallPanel(c.Gui, err.Error())
+				return
+			}
+			doInstall(c.Gui, toCloudConfig(c.config))
+		}()
 		return c.setContentByName(footerPanel, "")
 	}
 	installV.Title = " Installing Harvester "

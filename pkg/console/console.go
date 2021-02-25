@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jroimartin/gocui"
+	"github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/harvester-installer/pkg/widgets"
 	"github.com/sirupsen/logrus"
 )
@@ -32,6 +33,7 @@ type Console struct {
 	context context.Context
 	*gocui.Gui
 	elements map[string]widgets.Element
+	config   *config.HarvesterConfig
 }
 
 // RunConsole starts the console
@@ -56,6 +58,7 @@ func NewConsole() (*Console, error) {
 		context:  context.Background(),
 		Gui:      g,
 		elements: make(map[string]widgets.Element),
+		config:   config.NewHarvesterConfig(),
 	}, nil
 }
 
