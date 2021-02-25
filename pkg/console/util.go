@@ -14,19 +14,18 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3os/pkg/config"
+	"github.com/rancher/harvester-installer/pkg/config"
+	k3os "github.com/rancher/k3os/pkg/config"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
-	"k8s.io/apimachinery/pkg/util/rand"
-
-	cfg "github.com/rancher/harvester-installer/pkg/config"
 )
 
 const (
 	defaultHTTPTimeout = 15 * time.Second
 	harvesterNodePort  = "30443"
+	automaticCmdline   = "harvester.automatic"
 )
 
 func getURL(client http.Client, url string) ([]byte, error) {
@@ -135,20 +134,57 @@ func showNext(c *Console, names ...string) error {
 	return nil
 }
 
-func customizeConfig() {
-	//common configs for both server and agent
-	cfg.Config.K3OS.DNSNameservers = []string{"8.8.8.8"}
-	cfg.Config.K3OS.NTPServers = []string{"ntp.ubuntu.com"}
-	cfg.Config.K3OS.Modules = []string{"kvm", "vhost_net"}
-	cfg.Config.Hostname = "harvester-" + rand.String(5)
+func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
+	cloudConfig := &k3os.CloudConfig{
+		K3OS: k3os.K3OS{
+			Install: &k3os.Install{},
+		},
+	}
 
-	cfg.Config.K3OS.Labels = map[string]string{
+	// cfg
+	cloudConfig.K3OS.ServerURL = cfg.ServerURL
+	cloudConfig.K3OS.Token = cfg.Token
+
+	// cfg.OS
+	cloudConfig.SSHAuthorizedKeys = dupStrings(cfg.OS.SSHAuthorizedKeys)
+	cloudConfig.Hostname = cfg.OS.Hostname
+	cloudConfig.K3OS.Modules = dupStrings(cfg.OS.Modules)
+	cloudConfig.K3OS.Sysctls = dupStringMap(cfg.OS.Sysctls)
+	cloudConfig.K3OS.NTPServers = dupStrings(cfg.OS.NTPServers)
+	cloudConfig.K3OS.DNSNameservers = dupStrings(cfg.OS.DNSNameservers)
+	if cfg.OS.Wifi != nil {
+		cloudConfig.K3OS.Wifi = make([]k3os.Wifi, len(cfg.Wifi))
+		for i, w := range cfg.Wifi {
+			cloudConfig.K3OS.Wifi[i].Name = w.Name
+			cloudConfig.K3OS.Wifi[i].Passphrase = w.Passphrase
+		}
+	}
+	cloudConfig.K3OS.Password = cfg.OS.Password
+	cloudConfig.K3OS.Environment = dupStringMap(cfg.OS.Environment)
+
+	// cfg.OS.Install
+	cloudConfig.K3OS.Install.ForceEFI = cfg.Install.ForceEFI
+	cloudConfig.K3OS.Install.Device = cfg.Install.Device
+	cloudConfig.K3OS.Install.Silent = cfg.Install.Silent
+	cloudConfig.K3OS.Install.ISOURL = cfg.Install.ISOURL
+	cloudConfig.K3OS.Install.PowerOff = cfg.Install.PowerOff
+	cloudConfig.K3OS.Install.NoFormat = cfg.Install.NoFormat
+	cloudConfig.K3OS.Install.Debug = cfg.Install.Debug
+	cloudConfig.K3OS.Install.TTY = cfg.Install.TTY
+
+	// k3os & k3s
+	cloudConfig.K3OS.Labels = map[string]string{
 		"harvester.cattle.io/managed": "true",
 	}
 
-	if cfg.Config.InstallMode == modeJoin {
-		cfg.Config.K3OS.K3sArgs = append([]string{"agent"}, cfg.Config.ExtraK3sArgs...)
-		return
+	var extraK3sArgs []string
+	if cfg.Install.MgmtInterface != "" {
+		extraK3sArgs = []string{"--flannel-iface", cfg.Install.MgmtInterface}
+	}
+
+	if cfg.Install.Mode == modeJoin {
+		cloudConfig.K3OS.K3sArgs = append([]string{"agent"}, extraK3sArgs...)
+		return cloudConfig
 	}
 
 	var harvesterChartValues = map[string]string{
@@ -162,7 +198,7 @@ func customizeConfig() {
 		"service.harvester.httpsNodePort":               harvesterNodePort,
 	}
 
-	cfg.Config.WriteFiles = []config.File{
+	cloudConfig.WriteFiles = []k3os.File{
 		{
 			Owner:              "root",
 			Path:               "/var/lib/rancher/k3s/server/manifests/harvester.yaml",
@@ -170,44 +206,38 @@ func customizeConfig() {
 			Content:            getHarvesterManifestContent(harvesterChartValues),
 		},
 	}
-	cfg.Config.K3OS.Labels["svccontroller.k3s.cattle.io/enablelb"] = "true"
-	cfg.Config.K3OS.K3sArgs = append([]string{
+	cloudConfig.K3OS.Labels["svccontroller.k3s.cattle.io/enablelb"] = "true"
+	cloudConfig.K3OS.K3sArgs = append([]string{
 		"server",
 		"--cluster-init",
 		"--disable",
 		"local-storage",
-	}, cfg.Config.ExtraK3sArgs...)
+	}, extraK3sArgs...)
+
+	return cloudConfig
 }
 
-func doInstall(g *gocui.Gui) error {
+func doInstall(g *gocui.Gui, cloudConfig *k3os.CloudConfig) error {
 	var (
 		err      error
 		tempFile *os.File
 	)
-
-	if cfg.Config.K3OS.Install.ConfigURL != "" {
-		remoteConfig, err := getRemoteCloudConfig(cfg.Config.K3OS.Install.ConfigURL)
-		if err != nil {
-			printToInstallPanel(g, err.Error())
-		} else if err := mergo.Merge(&cfg.Config.CloudConfig, remoteConfig, mergo.WithAppendSlice); err != nil {
-			printToInstallPanel(g, err.Error())
-		}
-	}
 
 	tempFile, err = ioutil.TempFile("/tmp", "k3os.XXXXXXXX")
 	if err != nil {
 		return err
 	}
 	defer tempFile.Close()
-	cfg.Config.K3OS.Install.ConfigURL = tempFile.Name()
 
-	ev, err := config.ToEnv(cfg.Config.CloudConfig)
+	cloudConfig.K3OS.Install.ConfigURL = tempFile.Name()
+
+	ev, err := k3os.ToEnv(*cloudConfig)
 	if err != nil {
 		return err
 	}
 	if tempFile != nil {
-		cfg.Config.K3OS.Install = nil
-		bytes, err := yaml.Marshal(&cfg.Config.CloudConfig)
+		cloudConfig.K3OS.Install = nil
+		bytes, err := yaml.Marshal(cloudConfig)
 		if err != nil {
 			return err
 		}
@@ -221,6 +251,7 @@ func doInstall(g *gocui.Gui) error {
 	}
 	cmd := exec.Command("/usr/libexec/k3os/install")
 	cmd.Env = append(os.Environ(), ev...)
+	logrus.Infof("env: %v", cmd.Env)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return err
@@ -264,7 +295,7 @@ func printToInstallPanel(g *gocui.Gui, message string) {
 	})
 }
 
-func getRemoteCloudConfig(configURL string) (*config.CloudConfig, error) {
+func getRemoteConfig(configURL string) (*config.HarvesterConfig, error) {
 	client := http.Client{
 		Timeout: defaultHTTPTimeout,
 	}
@@ -272,7 +303,11 @@ func getRemoteCloudConfig(configURL string) (*config.CloudConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cfg.ToCloudConfig(b)
+	harvestCfg, err := config.LoadHarvesterConfig(b)
+	if err != nil {
+		return nil, err
+	}
+	return harvestCfg, nil
 }
 
 func getHarvesterManifestContent(values map[string]string) string {
@@ -297,4 +332,24 @@ spec:
 		buffer.WriteString(fmt.Sprintf("    %s: %q\n", k, v))
 	}
 	return buffer.String()
+}
+
+func dupStrings(src []string) []string {
+	if src == nil {
+		return nil
+	}
+	s := make([]string, len(src))
+	copy(s, src)
+	return s
+}
+
+func dupStringMap(src map[string]string) map[string]string {
+	if src == nil {
+		return nil
+	}
+	m := make(map[string]string)
+	for k, v := range src {
+		m[k] = v
+	}
+	return m
 }

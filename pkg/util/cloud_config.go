@@ -1,4 +1,4 @@
-package config
+package util
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	schemas = mapper.NewSchemas().Init(func(s *mapper.Schemas) *mapper.Schemas {
+	ccSchemas = mapper.NewSchemas().Init(func(s *mapper.Schemas) *mapper.Schemas {
 		s.DefaultMappers = func() []mapper.Mapper {
 			return []mapper.Mapper{
 				config.NewToMap(),
@@ -20,16 +20,20 @@ var (
 			}
 		}
 		return s
-	}).MustImport(HarvesterConfig{})
-	schema = schemas.Schema("harvesterConfig")
+	}).MustImport(config.CloudConfig{})
+	ccSchema = ccSchemas.Schema("cloudConfig")
 )
 
-func LoadHarvesterConfig(yamlBytes []byte) (*HarvesterConfig, error) {
-	result := NewHarvesterConfig()
+func LoadCloudConfig(yamlBytes []byte) (*config.CloudConfig, error) {
+	result := &config.CloudConfig{
+		K3OS: config.K3OS{
+			Install: &config.Install{},
+		},
+	}
 	data := map[string]interface{}{}
 	if err := yaml.Unmarshal(yamlBytes, &data); err != nil {
 		return result, fmt.Errorf("failed to unmarshal yaml: %v", err)
 	}
-	schema.Mapper.ToInternal(data)
+	ccSchema.Mapper.ToInternal(data)
 	return result, convert.ToObj(data, result)
 }
