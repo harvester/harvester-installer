@@ -252,6 +252,7 @@ func addServerURLPanel(c *Console) error {
 				spinner.Stop(false, "")
 				cfg.Config.K3OS.ServerURL = fmtServerURL
 				g.Update(func(g *gocui.Gui) error {
+					serverURLV.Close()
 					return showNext(c, tokenPanel)
 				})
 			}(c.Gui)
