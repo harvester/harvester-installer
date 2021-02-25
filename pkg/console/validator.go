@@ -24,18 +24,17 @@ var (
 )
 
 type ValidatorInterface interface {
-	checkMgmtInterface(name string) error
-	checkDevice(device string) error
+	Validate(cfg *config.HarvesterConfig) error
 }
 
-type Validator struct {
+type ConfigValidator struct {
 }
 
 func prettyError(errMsg string, value string) error {
 	return errors.Errorf("%s: %s", errMsg, value)
 }
 
-func (v Validator) checkMgmtInterface(name string) error {
+func checkMgmtInterface(name string) error {
 	if name == "" {
 		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
 	}
@@ -54,7 +53,7 @@ func (v Validator) checkMgmtInterface(name string) error {
 	return prettyError(ErrMsgMgmtInterfaceNotFoud, name)
 }
 
-func (Validator) checkDevice(device string) error {
+func checkDevice(device string) error {
 	if device == "" {
 		return errors.New(ErrMsgDeviceNotSpecified)
 	}
@@ -70,9 +69,17 @@ func (Validator) checkDevice(device string) error {
 	return prettyError(ErrMsgDeviceNotFound, device)
 }
 
-func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
-	logrus.Debug("Validating config: ", cfg)
+func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
+	if err := checkMgmtInterface(cfg.Install.MgmtInterface); err != nil {
+		return err
+	}
+	if err := checkDevice(cfg.Install.Device); err != nil {
+		return err
+	}
+	return nil
+}
 
+func commonCheck(cfg *config.HarvesterConfig) error {
 	// modes
 	switch mode := cfg.Install.Mode; mode {
 	case modeCreate:
@@ -94,13 +101,13 @@ func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
 	if len(cfg.SSHAuthorizedKeys) == 0 && cfg.Password == "" {
 		return errors.New(ErrMsgNoCredentials)
 	}
-
-	if err := v.checkMgmtInterface(cfg.Install.MgmtInterface); err != nil {
-		return err
-	}
-
-	if err := v.checkDevice(cfg.Install.Device); err != nil {
-		return err
-	}
 	return nil
+}
+
+func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
+	logrus.Debug("Validating config: ", cfg)
+	if err := commonCheck(cfg); err != nil {
+		return err
+	}
+	return v.Validate(cfg)
 }

@@ -702,7 +702,7 @@ func addInstallPanel(c *Console) error {
 			if c.config.Hostname == "" {
 				c.config.Hostname = "harvester-" + rand.String(5)
 			}
-			if err := validateConfig(Validator{}, c.config); err != nil {
+			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToInstallPanel(c.Gui, err.Error())
 				return
 			}
