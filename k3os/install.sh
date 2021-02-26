@@ -13,6 +13,7 @@ get_url()
 {
     FROM=$1
     TO=$2
+    echo "Downloading ${FROM} to ${TO}..."
     case $FROM in
         ftp*|http*|tftp*)
             n=0
