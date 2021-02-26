@@ -82,3 +82,5 @@ cd scripts
 mkdir -p ../../dist/artifacts
 mv ../dist/artifacts/* ../../dist/artifacts
 for file in `find ../../dist/artifacts -type f -name '*.iso'`; do mv "$file" "${file/k3os/harvester}"; done
+for file in `find ../../dist/artifacts -type f -name 'k3os-vmlinuz-*'`; do mv "$file" "${file/k3os/harvester}"; done
+for file in `find ../../dist/artifacts -type f -name 'k3os-initrd-*'`; do mv "$file" "${file/k3os/harvester}"; done
