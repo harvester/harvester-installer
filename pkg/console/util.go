@@ -206,12 +206,15 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 			Content:            getHarvesterManifestContent(harvesterChartValues),
 		},
 	}
-	cloudConfig.K3OS.Labels["svccontroller.k3s.cattle.io/enablelb"] = "true"
 	cloudConfig.K3OS.K3sArgs = append([]string{
 		"server",
 		"--cluster-init",
 		"--disable",
 		"local-storage",
+		"--disable",
+		"servicelb",
+		"--disable",
+		"traefik",
 	}, extraK3sArgs...)
 
 	return cloudConfig
