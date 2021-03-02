@@ -57,11 +57,14 @@ k3os:
   - --cluster-init
   - --disable
   - local-storage
+  - --disable
+  - servicelb
+  - --disable
+  - traefik
   - --flannel-iface
   - eth0
   labels:
     harvester.cattle.io/managed: "true"
-    svccontroller.k3s.cattle.io/enablelb: "true"
   install:
     mode: create
     mgmtInterface: eth0
