@@ -3,9 +3,10 @@ package console
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/harvester-installer/pkg/util"
-	"github.com/stretchr/testify/assert"
 )
 
 type FakeValidator struct {
@@ -29,7 +30,7 @@ func (v FakeValidator) checkMgmtInterface(name string) error {
 			return nil
 		}
 	}
-	return prettyError(ErrMsgMgmtInterfaceNotFoud, name)
+	return prettyError(ErrMsgInterfaceNotFound, name)
 }
 
 func (v FakeValidator) checkDevice(device string) error {
@@ -140,7 +141,7 @@ func TestValidateConfig(t *testing.T) {
 			preApply: func(c *config.HarvesterConfig) {
 				c.MgmtInterface = "eth1"
 			},
-			errMsg: ErrMsgMgmtInterfaceNotFoud,
+			errMsg: ErrMsgInterfaceNotFound,
 		},
 	}
 

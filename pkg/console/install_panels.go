@@ -3,21 +3,34 @@ package console
 import (
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 
 	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
+	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	"github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/harvester-installer/pkg/util"
 	"github.com/rancher/harvester-installer/pkg/widgets"
-	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
+type UserInputData struct {
+	ServerURL  string
+	SSHKeyURL  string
+	Password   string
+	Address    string
+	DNSServers string
+}
+
 var (
-	once sync.Once
+	once          sync.Once
+	userInputData = UserInputData{}
+	mgmtNetwork   = config.Network{}
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -26,8 +39,6 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 		setPanels(c)
 		initPanel := askCreatePanel
 
-		// FIXME: need new UI elements to remove these hard-coding values
-		c.config.OS.DNSNameservers = []string{"8.8.8.8"}
 		c.config.OS.NTPServers = []string{"ntp.ubuntu.com"}
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
@@ -66,13 +77,13 @@ func setPanels(c *Console) error {
 		addValidatorPanel,
 		addNotePanel,
 		addFooterPanel,
-		addDiskPanel,
 		addAskCreatePanel,
+		addDiskPanel,
+		addNetworkPanel,
 		addServerURLPanel,
+		addTokenPanel,
 		addPasswordPanels,
 		addSSHKeyPanel,
-		addNetworkPanel,
-		addTokenPanel,
 		addProxyPanel,
 		addCloudInitPanel,
 		addConfirmPanel,
@@ -138,10 +149,7 @@ func addDiskPanel(c *Console) error {
 			}
 			c.config.Install.Device = device
 			diskV.Close()
-			if c.config.Install.Mode == modeCreate {
-				return showNext(c, tokenPanel)
-			}
-			return showNext(c, serverURLPanel)
+			return showNetworkPage(c)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			diskV.Close()
@@ -149,6 +157,7 @@ func addDiskPanel(c *Console) error {
 		},
 	}
 	diskV.PreShow = func() error {
+		diskV.Value = c.config.Install.Device
 		return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
 	}
 	c.AddElement(diskPanel, diskV)
@@ -192,14 +201,10 @@ func addAskCreatePanel(c *Console) error {
 	if err != nil {
 		return err
 	}
+	askCreateV.FirstPage = true
 	askCreateV.PreShow = func() error {
-		if err := c.setContentByName(footerPanel, ""); err != nil {
-			return err
-		}
+		askCreateV.Value = c.config.Install.Mode
 		return c.setContentByName(titlePanel, "Choose installation mode")
-	}
-	askCreateV.PostClose = func() error {
-		return c.setContentByName(footerPanel, "<Use ESC to go back to previous section>")
 	}
 	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
@@ -227,6 +232,7 @@ func addServerURLPanel(c *Console) error {
 	}
 	serverURLV.PreShow = func() error {
 		c.Gui.Cursor = true
+		serverURLV.Value = userInputData.ServerURL
 		if err := c.setContentByName(titlePanel, "Configure management address"); err != nil {
 			return err
 		}
@@ -242,6 +248,11 @@ func addServerURLPanel(c *Console) error {
 				return c.setContentByName(validatorPanel, "Management address is required")
 			}
 
+			fmtServerURL, err := getFormattedServerURL(serverURL)
+			if err != nil {
+				return c.setContentByName(validatorPanel, err.Error())
+			}
+			c.CloseElement(validatorPanel)
 			// focus on task panel to prevent input
 			asyncTaskV, err := c.GetElement(spinnerPanel)
 			if err != nil {
@@ -250,7 +261,6 @@ func addServerURLPanel(c *Console) error {
 			asyncTaskV.Close()
 			asyncTaskV.Show()
 
-			fmtServerURL := getFormattedServerURL(serverURL)
 			pingServerURL := fmtServerURL + "/ping"
 			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", pingServerURL))
 			spinner.Start()
@@ -265,6 +275,7 @@ func addServerURLPanel(c *Console) error {
 				}
 				spinner.Stop(false, "")
 				c.config.ServerURL = fmtServerURL
+				userInputData.ServerURL = serverURL
 				g.Update(func(g *gocui.Gui) error {
 					serverURLV.Close()
 					return showNext(c, tokenPanel)
@@ -275,7 +286,7 @@ func addServerURLPanel(c *Console) error {
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			g.Cursor = false
 			serverURLV.Close()
-			return showNext(c, diskPanel)
+			return showNetworkPage(c)
 		},
 	}
 	serverURLV.PostClose = func() error {
@@ -300,6 +311,11 @@ func addPasswordPanels(c *Console) error {
 		return err
 	}
 
+	passwordV.PreShow = func() error {
+		passwordV.Value = userInputData.Password
+		return nil
+	}
+
 	passwordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
 			return showNext(c, passwordConfirmPanel)
@@ -321,6 +337,7 @@ func addPasswordPanels(c *Console) error {
 
 	passwordConfirmV.PreShow = func() error {
 		c.Gui.Cursor = true
+		passwordConfirmV.Value = userInputData.Password
 		c.setContentByName(notePanel, "")
 		return c.setContentByName(titlePanel, "Configure the password to access the node")
 	}
@@ -349,6 +366,7 @@ func addPasswordPanels(c *Console) error {
 			}
 			password1V.Close()
 			passwordConfirmV.Close()
+			userInputData.Password = password1
 			encrpyted, err := util.GetEncrptedPasswd(password1)
 			if err != nil {
 				return err
@@ -378,10 +396,19 @@ func addSSHKeyPanel(c *Console) error {
 	}
 	sshKeyV.PreShow = func() error {
 		c.Gui.Cursor = true
-		if err := c.setContentByName(titlePanel, "Optional: import SSH keys"); err != nil {
+		sshKeyV.Value = userInputData.SSHKeyURL
+		if err = c.setContentByName(titlePanel, "Optional: import SSH keys"); err != nil {
 			return err
 		}
-		return c.setContentByName(notePanel, "For example: https://github.com/<username>.keys")
+		return c.setContentByName(notePanel, sshKeyNote)
+	}
+	closeThisPage := func() error {
+		c.CloseElement(notePanel)
+		return sshKeyV.Close()
+	}
+	gotoNextPage := func() error {
+		closeThisPage()
+		return showNext(c, proxyPanel)
 	}
 	sshKeyV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
@@ -414,18 +441,17 @@ func addSSHKeyPanel(c *Console) error {
 					spinner.Stop(false, "")
 					logrus.Debug("SSH public keys: ", pubKeys)
 					c.config.SSHAuthorizedKeys = pubKeys
+					userInputData.SSHKeyURL = url
 					g.Update(func(g *gocui.Gui) error {
-						sshKeyV.Close()
-						return showNext(c, networkPanel)
+						return gotoNextPage()
 					})
 				}(c.Gui)
 				return nil
 			}
-			sshKeyV.Close()
-			return showNext(c, networkPanel)
+			return gotoNextPage()
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			sshKeyV.Close()
+			closeThisPage()
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
 	}
@@ -450,12 +476,17 @@ func addTokenPanel(c *Console) error {
 	}
 	tokenV.PreShow = func() error {
 		c.Gui.Cursor = true
+		tokenV.Value = c.config.Token
 		if c.config.Install.Mode == modeCreate {
-			if err := c.setContentByName(notePanel, clusterTokenNote); err != nil {
+			if err = c.setContentByName(notePanel, clusterTokenNote); err != nil {
 				return err
 			}
 		}
 		return c.setContentByName(titlePanel, "Configure cluster token")
+	}
+	closeThisPage := func() error {
+		c.CloseElement(notePanel)
+		return tokenV.Close()
 	}
 	tokenV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
@@ -467,14 +498,14 @@ func addTokenPanel(c *Console) error {
 				return c.setContentByName(validatorPanel, "Cluster token is required")
 			}
 			c.config.Token = token
-			tokenV.Close()
+			closeThisPage()
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			tokenV.Close()
+			closeThisPage()
 			if c.config.Install.Mode == modeCreate {
 				g.Cursor = false
-				return showNext(c, diskPanel)
+				return showNetworkPage(c)
 			}
 			return showNext(c, serverURLPanel)
 		},
@@ -483,33 +514,313 @@ func addTokenPanel(c *Console) error {
 	return nil
 }
 
+func showNetworkPage(c *Console) error {
+	if mgmtNetwork.Method != networkMethodStatic {
+		return showNext(c, askInterfacePanel, askNetworkMethodPanel, hostNamePanel)
+	}
+	return showNext(c, askInterfacePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, dnsServersPanel, hostNamePanel)
+}
+
 func addNetworkPanel(c *Console) error {
-	networkV, err := widgets.NewSelect(c.Gui, networkPanel, "", getNetworkInterfaceOptions)
+	maxX, maxY := c.Gui.Size()
+	lastY := maxY / 4
+	setLocation := func(p *widgets.Panel, height int) {
+		var (
+			x0 = maxX / 4
+			y0 = lastY
+			x1 = maxX / 4 * 3
+			y1 = y0 + height
+		)
+		lastY += height
+		p.SetLocation(x0, y0, x1, y1)
+	}
+
+	hostNameV, err := widgets.NewInput(c.Gui, hostNamePanel, hostNameLabel, false)
 	if err != nil {
 		return err
 	}
-	networkV.PreShow = func() error {
-		c.Gui.Cursor = false
-		return c.setContentByName(titlePanel, "Select interface for the management network")
+
+	askInterfaceV, err := widgets.NewDropDown(c.Gui, askInterfacePanel, askInterfaceLabel, getNetworkInterfaceOptions)
+	if err != nil {
+		return err
 	}
-	networkV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			iface, err := networkV.GetData()
+
+	askNetworkMethodV, err := widgets.NewDropDown(c.Gui, askNetworkMethodPanel, askNetworkMethodLabel, getNetworkMethodOptions)
+	if err != nil {
+		return err
+	}
+
+	addressV, err := widgets.NewInput(c.Gui, addressPanel, addressLabel, false)
+	if err != nil {
+		return err
+	}
+
+	gatewayV, err := widgets.NewInput(c.Gui, gatewayPanel, gatewayLabel, false)
+	if err != nil {
+		return err
+	}
+
+	dnsServersV, err := widgets.NewInput(c.Gui, dnsServersPanel, dnsServersLabel, false)
+	if err != nil {
+		return err
+	}
+
+	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
+
+	gotoPrevPanel := func(c *Console, names ...string) func(g *gocui.Gui, v *gocui.View) error {
+		return func(g *gocui.Gui, v *gocui.View) error {
+			c.CloseElement(networkValidatorPanel)
+			return showNext(c, names...)
+		}
+	}
+
+	gotoNextPanel := func(c *Console, validator func() (string, error), name string, hooks ...func() error) func(g *gocui.Gui, v *gocui.View) error {
+		return func(g *gocui.Gui, v *gocui.View) error {
+			validateErrMsg, err := validator()
 			if err != nil {
 				return err
 			}
-			if iface != "" {
-				c.config.Install.MgmtInterface = iface
+			if validateErrMsg != "" {
+				return c.setContentByName(networkValidatorPanel, validateErrMsg)
 			}
-			networkV.Close()
-			return showNext(c, proxyPanel)
-		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			networkV.Close()
-			return showNext(c, sshKeyPanel)
-		},
+			c.CloseElement(networkValidatorPanel)
+			for _, hook := range hooks {
+				if err = hook(); err != nil {
+					return err
+				}
+			}
+			return showNext(c, name)
+		}
 	}
-	c.AddElement(networkPanel, networkV)
+
+	closeThisPage := func() {
+		c.CloseElements(
+			hostNamePanel,
+			askInterfacePanel,
+			askNetworkMethodPanel,
+			addressPanel,
+			gatewayPanel,
+			dnsServersPanel,
+			networkValidatorPanel)
+	}
+
+	setupNetwork := func() error {
+		cmd := exec.Command("/bin/sh", "-c", getConfigureNetworkCMD(mgmtNetwork))
+		cmd.Env = os.Environ()
+		_, err = cmd.CombinedOutput()
+		return err
+	}
+
+	preGotoNextPage := func() error {
+		closeThisPage()
+		c.config.Networks = []config.Network{
+			mgmtNetwork,
+		}
+		return setupNetwork()
+	}
+
+	getNextPagePanel := func() string {
+		if c.config.Install.Mode == modeCreate {
+			return tokenPanel
+		}
+		return serverURLPanel
+	}
+
+	gotoNextPage := func() error {
+		if err = preGotoNextPage(); err != nil {
+			return err
+		}
+		return showNext(c, getNextPagePanel())
+	}
+
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+		closeThisPage()
+		return showNext(c, diskPanel)
+	}
+
+	// hostNameV
+	hostNameV.PreShow = func() error {
+		c.Gui.Cursor = true
+		hostNameV.Value = c.config.Hostname
+		return c.setContentByName(titlePanel, networkTitle)
+	}
+	validateHostName := func() (string, error) {
+		hostName, err := hostNameV.GetData()
+		if err != nil {
+			return "", err
+		}
+		if hostName == "" {
+			return "must specify hostname", nil
+		}
+		if errs := validation.IsQualifiedName(hostName); len(errs) > 0 {
+			return fmt.Sprintf("%s is not a valid hostname", hostName), nil
+		}
+		c.config.Hostname = hostName
+		return "", nil
+	}
+	hostNameVConfirm := gotoNextPanel(c, validateHostName, askInterfacePanel)
+	hostNameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowDown: hostNameVConfirm,
+		gocui.KeyEnter:     hostNameVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(hostNameV.Panel, 3)
+	c.AddElement(hostNamePanel, hostNameV)
+
+	// askInterfaceV
+	interfaceVConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		selected, err := askInterfaceV.GetData()
+		if err != nil {
+			return err
+		}
+		c.config.Install.MgmtInterface = selected
+		mgmtNetwork.Interface = selected
+		if mgmtNetwork.Method != networkMethodStatic {
+			return showNext(c, askNetworkMethodPanel)
+		}
+		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel, askNetworkMethodPanel)
+	}
+	askInterfaceV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp:   gotoPrevPanel(c, hostNamePanel),
+		gocui.KeyArrowDown: interfaceVConfirm,
+		gocui.KeyEnter:     interfaceVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(askInterfaceV.Panel, 3)
+	c.AddElement(askInterfacePanel, askInterfaceV)
+
+	// askNetworkMethodV
+	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
+		selected, err := askNetworkMethodV.GetData()
+		if err != nil {
+			return err
+		}
+		mgmtNetwork.Method = selected
+		if selected != networkMethodStatic {
+			userInputData.Address = ""
+			userInputData.DNSServers = ""
+			mgmtNetwork.IP = ""
+			mgmtNetwork.SubnetMask = ""
+			mgmtNetwork.Gateway = ""
+			mgmtNetwork.DNSNameservers = nil
+			c.config.OS.DNSNameservers = nil
+			return gotoNextPage()
+		}
+		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel)
+	}
+	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp:   gotoPrevPanel(c, askInterfacePanel),
+		gocui.KeyArrowDown: askNetworkMethodVConfirm,
+		gocui.KeyEnter:     askNetworkMethodVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(askNetworkMethodV.Panel, 3)
+	c.AddElement(askNetworkMethodPanel, askNetworkMethodV)
+
+	// AddressV
+	addressV.PreShow = func() error {
+		c.Gui.Cursor = true
+		addressV.Value = userInputData.Address
+		return nil
+	}
+	validateAddress := func() (string, error) {
+		address, err := addressV.GetData()
+		if err != nil {
+			return "", err
+		}
+		if err = checkStaticRequiredString("address", address); err != nil {
+			return err.Error(), nil
+		}
+		ip, ipNet, err := net.ParseCIDR(address)
+		if err != nil {
+			return err.Error(), nil
+		}
+		mask := ipNet.Mask
+		userInputData.Address = address
+		mgmtNetwork.IP = ip.String()
+		mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3])
+		return "", nil
+	}
+	addressVConfirm := gotoNextPanel(c, validateAddress, gatewayPanel)
+	addressV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp:   gotoPrevPanel(c, askNetworkMethodPanel),
+		gocui.KeyArrowDown: addressVConfirm,
+		gocui.KeyEnter:     addressVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(addressV.Panel, 3)
+	c.AddElement(addressPanel, addressV)
+
+	// gatewayV
+	gatewayV.PreShow = func() error {
+		c.Gui.Cursor = true
+		gatewayV.Value = mgmtNetwork.Gateway
+		return nil
+	}
+	validateGateway := func() (string, error) {
+		gateway, err := gatewayV.GetData()
+		if err != nil {
+			return "", err
+		}
+		if err = checkStaticRequiredString("gateway", gateway); err != nil {
+			return err.Error(), nil
+		}
+		if err = checkIP(gateway); err != nil {
+			return err.Error(), nil
+		}
+		mgmtNetwork.Gateway = gateway
+		return "", nil
+	}
+	gatewayVConfirm := gotoNextPanel(c, validateGateway, dnsServersPanel)
+	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp:   gotoPrevPanel(c, addressPanel),
+		gocui.KeyArrowDown: gatewayVConfirm,
+		gocui.KeyEnter:     gatewayVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(gatewayV.Panel, 3)
+	c.AddElement(gatewayPanel, gatewayV)
+
+	// dnsServersV
+	dnsServersV.PreShow = func() error {
+		c.Gui.Cursor = true
+		dnsServersV.Value = userInputData.DNSServers
+		return nil
+	}
+	validateDNSServers := func() (string, error) {
+		dnsServers, err := dnsServersV.GetData()
+		if err != nil {
+			return "", err
+		}
+		if err = checkStaticRequiredString("dns servers", dnsServers); err != nil {
+			return err.Error(), nil
+		}
+		dnsServerList := strings.Split(dnsServers, ",")
+		if err = checkIPList(dnsServerList); err != nil {
+			return err.Error(), nil
+		}
+		userInputData.DNSServers = dnsServers
+		mgmtNetwork.DNSNameservers = dnsServerList
+		c.config.OS.DNSNameservers = dnsServerList
+		return "", nil
+	}
+	dnsServersVConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		return gotoNextPanel(c, validateDNSServers, getNextPagePanel(), preGotoNextPage)(g, v)
+	}
+	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: gotoPrevPanel(c, gatewayPanel),
+		gocui.KeyEnter:   dnsServersVConfirm,
+		gocui.KeyEsc:     gotoPrevPage,
+	}
+	setLocation(dnsServersV.Panel, 3)
+	c.AddElement(dnsServersPanel, dnsServersV)
+
+	// networkValidatorV
+	networkValidatorV.FgColor = gocui.ColorRed
+	networkValidatorV.Focus = false
+	setLocation(networkValidatorV, 3)
+	c.AddElement(networkValidatorPanel, networkValidatorV)
+
 	return nil
 }
 
@@ -521,6 +832,13 @@ func getNetworkInterfaceOptions() ([]widgets.Option, error) {
 	}
 	for _, i := range ifaces {
 		if i.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		link, err := netlink.LinkByName(i.Name)
+		if err != nil {
+			return nil, err
+		}
+		if link.Type() != "device" {
 			continue
 		}
 		addrs, err := i.Addrs()
@@ -547,6 +865,19 @@ func getNetworkInterfaceOptions() ([]widgets.Option, error) {
 	return options, nil
 }
 
+func getNetworkMethodOptions() ([]widgets.Option, error) {
+	return []widgets.Option{
+		{
+			Value: networkMethodDHCP,
+			Text:  networkMethodDHCPText,
+		},
+		{
+			Value: networkMethodStatic,
+			Text:  networkMethodStaticText,
+		},
+	}, nil
+}
+
 func addProxyPanel(c *Console) error {
 	proxyV, err := widgets.NewInput(c.Gui, proxyPanel, "Proxy address", false)
 	if err != nil {
@@ -554,6 +885,7 @@ func addProxyPanel(c *Console) error {
 	}
 	proxyV.PreShow = func() error {
 		c.Gui.Cursor = true
+		proxyV.Value = c.config.Environment["http_proxy"]
 		if err := c.setContentByName(titlePanel, "Optional: configure proxy"); err != nil {
 			return err
 		}
@@ -582,7 +914,8 @@ func addProxyPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			proxyV.Close()
-			return showNext(c, networkPanel)
+			c.CloseElement(notePanel)
+			return showNext(c, sshKeyPanel)
 		},
 	}
 	c.AddElement(proxyPanel, proxyV)
@@ -595,6 +928,7 @@ func addCloudInitPanel(c *Console) error {
 		return err
 	}
 	cloudInitV.PreShow = func() error {
+		cloudInitV.Value = c.config.Install.ConfigURL
 		return c.setContentByName(titlePanel, "Optional: remote Harvester config")
 	}
 	cloudInitV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -700,7 +1034,7 @@ func addInstallPanel(c *Console) error {
 				logrus.Info("Local config (merged): ", c.config)
 			}
 			if c.config.Hostname == "" {
-				c.config.Hostname = "harvester-" + rand.String(5)
+				c.config.Hostname = generateHostName()
 			}
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToInstallPanel(c.Gui, err.Error())

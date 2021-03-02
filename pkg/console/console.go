@@ -6,9 +6,10 @@ import (
 	"os"
 
 	"github.com/jroimartin/gocui"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/harvester-installer/pkg/widgets"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -90,6 +91,23 @@ func (c *Console) setContentByName(name string, content string) error {
 	v.SetContent(content)
 	_, err = c.Gui.SetViewOnTop(name)
 	return err
+}
+
+func (c *Console) CloseElement(name string) {
+	v, err := c.GetElement(name)
+	if err != nil {
+		// ignore not found error
+		return
+	}
+	if err = v.Close(); err != nil {
+		logrus.Error(err)
+	}
+}
+
+func (c *Console) CloseElements(names ...string) {
+	for _, name := range names {
+		c.CloseElement(name)
+	}
 }
 
 func (c *Console) doRun() error {

@@ -16,7 +16,7 @@ type GetOptionsFunc func() ([]Option, error)
 
 type Select struct {
 	*Panel
-
+	Value          string
 	getOptionsFunc GetOptionsFunc
 	options        []Option
 	optionV        *gocui.View
@@ -46,7 +46,7 @@ func (s *Select) Show() error {
 	optionViewName := s.Name + "-options"
 	offset := len(strings.Split(s.Content, "\n"))
 	y0 := s.Y0 + offset - 1
-	y1 := s.Y0 + offset + len(s.options) + 2
+	y1 := s.Y0 + offset + len(s.options)
 	v, err := s.g.SetView(optionViewName, s.X0, y0, s.X1, y1)
 	if err != nil {
 		if err != gocui.ErrUnknownView {
@@ -76,7 +76,8 @@ func (s *Select) Show() error {
 			}
 		}
 	}
-	return nil
+
+	return s.SetData(s.Value)
 }
 
 func (s *Select) Close() error {
@@ -103,6 +104,24 @@ func (s *Select) GetData() (string, error) {
 		value = s.options[cy].Value
 	}
 	return value, nil
+}
+
+func (s *Select) SetData(data string) error {
+	optionViewName := s.Name + "-options"
+	ov, err := s.g.View(optionViewName)
+	if err != nil {
+		return err
+	}
+	cx, cy := ov.Cursor()
+	for i, option := range s.options {
+		if option.Value == data {
+			if err = ov.SetCursor(cx, cy+i); err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return nil
 }
 
 func setOptionsKeyBindings(g *gocui.Gui, viewName string) error {

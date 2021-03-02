@@ -6,6 +6,10 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+const (
+	footerPanel = "footer"
+)
+
 type Panel struct {
 	g       *gocui.Gui
 	Name    string
@@ -24,7 +28,9 @@ type Panel struct {
 	PreShow   func() error
 	PostClose func() error
 
-	KeyBindings map[gocui.Key]func(*gocui.Gui, *gocui.View) error
+	KeyBindings    map[gocui.Key]func(*gocui.Gui, *gocui.View) error
+	KeyBindingTips map[string]string
+	FirstPage      bool
 }
 
 func NewPanel(g *gocui.Gui, name string) *Panel {
@@ -95,7 +101,30 @@ func (p *Panel) Show() error {
 			}
 		}
 	}
-	return nil
+	tips := "<"
+	if !p.FirstPage {
+		tips += "Use ESC to go back to previous page"
+	}
+	for key, tip := range p.KeyBindingTips {
+		if tips != "<" {
+			tips += ", "
+		}
+		tips += fmt.Sprintf("Use %s to %s", key, tip)
+	}
+	tips += ">"
+	if tips == "<>" {
+		tips = ""
+	}
+	footerV, err := p.g.View(footerPanel)
+	if err != nil && err != gocui.ErrUnknownView {
+		return err
+	}
+	if footerV == nil {
+		return nil
+	}
+	footerV.Clear()
+	_, err = fmt.Fprint(footerV, tips)
+	return err
 }
 
 func (p *Panel) SetLocation(x0, y0, x1, y1 int) {
