@@ -10,10 +10,20 @@ const (
 	SanitizeMask = "***"
 )
 
+type Network struct {
+	Interface      string   `json:"interface,omitempty"`
+	Method         string   `json:"method,omitempty"`
+	IP             string   `json:"ip,omitempty"`
+	SubnetMask     string   `json:"subnetMask,omitempty"`
+	Gateway        string   `json:"gateway,omitempty"`
+	DNSNameservers []string `json:"dnsNameservers,omitempty"`
+}
+
 type Install struct {
-	Automatic     bool   `json:"automatic,omitempty"`
-	Mode          string `json:"mode,omitempty"`
-	MgmtInterface string `json:"mgmtInterface,omitempty"`
+	Automatic     bool      `json:"automatic,omitempty"`
+	Mode          string    `json:"mode,omitempty"`
+	MgmtInterface string    `json:"mgmtInterface,omitempty"`
+	Networks      []Network `json:"networks,omitempty"`
 
 	ForceEFI  bool   `json:"forceEfi,omitempty"`
 	Device    string `json:"device,omitempty"`

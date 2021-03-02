@@ -16,10 +16,12 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
-	"github.com/rancher/harvester-installer/pkg/config"
 	k3os "github.com/rancher/k3os/pkg/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
+	"k8s.io/apimachinery/pkg/util/rand"
+
+	"github.com/rancher/harvester-installer/pkg/config"
 )
 
 const (
@@ -87,14 +89,13 @@ func getRemoteSSHKeys(url string) ([]string, error) {
 	return keys, nil
 }
 
-func getFormattedServerURL(addr string) string {
-	if !strings.HasPrefix(addr, "https://") {
-		addr = "https://" + addr
+func getFormattedServerURL(addr string) (string, error) {
+	ipErr := checkIP(addr)
+	domainErr := checkDomain(addr)
+	if ipErr != nil && domainErr != nil {
+		return "", fmt.Errorf("%s is not a valid ip/domain", addr)
 	}
-	if !strings.HasSuffix(addr, ":6443") {
-		addr = addr + ":6443"
-	}
-	return addr
+	return fmt.Sprintf("https://%s:6443", addr), nil
 }
 
 func getServerURLFromEnvData(data []byte) (string, error) {
@@ -134,6 +135,23 @@ func showNext(c *Console, names ...string) error {
 	return nil
 }
 
+func generateHostName() string {
+	return "harvester-" + rand.String(5)
+}
+
+func getConfigureNetworkCMD(network config.Network) string {
+	if network.Method == networkMethodStatic {
+		return fmt.Sprintf("/sbin/harvester-configure-network %s %s %s %s %s %s",
+			network.Interface,
+			network.Method,
+			network.IP,
+			network.SubnetMask,
+			network.Gateway,
+			strings.Join(network.DNSNameservers, " "))
+	}
+	return fmt.Sprintf("/sbin/harvester-configure-network %s %s", network.Interface, networkMethodDHCP)
+}
+
 func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 	cloudConfig := &k3os.CloudConfig{
 		K3OS: k3os.K3OS{
@@ -171,6 +189,15 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 	cloudConfig.K3OS.Install.NoFormat = cfg.Install.NoFormat
 	cloudConfig.K3OS.Install.Debug = cfg.Install.Debug
 	cloudConfig.K3OS.Install.TTY = cfg.Install.TTY
+
+	for _, network := range cfg.Install.Networks {
+		if cloudConfig.Runcmd == nil {
+			cloudConfig.Runcmd = []string{}
+		}
+		if network.Method == networkMethodStatic {
+			cloudConfig.Runcmd = append(cloudConfig.Runcmd, getConfigureNetworkCMD(network))
+		}
+	}
 
 	// k3os & k3s
 	cloudConfig.K3OS.Labels = map[string]string{

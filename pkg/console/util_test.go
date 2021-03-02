@@ -1,6 +1,7 @@
 package console
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -8,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/harvester-installer/pkg/util"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGetSSHKeysFromURL(t *testing.T) {
@@ -74,26 +76,37 @@ func TestGetFormattedServerURL(t *testing.T) {
 		Name   string
 		input  string
 		output string
+		err    error
 	}{
 		{
 			Name:   "ip",
 			input:  "1.2.3.4",
 			output: "https://1.2.3.4:6443",
+			err:    nil,
 		},
 		{
 			Name:   "domain name",
 			input:  "example.org",
 			output: "https://example.org:6443",
+			err:    nil,
 		},
 		{
-			Name:   "full",
-			input:  "https://1.2.3.4:6443",
-			output: "https://1.2.3.4:6443",
+			Name:   "invalid ip",
+			input:  "1.2.3.4/",
+			output: "",
+			err:    errors.New("1.2.3.4/ is not a valid ip/domain"),
+		},
+		{
+			Name:   "invalid domain",
+			input:  "example.org/",
+			output: "",
+			err:    errors.New("example.org/ is not a valid ip/domain"),
 		},
 	}
 	for _, testCase := range testCases {
-		got := getFormattedServerURL(testCase.input)
+		got, err := getFormattedServerURL(testCase.input)
 		assert.Equal(t, testCase.output, got)
+		assert.Equal(t, testCase.err, err)
 	}
 }
 
