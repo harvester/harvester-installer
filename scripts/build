@@ -53,12 +53,19 @@ curl ${longhorn_image_url}>>${image_list_file}
 # get k3s image list
 curl ${K3S_IMAGE_URL}>>${image_list_file}
 
+# format image list
+awk -F ':' '{if($2==""){print $1":latest"}else{print $0}}' ${image_list_file} >"${image_list_file}.tmp"
+awk -F '/' '{if(NF==3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=1){print "docker.io/library/"$0}}' "${image_list_file}.tmp" > ${image_list_file}
+
 output_image_tar_file="k3os/images/70-iso/harvester-images.tar"
 if [ -n "${OFFLINE_BUILD}" ] && [ ! -f $output_image_tar_file.zst ]; then
   images=$(cat "${image_list_file}")
-  xargs -n1 docker pull <<< "${images}"
-  docker save ${images} -o ${output_image_tar_file}
-
+  echo "${images}" | while read -r image
+  do
+    echo "=> pulling ${image}"
+    ctr images pull "${image}" > /dev/null 2>&1
+  done
+  echo "${images}" | xargs -r ctr images export ${output_image_tar_file}
   zstd --rm ${output_image_tar_file} -o ${output_image_tar_file}.zst
 fi
 
