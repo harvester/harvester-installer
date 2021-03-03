@@ -2,29 +2,19 @@
 
 setup_ttys()
 {
-    for i in 2 3 4 5 6; do
+    for i in 1 2 3 4 5 6; do
         if [ -e /dev/tty${i} ]; then
             echo 'tty'$i'::respawn:/sbin/getty 38400 tty'$i >> /etc/inittab
             echo tty$i >> /etc/securetty
         fi
     done
 
-    if [ "$K3OS_MODE" != "local" ]; then
-        echo 'tty1::respawn:/sbin/getty 38400 tty1' >> /etc/inittab
-        echo tty1 >> /etc/securetty
+    HVST_CONSOLE_ENV=/opt/harvester-mode
+    mkdir -p /opt
+    if [ "$K3OS_MODE" = "local" ]; then
+        echo "export HARVESTER_DASHBOARD=true" > ${HVST_CONSOLE_ENV}
     else
-        mkdir -p /opt
-        cat > /opt/start_harvester_console.sh << EOF
-#!/bin/bash
-
-export HARVESTER_DASHBOARD=true
-export TTY=$(tty)
-harvester-console
-/bin/bash --login
-EOF
-        chmod +x /opt/start_harvester_console.sh
-        echo 'tty1::respawn:/sbin/getty -l /opt/start_harvester_console.sh -n 38400 tty1' >> /etc/inittab
-        echo tty1 >> /etc/securetty
+        echo "export HARVESTER_DASHBOARD=false" > ${HVST_CONSOLE_ENV}
     fi
 
     for x in $(cat /proc/cmdline); do
@@ -34,14 +24,36 @@ EOF
             ;;
         console=*)
             CONSOLE_SPEC=${x#console=}
-            IFS=, read TTY BAUDRATE _ <<<"${CONSOLE_SPEC},9600"
+            IFS=, read TTY BAUDRATE _ <<<"${CONSOLE_SPEC}"
+            if [ -n "${BAUDRATE}" ]; then
+                # remove "n8" from 115200n8, getty doesn't like it.
+                BAUDRATE=${BAUDRATE%n*}
+                BAUDRATE=${BAUDRATE%o*}
+                BAUDRATE=${BAUDRATE%e*}
+            else
+                if echo ${TTY} | grep -q -E "^tty[1-6]$"; then
+                    BAUDRATE="38400"
+                else
+                    BAUDRATE="9600"
+                fi
+            fi
+
             if [ -e /dev/${TTY} ] && ! grep -q "^${TTY}::" /etc/inittab; then
-                echo "${TTY}::respawn:/sbin/getty -L ${BAUDRATE} ${TTY} vt100" >> /etc/inittab
+                echo "${TTY}::respawn:/sbin/getty -L ${BAUDRATE} ${TTY}" >> /etc/inittab
                 echo ${TTY} >> /etc/securetty
             fi
+
+            HVST_TTY="${TTY}"
+            HVST_BAUDRATE="${BAUDRATE}"
             ;;
         esac
     done
+
+    # Display installer on the last TTY defined in the `console=` parameters
+    if [ -n "${HVST_TTY}" -a -n "${HVST_BAUDRATE}" ]; then
+        sed -i "/^${HVST_TTY}::/d" /etc/inittab
+        echo "${HVST_TTY}::respawn:/sbin/getty -l /usr/bin/start-harvester-console.sh -n ${HVST_BAUDRATE} ${HVST_TTY}" >> /etc/inittab
+    fi
 }
 
 setup_sudoers()
