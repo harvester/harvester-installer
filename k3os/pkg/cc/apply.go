@@ -32,7 +32,6 @@ func RunApply(cfg *config.CloudConfig) error {
 		ApplyWriteFiles,
 		ApplyEnvironment,
 		ApplyRuncmd,
-		ApplyInstall,
 		ApplyK3SInstall,
 	)
 }
