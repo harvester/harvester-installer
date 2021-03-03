@@ -3,7 +3,7 @@ FROM golang:1.13.4-alpine3.10
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
-RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates zstd
+RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates zstd containerd
 RUN apk add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
 RUN go get -d golang.org/x/lint/golint && \
     git -C /go/src/golang.org/x/lint/golint checkout -b current 06c8688daad7faa9da5a0c2f163a3d14aac986ca && \
@@ -29,6 +29,7 @@ ENV DAPPER_ENV REPO TAG DRONE_TAG CROSS
 ENV DAPPER_SOURCE /go/src/github.com/rancher/harvester-installer/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
+ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock"
 ENV HOME ${DAPPER_SOURCE}
 WORKDIR ${DAPPER_SOURCE}
 
