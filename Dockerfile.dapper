@@ -1,4 +1,4 @@
-FROM golang:1.13.4-alpine3.10
+FROM golang:1.15.8-alpine3.13
 
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
@@ -13,7 +13,7 @@ ENV HARVESTER_INSTALLER_OFFLINE_BUILD=$HARVESTER_INSTALLER_OFFLINE_BUILD
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
-RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates zstd containerd
+RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates zstd
 RUN apk add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
 RUN go get -d golang.org/x/lint/golint && \
     git -C /go/src/golang.org/x/lint/golint checkout -b current 06c8688daad7faa9da5a0c2f163a3d14aac986ca && \
