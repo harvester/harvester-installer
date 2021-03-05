@@ -2,7 +2,6 @@ package console
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -214,25 +213,6 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 		return cloudConfig
 	}
 
-	var harvesterChartValues = map[string]string{
-		"multus.enabled":                                "true",
-		"longhorn.enabled":                              "true",
-		"minio.persistence.storageClass":                "longhorn",
-		"harvester-network-controller.image.pullPolicy": "IfNotPresent",
-		"containers.apiserver.image.imagePullPolicy":    "IfNotPresent",
-		"containers.apiserver.authMode":                 "localUser",
-		"service.harvester.type":                        "NodePort",
-		"service.harvester.httpsNodePort":               harvesterNodePort,
-	}
-
-	cloudConfig.WriteFiles = []k3os.File{
-		{
-			Owner:              "root",
-			Path:               "/var/lib/rancher/k3s/server/manifests/harvester.yaml",
-			RawFilePermissions: "0600",
-			Content:            getHarvesterManifestContent(harvesterChartValues),
-		},
-	}
 	cloudConfig.K3OS.K3sArgs = append([]string{
 		"server",
 		"--cluster-init",
@@ -338,30 +318,6 @@ func getRemoteConfig(configURL string) (*config.HarvesterConfig, error) {
 		return nil, err
 	}
 	return harvestCfg, nil
-}
-
-func getHarvesterManifestContent(values map[string]string) string {
-	base := `apiVersion: v1
-kind: Namespace
-metadata:
-  name: harvester-system
----
-apiVersion: helm.cattle.io/v1
-kind: HelmChart
-metadata:
-  name: harvester
-  namespace: kube-system
-spec:
-  chart: https://%{KUBERNETES_API}%/static/charts/harvester-0.1.0.tgz
-  targetNamespace: harvester-system
-  set:
-`
-	var buffer = bytes.Buffer{}
-	buffer.WriteString(base)
-	for k, v := range values {
-		buffer.WriteString(fmt.Sprintf("    %s: %q\n", k, v))
-	}
-	return buffer.String()
 }
 
 func dupStrings(src []string) []string {
