@@ -58,8 +58,12 @@ curl ${longhorn_image_url}>>${image_list_file}
 curl ${K3S_IMAGE_URL}>>${image_list_file}
 
 # format image list
-awk -F ':' '{if($2==""){print $1":latest"}else{print $0}}' ${image_list_file} >"${image_list_file}.tmp"
-awk -F '/' '{if(NF==3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=1){print "docker.io/library/"$0}}' "${image_list_file}.tmp" > ${image_list_file}
+awk -F ':' '{if($2==""){print $1":latest"}else{print $0}}' "${image_list_file}" | \
+awk -F '/' '{if(NF==3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=1){print "docker.io/library/"$0}}' >"${image_list_file}.tmp"
+
+# clean image list
+sort -u "${image_list_file}.tmp" | \
+grep -Ev "local-path-provisioner|library-traefik|klipper-lb" >"${image_list_file}"
 
 output_image_tar_file="k3os/images/70-iso/harvester-images.tar"
 if [ -z "${HARVESTER_INSTALLER_OFFLINE_BUILD}" ] && [ ! -f $output_image_tar_file.zst ]; then
@@ -90,8 +94,28 @@ go mod vendor
 # make ISO
 cd scripts
 ./default
-mkdir -p ../../dist/artifacts
-mv ../dist/artifacts/* ../../dist/artifacts
-for file in `find ../../dist/artifacts -type f -name '*.iso'`; do mv "$file" "${file/k3os/harvester}"; done
-for file in `find ../../dist/artifacts -type f -name 'k3os-vmlinuz-*'`; do mv "$file" "${file/k3os/harvester}"; done
-for file in `find ../../dist/artifacts -type f -name 'k3os-initrd-*'`; do mv "$file" "${file/k3os/harvester}"; done
+
+# get artifacts
+artifacts_dir="../../dist/artifacts"
+mkdir -p "${artifacts_dir}"
+mv ../dist/artifacts/* "${artifacts_dir}"
+
+# rename artifacts
+find "${artifacts_dir}"  \( -name '*.iso' -or -name 'k3os-vmlinuz-*' -or -name 'k3os-initrd-*' \) -type f -print0 |
+  while IFS= read -r -d '' file; do
+      mv "${file}" "${file/k3os/harvester}"
+  done
+
+# check artifacts size
+max_size=2097151
+find "${artifacts_dir}"  -type f -print0 |
+  while IFS= read -r -d '' file; do
+      size=$(du -k "${file}" | cut -f 1)
+      filename=$(basename "${file}")
+      if ((size>max_size)); then
+        echo "😅 File ${filename} (${size} kb) is greater than limit: ${max_size} kb"
+        exit 1
+      else
+        echo "✅  ${filename} (${size} kb)"
+      fi
+  done
