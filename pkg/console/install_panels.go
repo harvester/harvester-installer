@@ -20,11 +20,12 @@ import (
 )
 
 type UserInputData struct {
-	ServerURL  string
-	SSHKeyURL  string
-	Password   string
-	Address    string
-	DNSServers string
+	ServerURL       string
+	SSHKeyURL       string
+	Password        string
+	PasswordConfirm string
+	Address         string
+	DNSServers      string
 }
 
 var (
@@ -215,6 +216,8 @@ func addAskCreatePanel(c *Console) error {
 			askCreateV.Close()
 			if selected == modeCreate {
 				c.config.Install.Mode = modeCreate
+				c.config.ServerURL = ""
+				userInputData.ServerURL = ""
 			} else {
 				c.config.Install.Mode = modeJoin
 			}
@@ -240,25 +243,28 @@ func addServerURLPanel(c *Console) error {
 	}
 	serverURLV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			serverURL, err := serverURLV.GetData()
-			if err != nil {
-				return err
-			}
-			if serverURL == "" {
-				return c.setContentByName(validatorPanel, "Management address is required")
-			}
-
-			fmtServerURL, err := getFormattedServerURL(serverURL)
-			if err != nil {
-				return c.setContentByName(validatorPanel, err.Error())
-			}
-			c.CloseElement(validatorPanel)
-			// focus on task panel to prevent input
 			asyncTaskV, err := c.GetElement(spinnerPanel)
 			if err != nil {
 				return err
 			}
 			asyncTaskV.Close()
+
+			userInputData.ServerURL, err = serverURLV.GetData()
+			if err != nil {
+				return err
+			}
+
+			if userInputData.ServerURL == "" {
+				return c.setContentByName(validatorPanel, "Management address is required")
+			}
+
+			fmtServerURL, err := getFormattedServerURL(userInputData.ServerURL)
+			if err != nil {
+				return c.setContentByName(validatorPanel, err.Error())
+			}
+			c.CloseElement(validatorPanel)
+
+			// focus on task panel to prevent input
 			asyncTaskV.Show()
 
 			pingServerURL := fmtServerURL + "/ping"
@@ -275,7 +281,6 @@ func addServerURLPanel(c *Console) error {
 				}
 				spinner.Stop(false, "")
 				c.config.ServerURL = fmtServerURL
-				userInputData.ServerURL = serverURL
 				g.Update(func(g *gocui.Gui) error {
 					serverURLV.Close()
 					return showNext(c, tokenPanel)
@@ -316,13 +321,23 @@ func addPasswordPanels(c *Console) error {
 		return nil
 	}
 
+	passwordVConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		password1V, err := c.GetElement(passwordPanel)
+		if err != nil {
+			return err
+		}
+		userInputData.Password, err = password1V.GetData()
+		if err != nil {
+			return err
+		}
+		if userInputData.Password == "" {
+			return c.setContentByName(validatorPanel, "Password is required")
+		}
+		return showNext(c, passwordConfirmPanel)
+	}
 	passwordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			return showNext(c, passwordConfirmPanel)
-		},
-		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error {
-			return showNext(c, passwordConfirmPanel)
-		},
+		gocui.KeyEnter:     passwordVConfirm,
+		gocui.KeyArrowDown: passwordVConfirm,
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			passwordV.Close()
 			passwordConfirmV.Close()
@@ -337,37 +352,29 @@ func addPasswordPanels(c *Console) error {
 
 	passwordConfirmV.PreShow = func() error {
 		c.Gui.Cursor = true
-		passwordConfirmV.Value = userInputData.Password
+		passwordConfirmV.Value = userInputData.PasswordConfirm
 		c.setContentByName(notePanel, "")
 		return c.setContentByName(titlePanel, "Configure the password to access the node")
 	}
 	passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			userInputData.PasswordConfirm, err = passwordConfirmV.GetData()
+			if err != nil {
+				return err
+			}
 			return showNext(c, passwordPanel)
 		},
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			password1V, err := c.GetElement(passwordPanel)
+			userInputData.PasswordConfirm, err = passwordConfirmV.GetData()
 			if err != nil {
 				return err
 			}
-			password1, err := password1V.GetData()
-			if err != nil {
-				return err
-			}
-			password2, err := passwordConfirmV.GetData()
-			if err != nil {
-				return err
-			}
-			if password1 != password2 {
+			if userInputData.Password != userInputData.PasswordConfirm {
 				return c.setContentByName(validatorPanel, "Password mismatching")
 			}
-			if password1 == "" {
-				return c.setContentByName(validatorPanel, "Password is required")
-			}
-			password1V.Close()
+			passwordV.Close()
 			passwordConfirmV.Close()
-			userInputData.Password = password1
-			encrpyted, err := util.GetEncrptedPasswd(password1)
+			encrpyted, err := util.GetEncrptedPasswd(userInputData.Password)
 			if err != nil {
 				return err
 			}
@@ -416,6 +423,7 @@ func addSSHKeyPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
+			userInputData.SSHKeyURL = url
 			c.config.SSHAuthorizedKeys = []string{}
 			if url != "" {
 				// focus on task panel to prevent ssh input
@@ -441,7 +449,6 @@ func addSSHKeyPanel(c *Console) error {
 					spinner.Stop(false, "")
 					logrus.Debug("SSH public keys: ", pubKeys)
 					c.config.SSHAuthorizedKeys = pubKeys
-					userInputData.SSHKeyURL = url
 					g.Update(func(g *gocui.Gui) error {
 						return gotoNextPage()
 					})
@@ -903,6 +910,9 @@ func addProxyPanel(c *Console) error {
 				}
 				c.config.Environment["http_proxy"] = proxy
 				c.config.Environment["https_proxy"] = proxy
+			} else {
+				delete(c.config.Environment, "http_proxy")
+				delete(c.config.Environment, "https_proxy")
 			}
 			proxyV.Close()
 			noteV, err := c.GetElement(notePanel)
@@ -928,6 +938,7 @@ func addCloudInitPanel(c *Console) error {
 		return err
 	}
 	cloudInitV.PreShow = func() error {
+		c.Gui.Cursor = true
 		cloudInitV.Value = c.config.Install.ConfigURL
 		return c.setContentByName(titlePanel, "Optional: remote Harvester config")
 	}
