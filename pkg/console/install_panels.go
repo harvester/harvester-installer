@@ -271,8 +271,7 @@ func addServerURLPanel(c *Console) error {
 			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", pingServerURL))
 			spinner.Start()
 			go func(g *gocui.Gui) {
-				err := validateInsecureURL(pingServerURL)
-				if err != nil {
+				if err = validatePingServerURL(pingServerURL); err != nil {
 					spinner.Stop(true, err.Error())
 					g.Update(func(g *gocui.Gui) error {
 						return showNext(c, serverURLPanel)
