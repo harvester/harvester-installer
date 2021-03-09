@@ -48,7 +48,7 @@ func getURL(client http.Client, url string) ([]byte, error) {
 	return body, nil
 }
 
-func validateInsecureURL(url string) error {
+func validatePingServerURL(url string) error {
 	client := http.Client{
 		Timeout: defaultHTTPTimeout,
 		Transport: &http.Transport{
@@ -57,8 +57,28 @@ func validateInsecureURL(url string) error {
 			},
 		},
 	}
-	_, err := getURL(client, url)
-	return err
+
+	// After configure the network, network need a few seconds to be available.
+	return retryOnError(3, 2, func() error {
+		_, err := getURL(client, url)
+		return err
+	})
+}
+
+func retryOnError(retryNum, retryInterval int64, process func() error) error {
+	for {
+		if err := process(); err != nil {
+			if retryNum == 0 {
+				return err
+			}
+			retryNum--
+			if retryInterval > 0 {
+				time.Sleep(time.Duration(retryInterval) * time.Second)
+			}
+			continue
+		}
+		return nil
+	}
 }
 
 func getRemoteSSHKeys(url string) ([]string, error) {

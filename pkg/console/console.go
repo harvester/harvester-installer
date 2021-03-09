@@ -96,10 +96,9 @@ func (c *Console) setContentByName(name string, content string) error {
 func (c *Console) CloseElement(name string) {
 	v, err := c.GetElement(name)
 	if err != nil {
-		// ignore not found error
 		return
 	}
-	if err = v.Close(); err != nil {
+	if err = v.Close(); err != nil && err != gocui.ErrUnknownView {
 		logrus.Error(err)
 	}
 }
