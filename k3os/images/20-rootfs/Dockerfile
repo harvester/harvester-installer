@@ -99,6 +99,7 @@ RUN ln -s k3s /usr/src/image/sbin/ctr
 RUN ln -s /k3os/system/k3os/current/k3os /usr/src/image/sbin/harvester-console
 
 COPY install.sh /usr/src/image/libexec/k3os/install
+COPY shutdown.sh /usr/src/image/libexec/k3os/shutdown
 RUN sed -i -e "s/%VERSION%/${VERSION}/g" -e "s/%HARVESTER_VERSION%/${HARVESTER_VERSION}/g" -e "s/%ARCH%/${ARCH}/g" /usr/src/image/lib/os-release
 RUN mkdir -p /output && \
     mksquashfs /usr/src/image /output/rootfs.squashfs
