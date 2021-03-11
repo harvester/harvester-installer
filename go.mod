@@ -16,6 +16,7 @@ require (
 	github.com/tredoe/osutil v1.0.5
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/apimachinery v0.0.0
 )

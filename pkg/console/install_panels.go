@@ -12,6 +12,7 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/rancher/harvester-installer/pkg/config"
@@ -27,6 +28,13 @@ type UserInputData struct {
 	Address         string
 	DNSServers      string
 }
+
+const (
+	NICStateNotFound = iota
+	NICStateDown
+	NICStateLowerDown
+	NICStateUP
+)
 
 var (
 	once          sync.Once
@@ -580,19 +588,16 @@ func addNetworkPanel(c *Console) error {
 		}
 	}
 
-	gotoNextPanel := func(c *Console, validator func() (string, error), name string, hooks ...func() error) func(g *gocui.Gui, v *gocui.View) error {
+	gotoNextPanel := func(c *Console, name string, hooks ...func() (string, error)) func(g *gocui.Gui, v *gocui.View) error {
 		return func(g *gocui.Gui, v *gocui.View) error {
-			validateErrMsg, err := validator()
-			if err != nil {
-				return err
-			}
-			if validateErrMsg != "" {
-				return c.setContentByName(networkValidatorPanel, validateErrMsg)
-			}
 			c.CloseElement(networkValidatorPanel)
 			for _, hook := range hooks {
-				if err = hook(); err != nil {
+				msg, err := hook()
+				if err != nil {
 					return err
+				}
+				if msg != "" {
+					return c.setContentByName(networkValidatorPanel, msg)
 				}
 			}
 			return showNext(c, name)
@@ -610,19 +615,22 @@ func addNetworkPanel(c *Console) error {
 			networkValidatorPanel)
 	}
 
-	setupNetwork := func() error {
+	setupNetwork := func() ([]byte, error) {
 		cmd := exec.Command("/bin/sh", "-c", getConfigureNetworkCMD(mgmtNetwork))
 		cmd.Env = os.Environ()
-		_, err = cmd.CombinedOutput()
-		return err
+		return cmd.CombinedOutput()
 	}
 
-	preGotoNextPage := func() error {
-		closeThisPage()
+	preGotoNextPage := func() (string, error) {
+		output, err := setupNetwork()
+		if err != nil {
+			return fmt.Sprintf("Configure network failed: %s", string(output)), nil
+		}
 		c.config.Networks = []config.Network{
 			mgmtNetwork,
 		}
-		return setupNetwork()
+		closeThisPage()
+		return "", nil
 	}
 
 	getNextPagePanel := func() string {
@@ -633,8 +641,12 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	gotoNextPage := func() error {
-		if err = preGotoNextPage(); err != nil {
+		msg, err := preGotoNextPage()
+		if err != nil {
 			return err
+		}
+		if msg != "" {
+			return c.setContentByName(networkValidatorPanel, msg)
 		}
 		return showNext(c, getNextPagePanel())
 	}
@@ -664,7 +676,7 @@ func addNetworkPanel(c *Console) error {
 		c.config.Hostname = hostName
 		return "", nil
 	}
-	hostNameVConfirm := gotoNextPanel(c, validateHostName, askInterfacePanel)
+	hostNameVConfirm := gotoNextPanel(c, askInterfacePanel, validateHostName)
 	hostNameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowDown: hostNameVConfirm,
 		gocui.KeyEnter:     hostNameVConfirm,
@@ -678,6 +690,15 @@ func addNetworkPanel(c *Console) error {
 		selected, err := askInterfaceV.GetData()
 		if err != nil {
 			return err
+		}
+		c.CloseElement(networkValidatorPanel)
+		switch nicState := getNICState(selected); nicState {
+		case NICStateNotFound:
+			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s not found", selected))
+		case NICStateDown:
+			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is is down", selected))
+		case NICStateLowerDown:
+			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is is down\nNetwork cable isn't plugged in", selected))
 		}
 		c.config.Install.MgmtInterface = selected
 		mgmtNetwork.Interface = selected
@@ -747,7 +768,7 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3])
 		return "", nil
 	}
-	addressVConfirm := gotoNextPanel(c, validateAddress, gatewayPanel)
+	addressVConfirm := gotoNextPanel(c, gatewayPanel, validateAddress)
 	addressV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoPrevPanel(c, askNetworkMethodPanel),
 		gocui.KeyArrowDown: addressVConfirm,
@@ -777,7 +798,7 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.Gateway = gateway
 		return "", nil
 	}
-	gatewayVConfirm := gotoNextPanel(c, validateGateway, dnsServersPanel)
+	gatewayVConfirm := gotoNextPanel(c, dnsServersPanel, validateGateway)
 	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoPrevPanel(c, addressPanel),
 		gocui.KeyArrowDown: gatewayVConfirm,
@@ -811,7 +832,7 @@ func addNetworkPanel(c *Console) error {
 		return "", nil
 	}
 	dnsServersVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		return gotoNextPanel(c, validateDNSServers, getNextPagePanel(), preGotoNextPage)(g, v)
+		return gotoNextPanel(c, getNextPagePanel(), validateDNSServers, preGotoNextPage)(g, v)
 	}
 	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: gotoPrevPanel(c, gatewayPanel),
@@ -828,6 +849,22 @@ func addNetworkPanel(c *Console) error {
 	c.AddElement(networkValidatorPanel, networkValidatorV)
 
 	return nil
+}
+
+func getNICState(name string) int {
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		return NICStateNotFound
+	}
+	up := link.Attrs().RawFlags&unix.IFF_UP != 0
+	lowerUp := link.Attrs().RawFlags&unix.IFF_LOWER_UP != 0
+	if !up {
+		return NICStateDown
+	}
+	if !lowerUp {
+		return NICStateLowerDown
+	}
+	return NICStateUP
 }
 
 func getNetworkInterfaceOptions() ([]widgets.Option, error) {
