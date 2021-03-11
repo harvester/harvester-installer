@@ -105,17 +105,3 @@ find "${artifacts_dir}"  \( -name '*.iso' -or -name 'k3os-vmlinuz-*' -or -name '
   while IFS= read -r -d '' file; do
       mv "${file}" "${file/k3os/harvester}"
   done
-
-# check artifacts size
-max_size=2097151
-find "${artifacts_dir}"  -type f -print0 |
-  while IFS= read -r -d '' file; do
-      size=$(du -k "${file}" | cut -f 1)
-      filename=$(basename "${file}")
-      if ((size>max_size)); then
-        echo "😅 File ${filename} (${size} kb) is greater than limit: ${max_size} kb"
-        exit 1
-      else
-        echo "✅  ${filename} (${size} kb)"
-      fi
-  done
