@@ -941,39 +941,56 @@ func addCloudInitPanel(c *Console) error {
 		cloudInitV.Value = c.config.Install.ConfigURL
 		return c.setContentByName(titlePanel, "Optional: remote Harvester config")
 	}
+	gotoNextPage := func() error {
+		cloudInitV.Close()
+		return showNext(c, confirmPanel)
+	}
 	cloudInitV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
 			configURL, err := cloudInitV.GetData()
 			if err != nil {
 				return err
 			}
-			confirmV, err := c.GetElement(confirmPanel)
-			if err != nil {
-				return err
-			}
 			c.config.Install.ConfigURL = configURL
-			cloudInitV.Close()
-			installBytes, err := config.PrintInstall(*c.config)
-			if err != nil {
-				return err
+			if configURL != "" {
+				asyncTaskV, err := c.GetElement(spinnerPanel)
+				if err != nil {
+					return err
+				}
+				asyncTaskV.Close()
+				asyncTaskV.Show()
+
+				spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", configURL))
+				spinner.Start()
+
+				go func(g *gocui.Gui) {
+					if _, err = getRemoteConfig(configURL); err != nil {
+						spinner.Stop(true, err.Error())
+						g.Update(func(g *gocui.Gui) error {
+							return showNext(c, cloudInitPanel)
+						})
+						return
+					}
+					spinner.Stop(false, "")
+					g.Update(func(g *gocui.Gui) error {
+						return gotoNextPage()
+					})
+				}(c.Gui)
+				return nil
 			}
-			options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
-			if proxy, ok := c.config.Environment["http_proxy"]; ok {
-				options += fmt.Sprintf("proxy address: %v\n", proxy)
-			}
-			options += string(installBytes)
-			logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))
-			if !c.config.Install.Silent {
-				confirmV.SetContent(options +
-					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
-			}
-			g.Cursor = false
-			return showNext(c, confirmPanel)
+			return gotoNextPage()
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			cloudInitV.Close()
 			return showNext(c, proxyPanel)
 		},
+	}
+	cloudInitV.PostClose = func() error {
+		asyncTaskV, err := c.GetElement(spinnerPanel)
+		if err != nil {
+			return err
+		}
+		return asyncTaskV.Close()
 	}
 	c.AddElement(cloudInitPanel, cloudInitV)
 	return nil
@@ -996,6 +1013,25 @@ func addConfirmPanel(c *Console) error {
 		return err
 	}
 	confirmV.PreShow = func() error {
+		installBytes, err := config.PrintInstall(*c.config)
+		if err != nil {
+			return err
+		}
+		options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
+		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
+		if userInputData.SSHKeyURL != "" {
+			options += fmt.Sprintf("ssh key url: %v\n", userInputData.SSHKeyURL)
+		}
+		if proxy, ok := c.config.Environment["http_proxy"]; ok {
+			options += fmt.Sprintf("proxy address: %v\n", proxy)
+		}
+		options += string(installBytes)
+		logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))
+		if !c.config.Install.Silent {
+			confirmV.SetContent(options +
+				"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+		}
+		c.Gui.Cursor = false
 		return c.setContentByName(titlePanel, "Confirm installation options")
 	}
 	confirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
