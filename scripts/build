@@ -73,7 +73,8 @@ if [ -z "${HARVESTER_INSTALLER_OFFLINE_BUILD}" ] && [ ! -f $output_image_tar_fil
     echo "=> pulling ${image}"
     ctr images pull "${image}" > /dev/null 2>&1
   done
-  echo "${images}" | xargs -r ctr images export ${output_image_tar_file}
+  echo "${images}" | xargs -r ctr images export ${output_image_tar_file}.gz
+  gzip -d ${output_image_tar_file}.gz
   zstd --rm ${output_image_tar_file} -o ${output_image_tar_file}.zst
 fi
 
@@ -104,4 +105,19 @@ mv ../dist/artifacts/* "${artifacts_dir}"
 find "${artifacts_dir}"  \( -name '*.iso' -or -name 'k3os-vmlinuz-*' -or -name 'k3os-initrd-*' \) -type f -print0 |
   while IFS= read -r -d '' file; do
       mv "${file}" "${file/k3os/harvester}"
+  done
+
+
+# check artifacts size
+max_size=2097151
+find "${artifacts_dir}"  -type f -print0 |
+  while IFS= read -r -d '' file; do
+      size=$(du -k "${file}" | cut -f 1)
+      filename=$(basename "${file}")
+      if ((size>max_size)); then
+        echo "😅 File ${filename} (${size} kb) is greater than limit: ${max_size} kb"
+        exit 1
+      else
+        echo "✅  ${filename} (${size} kb)"
+      fi
   done
