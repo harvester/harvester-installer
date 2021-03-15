@@ -1119,6 +1119,9 @@ func addInstallPanel(c *Console) error {
 			if c.config.Hostname == "" {
 				c.config.Hostname = generateHostName()
 			}
+			if c.config.TTY == "" {
+				c.config.TTY = getLastTTY()
+			}
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToInstallPanel(c.Gui, err.Error())
 				return
