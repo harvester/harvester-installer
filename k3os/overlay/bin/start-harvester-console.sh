@@ -2,7 +2,7 @@
 
 source /opt/harvester-mode
 
-export TTY=$(tty)
+export TTY="/dev/console"
 export TERM="linux"
 
 # Set a default window size for un-attached terminals like serial consoles
