@@ -12,7 +12,7 @@ spec:
   chart: https://%{KUBERNETES_API}%/static/charts/$HARVESTER_CHART
   targetNamespace: harvester-system
   set:
-    containers.apiserver.authMode: "localUser"
+    containers.apiserver.authMode: "rancher"
     multus.enabled: "true"
     longhorn.enabled: "true"
     longhorn.defaultSettings.taintToleration: "kubevirt.io/drain:NoSchedule"
@@ -21,3 +21,4 @@ spec:
     harvester-network-controller.image.pullPolicy: "IfNotPresent"
     service.harvester.type: "NodePort"
     service.harvester.httpsNodePort: 30443
+    rancherEmbedded: "true"
