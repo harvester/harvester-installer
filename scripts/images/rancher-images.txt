@@ -1,0 +1,9 @@
+rancher/fleet-agent:
+rancher/fleet:
+rancher/gitjob:
+rancher/library-busybox:
+rancher/pause:
+rancher/rancher-operator:
+rancher/rancher-webhook:
+rancher/rancher:
+rancher/shell:

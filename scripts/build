@@ -10,6 +10,10 @@ echo "Start building ISO"
 K3S_VERSION=v1.20.4+k3s1
 K3S_IMAGE_URL=https://raw.githubusercontent.com/rancher/k3s/${K3S_VERSION}/scripts/airgap/image-list.txt
 
+RANCHER_VERSION=2.5.7
+RANCHER_IMAGE_URL=https://github.com/rancher/rancher/releases/download/v{$RANCHER_VERSION}/rancher-images.txt
+CERT_MANAGER_VERSION=v1.2.0
+
 # Prepare Harvester chart
 mkdir -p k3os/images/70-iso/charts
 harvester_path=../harvester
@@ -23,6 +27,22 @@ helm package ${harvester_chart_path} -d k3os/images/70-iso/charts
 # Prepare Harvester manifests
 HARVESTER_CHART=$(ls k3os/images/70-iso/charts/harvester* | xargs basename)
 sed -i 's/$HARVESTER_CHART/'$HARVESTER_CHART'/' manifests/harvester.yaml
+
+# Prepare the Rancher chart
+helm pull https://releases.rancher.com/server-charts/latest/rancher-${RANCHER_VERSION}.tgz -d k3os/images/70-iso/charts
+
+# Prepare Rancher manifests
+RANCHER_CHART=$(ls k3os/images/70-iso/charts/rancher* | xargs basename)
+sed -i 's/$RANCHER_CHART/'$RANCHER_CHART'/' manifests/rancher.yaml
+
+# Prepare the cert-manager chart
+helm pull https://charts.jetstack.io/charts/cert-manager-${CERT_MANAGER_VERSION}.tgz -d k3os/images/70-iso/charts
+
+# Prepare cert-manager manifests
+CERT_MANAGER_CHART=$(ls k3os/images/70-iso/charts/cert* | xargs basename)
+sed -i 's/$CERT_MANAGER_CHART/'$CERT_MANAGER_CHART'/' manifests/cert-manager.yaml
+
+# Copy manifests
 cp -r manifests k3os/images/70-iso/
 
 # Offline docker images
@@ -56,6 +76,35 @@ curl ${longhorn_image_url}>>${image_list_file}
 
 # get k3s image list
 curl ${K3S_IMAGE_URL}>>${image_list_file}
+
+# get rancher image list
+RANCHER_REMOTE_IMAGES=rancher-remote-images.txt
+RANCHER_IMAGES=scripts/images/rancher-images.txt
+
+if [ ! -f "$RANCHER_REMOTE_IMAGES" ]; then
+    touch $RANCHER_REMOTE_IMAGES
+fi
+
+curl -fL -o "${RANCHER_REMOTE_IMAGES}" "${RANCHER_IMAGE_URL}"
+
+while IFS= read -r img || [ -n "$img" ]
+do
+  while IFS= read -r img_rq || [ -n "$img_rq" ]
+  do
+    if [[ $img == "$img_rq"* ]]; then
+      echo "$img" >> ${image_list_file}
+    fi
+  done < "$RANCHER_IMAGES"
+done < "$RANCHER_REMOTE_IMAGES"
+echo "Done adding rancher images"
+
+# add cert-manager image list
+CERT_MANAGER_IMAGES=scripts/images/cert-manager-images.txt
+
+while IFS= read -r img || [ -n "$img" ]
+do
+  echo "${img}${CERT_MANAGER_VERSION}">>${image_list_file}
+done < "$CERT_MANAGER_IMAGES"
 
 # format image list
 awk -F ':' '{if($2==""){print $1":latest"}else{print $0}}' "${image_list_file}" | \
