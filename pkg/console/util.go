@@ -242,6 +242,12 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 		"servicelb",
 		"--disable",
 		"traefik",
+		"--cluster-cidr",
+		"10.52.0.0/16",
+		"--service-cidr",
+		"10.53.0.0/16",
+		"--cluster-dns",
+		"10.53.0.10",
 	}, extraK3sArgs...)
 
 	return cloudConfig
