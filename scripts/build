@@ -87,7 +87,7 @@ popd
 cd k3os
 # Update vendors
 export GO111MODULE=on
-go mod edit -replace=github.com/nsf/termbox-go=github.com/gitlawr/termbox-go@v0.0.0-20201103025537-250e644d56a6
+go mod edit -replace=github.com/nsf/termbox-go=github.com/Harvester/termbox-go@v1.1.1-0.20210318083914-8ab92204a400
 go mod edit -replace=github.com/rancher/harvester-installer=../
 go get
 go mod vendor
