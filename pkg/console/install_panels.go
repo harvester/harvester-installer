@@ -696,9 +696,9 @@ func addNetworkPanel(c *Console) error {
 		case NICStateNotFound:
 			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s not found", selected))
 		case NICStateDown:
-			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is is down", selected))
+			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is down", selected))
 		case NICStateLowerDown:
-			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is is down\nNetwork cable isn't plugged in", selected))
+			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", selected))
 		}
 		c.config.Install.MgmtInterface = selected
 		mgmtNetwork.Interface = selected
