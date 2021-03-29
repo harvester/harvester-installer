@@ -19,6 +19,21 @@ type Network struct {
 	DNSNameservers []string `json:"dnsNameservers,omitempty"`
 }
 
+type HTTPBasicAuth struct {
+	User     string `json:"user,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+type Webhook struct {
+	Event     string              `json:"event,omitempty"`
+	Method    string              `json:"method,omitempty"`
+	Headers   map[string][]string `json:"headers,omitempty"`
+	URL       string              `json:"url,omitempty"`
+	Payload   string              `json:"payload,omitempty"`
+	Insecure  bool                `json:"insecure,omitempty"`
+	BasicAuth HTTPBasicAuth       `json:"basicAuth,omitempty"`
+}
+
 type Install struct {
 	Automatic     bool      `json:"automatic,omitempty"`
 	Mode          string    `json:"mode,omitempty"`
@@ -34,6 +49,8 @@ type Install struct {
 	NoFormat  bool   `json:"noFormat,omitempty"`
 	Debug     bool   `json:"debug,omitempty"`
 	TTY       string `json:"tty,omitempty"`
+
+	Webhooks []Webhook `json:"webhooks,omitempty"`
 }
 
 type Wifi struct {

@@ -15,8 +15,8 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
+	"github.com/rancher/harvester-installer/pkg/util"
 	k3os "github.com/rancher/k3os/pkg/config"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/apimachinery/pkg/util/rand"
 
@@ -183,12 +183,12 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 	cloudConfig.K3OS.Token = cfg.Token
 
 	// cfg.OS
-	cloudConfig.SSHAuthorizedKeys = dupStrings(cfg.OS.SSHAuthorizedKeys)
+	cloudConfig.SSHAuthorizedKeys = util.DupStrings(cfg.OS.SSHAuthorizedKeys)
 	cloudConfig.Hostname = cfg.OS.Hostname
-	cloudConfig.K3OS.Modules = dupStrings(cfg.OS.Modules)
-	cloudConfig.K3OS.Sysctls = dupStringMap(cfg.OS.Sysctls)
-	cloudConfig.K3OS.NTPServers = dupStrings(cfg.OS.NTPServers)
-	cloudConfig.K3OS.DNSNameservers = dupStrings(cfg.OS.DNSNameservers)
+	cloudConfig.K3OS.Modules = util.DupStrings(cfg.OS.Modules)
+	cloudConfig.K3OS.Sysctls = util.DupStringMap(cfg.OS.Sysctls)
+	cloudConfig.K3OS.NTPServers = util.DupStrings(cfg.OS.NTPServers)
+	cloudConfig.K3OS.DNSNameservers = util.DupStrings(cfg.OS.DNSNameservers)
 	if cfg.OS.Wifi != nil {
 		cloudConfig.K3OS.Wifi = make([]k3os.Wifi, len(cfg.Wifi))
 		for i, w := range cfg.Wifi {
@@ -197,7 +197,7 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 		}
 	}
 	cloudConfig.K3OS.Password = cfg.OS.Password
-	cloudConfig.K3OS.Environment = dupStringMap(cfg.OS.Environment)
+	cloudConfig.K3OS.Environment = util.DupStringMap(cfg.OS.Environment)
 
 	// cfg.OS.Install
 	cloudConfig.K3OS.Install.ForceEFI = cfg.Install.ForceEFI
@@ -253,7 +253,37 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 	return cloudConfig
 }
 
-func doInstall(g *gocui.Gui, cloudConfig *k3os.CloudConfig) error {
+func execute(g *gocui.Gui, env []string, cmdName string) error {
+	cmd := exec.Command(cmdName)
+	cmd.Env = env
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		printToPanel(g, scanner.Text(), installPanel)
+	}
+	scanner = bufio.NewScanner(stderr)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		printToPanel(g, scanner.Text(), installPanel)
+	}
+	return cmd.Wait()
+}
+
+func doInstall(g *gocui.Gui, cloudConfig *k3os.CloudConfig, webhooks RendererWebhooks) error {
+	webhooks.Handle(EventInstallStarted)
+
 	var (
 		err      error
 		tempFile *os.File
@@ -285,30 +315,15 @@ func doInstall(g *gocui.Gui, cloudConfig *k3os.CloudConfig) error {
 		}
 		defer os.Remove(tempFile.Name())
 	}
-	cmd := exec.Command("/usr/libexec/k3os/install")
-	cmd.Env = append(os.Environ(), ev...)
-	logrus.Infof("env: %v", cmd.Env)
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	if err := cmd.Start(); err != nil {
-		return err
-	}
 
-	scanner := bufio.NewScanner(stdout)
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		printToPanel(g, scanner.Text(), installPanel)
+	env := append(os.Environ(), ev...)
+	if err := execute(g, env, "/usr/libexec/k3os/install"); err != nil {
+		webhooks.Handle(EventInstallFailed)
+		return err
 	}
-	scanner = bufio.NewScanner(stderr)
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		printToPanel(g, scanner.Text(), installPanel)
+	webhooks.Handle(EventInstallSuceeded)
+	if err := execute(g, env, "/usr/libexec/k3os/shutdown"); err != nil {
+		return err
 	}
 	return nil
 }
@@ -384,24 +399,4 @@ func harvesterInstalled() (bool, error) {
 	}
 
 	return false, nil
-}
-
-func dupStrings(src []string) []string {
-	if src == nil {
-		return nil
-	}
-	s := make([]string, len(src))
-	copy(s, src)
-	return s
-}
-
-func dupStringMap(src map[string]string) map[string]string {
-	if src == nil {
-		return nil
-	}
-	m := make(map[string]string)
-	for k, v := range src {
-		m[k] = v
-	}
-	return m
 }
