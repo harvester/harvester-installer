@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/jroimartin/gocui"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/harvester-installer/pkg/util"
@@ -28,8 +27,8 @@ const (
 	colorYellow
 	colorBlue
 
-	statusRunning   = "Running"
-	statusUnknown   = "Unknown"
+	statusReady     = "Ready"
+	statusNotReady  = "NotReady"
 	statusSettingUp = "Setting up Harvester"
 
 	logo string = `
@@ -347,18 +346,12 @@ func chartIsInstalled() bool {
 	return succeeded >= 1
 }
 
-func harvesterPodStatus() (string, error) {
-	cmd := exec.Command("/bin/sh", "-c", `kubectl get po -n harvester-system -l "app.kubernetes.io/name=harvester" -o jsonpath='{.items[*].status.phase}' | tr ' ' '\n' | sort -u | xargs echo -n`)
+func isPodReady(namespace, labelSelector string) bool {
+	command := fmt.Sprintf(`kubectl get po -n %s -l "%s" -o jsonpath='{range .items[*]}{range @.status.conditions[*]}{@.type}={@.status};{end}{"\n"}' | grep "Ready=True"`, namespace, labelSelector)
+	cmd := exec.Command("/bin/sh", "-c", command)
 	cmd.Env = os.Environ()
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", errors.Wrap(err, string(output))
-	}
-	outStr := string(output)
-	if strings.Contains(outStr, statusRunning) {
-		return statusRunning, nil
-	}
-	return outStr, nil
+	_, err := cmd.CombinedOutput()
+	return err == nil
 }
 
 func nodeIsPresent() bool {
@@ -389,19 +382,15 @@ func getHarvesterStatus() string {
 	}
 
 	if !nodeIsPresent() {
-		return wrapColor(statusUnknown, colorYellow)
+		return wrapColor(statusNotReady, colorYellow)
 	}
 
-	status, err := harvesterPodStatus()
-	if err != nil {
-		status = wrapColor(err.Error(), colorRed)
+	harvesterReady := isPodReady("harvester-system", "app.kubernetes.io/name=harvester")
+	rancherReady := isPodReady("cattle-system", "app=rancher")
+	if harvesterReady && rancherReady {
+		return wrapColor(statusReady, colorGreen)
 	}
-	if status == statusRunning {
-		status = wrapColor(status, colorGreen)
-	} else {
-		status = wrapColor(status, colorYellow)
-	}
-	return status
+	return wrapColor(statusNotReady, colorYellow)
 }
 
 func wrapColor(s string, color int) string {
