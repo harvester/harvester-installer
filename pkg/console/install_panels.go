@@ -509,10 +509,12 @@ func addTokenPanel(c *Console) error {
 	tokenV.PreShow = func() error {
 		c.Gui.Cursor = true
 		tokenV.Value = c.config.Token
+		tokenNote := clusterTokenJoinNote
 		if c.config.Install.Mode == modeCreate {
-			if err = c.setContentByName(notePanel, clusterTokenNote); err != nil {
-				return err
-			}
+			tokenNote = clusterTokenCreateNote
+		}
+		if err = c.setContentByName(notePanel, tokenNote); err != nil {
+			return err
 		}
 		return c.setContentByName(titlePanel, "Configure cluster token")
 	}
