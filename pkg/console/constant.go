@@ -45,10 +45,11 @@ const (
 	networkMethodStatic     = "static"
 	networkMethodStaticText = "Static"
 
-	clusterTokenNote = "Note: The token is used for adding nodes to the cluster"
-	serverURLNote    = "Note: Input IP/domain name of the management node"
-	proxyNote        = "Note: In the form of \"http://[[user][:pass]@]host[:port]/\"."
-	sshKeyNote       = "For example: https://github.com/<username>.keys"
+	clusterTokenCreateNote = "Note: The token is used for adding nodes to the cluster"
+	clusterTokenJoinNote   = "Note: Input the token of the existing cluster"
+	serverURLNote          = "Note: Input IP/domain name of the management node"
+	proxyNote              = "Note: In the form of \"http://[[user][:pass]@]host[:port]/\"."
+	sshKeyNote             = "For example: https://github.com/<username>.keys"
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"
 )
