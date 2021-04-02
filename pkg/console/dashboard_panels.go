@@ -212,21 +212,10 @@ func syncManagementURL(ctx context.Context, g *gocui.Gui) {
 }
 
 func doSyncManagementURL(g *gocui.Gui) {
-	managementIP := getFirstReadyMasterIP()
-	if managementIP == "" {
-		managementNIC := getManagementNIC()
-		if ip, err := getInterfaceIP(managementNIC); err != nil {
-			logrus.Error(err)
-		} else if ip != nil {
-			managementIP = ip.String()
-		}
+	managementURL := "Unavailable"
+	if managementIP := getFirstReadyMasterIP(); managementIP != "" {
+		managementURL = fmt.Sprintf("https://%s:%s", managementIP, harvesterNodePort)
 	}
-
-	if managementIP == "" {
-		return
-	}
-
-	managementURL := fmt.Sprintf("https://%s:%s", managementIP, harvesterNodePort)
 	g.Update(func(g *gocui.Gui) error {
 		v, err := g.View("url")
 		if err != nil {
