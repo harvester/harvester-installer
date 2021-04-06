@@ -72,10 +72,10 @@ func (p *Panel) Show() error {
 	}
 	if p.X0 == 0 && p.X1 == 0 && p.Y0 == 0 && p.Y1 == 0 {
 		maxX, maxY := p.g.Size()
-		p.X0 = maxX / 4
-		p.X1 = maxX / 4 * 3
-		p.Y0 = maxY / 4
-		p.Y1 = maxY / 4 * 3
+		p.X0 = maxX / 8
+		p.X1 = maxX / 8 * 7
+		p.Y0 = maxY / 8
+		p.Y1 = maxY / 8 * 7
 	}
 	v, err := p.g.SetView(p.Name, p.X0, p.Y0, p.X1, p.Y1)
 	if err != nil {
