@@ -9,11 +9,12 @@ import (
 
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/rancher/harvester-installer/pkg/console"
 	"github.com/rancher/k3os/pkg/cli/app"
 	"github.com/rancher/k3os/pkg/enterchroot"
 	"github.com/rancher/k3os/pkg/transferroot"
 	"github.com/sirupsen/logrus"
+
+	"github.com/rancher/harvester-installer/pkg/console"
 )
 
 func main() {
