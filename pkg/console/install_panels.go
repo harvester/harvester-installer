@@ -399,11 +399,11 @@ func addPasswordPanels(c *Console) error {
 			}
 			passwordV.Close()
 			passwordConfirmV.Close()
-			encrpyted, err := util.GetEncrptedPasswd(userInputData.Password)
+			encrypted, err := util.GetEncrptedPasswd(userInputData.Password)
 			if err != nil {
 				return err
 			}
-			c.config.Password = encrpyted
+			c.config.Password = encrypted
 			return showNext(c, sshKeyPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {

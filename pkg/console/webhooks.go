@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/harvester-installer/pkg/config"
 	"github.com/rancher/harvester-installer/pkg/util"
-	"github.com/sirupsen/logrus"
 )
 
 const (

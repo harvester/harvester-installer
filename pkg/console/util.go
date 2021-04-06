@@ -15,12 +15,12 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
-	"github.com/rancher/harvester-installer/pkg/util"
 	k3os "github.com/rancher/k3os/pkg/config"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/rancher/harvester-installer/pkg/config"
+	"github.com/rancher/harvester-installer/pkg/util"
 )
 
 const (
