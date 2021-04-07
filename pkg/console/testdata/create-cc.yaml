@@ -22,9 +22,6 @@ k3os:
     passphrase: somethingelse
   password: rancher
   token: TOKEN_VALUE
-  environment:
-    http_proxy: http://myserver
-    https_proxy: http://myserver
   k3sArgs:
   - server
   - --cluster-init

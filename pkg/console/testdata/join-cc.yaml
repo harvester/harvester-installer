@@ -23,9 +23,6 @@ k3os:
   password: rancher
   server_url: https://somewhere:6443
   token: TOKEN_VALUE
-  environment:
-    http_proxy: http://myserver
-    https_proxy: http://myserver
   k3sArgs:
   - agent
   - --flannel-iface
