@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	k3os "github.com/rancher/k3os/pkg/config"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/net/http/httpproxy"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/rancher/harvester-installer/pkg/config"
@@ -28,6 +30,19 @@ const (
 	harvesterNodePort  = "30443"
 	automaticCmdline   = "harvester.automatic"
 )
+
+func newProxyClient() http.Client {
+	return http.Client{
+		Timeout: defaultHTTPTimeout,
+		Transport: &http.Transport{
+			Proxy: proxyFromEnvironment,
+		},
+	}
+}
+
+func proxyFromEnvironment(req *http.Request) (*url.URL, error) {
+	return httpproxy.FromEnvironment().ProxyFunc()(req.URL)
+}
 
 func getURL(client http.Client, url string) ([]byte, error) {
 	resp, err := client.Get(url)
@@ -57,7 +72,6 @@ func validatePingServerURL(url string) error {
 			},
 		},
 	}
-
 	// After configure the network, network need a few seconds to be available.
 	return retryOnError(3, 2, func() error {
 		_, err := getURL(client, url)
@@ -82,9 +96,7 @@ func retryOnError(retryNum, retryInterval int64, process func() error) error {
 }
 
 func getRemoteSSHKeys(url string) ([]string, error) {
-	client := http.Client{
-		Timeout: defaultHTTPTimeout,
-	}
+	client := newProxyClient()
 	b, err := getURL(client, url)
 	if err != nil {
 		return nil, err
@@ -374,9 +386,7 @@ func printToPanel(g *gocui.Gui, message string, panelName string) {
 }
 
 func getRemoteConfig(configURL string) (*config.HarvesterConfig, error) {
-	client := http.Client{
-		Timeout: defaultHTTPTimeout,
-	}
+	client := newProxyClient()
 	b, err := getURL(client, configURL)
 	if err != nil {
 		return nil, err

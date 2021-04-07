@@ -405,7 +405,7 @@ func addPasswordPanels(c *Console) error {
 				return err
 			}
 			c.config.Password = encrypted
-			return showNext(c, sshKeyPanel)
+			return showNext(c, proxyPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			passwordV.Close()
@@ -441,7 +441,7 @@ func addSSHKeyPanel(c *Console) error {
 	}
 	gotoNextPage := func() error {
 		closeThisPage()
-		return showNext(c, proxyPanel)
+		return showNext(c, cloudInitPanel)
 	}
 	sshKeyV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
@@ -485,7 +485,7 @@ func addSSHKeyPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			closeThisPage()
-			return showNext(c, passwordConfirmPanel, passwordPanel)
+			return showNext(c, proxyPanel)
 		},
 	}
 	sshKeyV.PostClose = func() error {
@@ -955,7 +955,7 @@ func addProxyPanel(c *Console) error {
 	}
 	proxyV.PreShow = func() error {
 		c.Gui.Cursor = true
-		proxyV.Value = c.config.Environment["http_proxy"]
+		proxyV.Value = os.Getenv("HTTP_PROXY")
 		if err := c.setContentByName(titlePanel, "Optional: configure proxy"); err != nil {
 			return err
 		}
@@ -968,14 +968,11 @@ func addProxyPanel(c *Console) error {
 				return err
 			}
 			if proxy != "" {
-				if c.config.Environment == nil {
-					c.config.Environment = make(map[string]string)
-				}
-				c.config.Environment["http_proxy"] = proxy
-				c.config.Environment["https_proxy"] = proxy
+				os.Setenv("HTTP_PROXY", proxy)
+				os.Setenv("HTTPS_PROXY ", proxy)
 			} else {
-				delete(c.config.Environment, "http_proxy")
-				delete(c.config.Environment, "https_proxy")
+				os.Unsetenv("HTTP_PROXY")
+				os.Unsetenv("HTTPS_PROXY")
 			}
 			proxyV.Close()
 			noteV, err := c.GetElement(notePanel)
@@ -983,12 +980,12 @@ func addProxyPanel(c *Console) error {
 				return err
 			}
 			noteV.Close()
-			return showNext(c, cloudInitPanel)
+			return showNext(c, sshKeyPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			proxyV.Close()
 			c.CloseElement(notePanel)
-			return showNext(c, sshKeyPanel)
+			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
 	}
 	c.AddElement(proxyPanel, proxyV)
@@ -1046,7 +1043,7 @@ func addCloudInitPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			cloudInitV.Close()
-			return showNext(c, proxyPanel)
+			return showNext(c, sshKeyPanel)
 		},
 	}
 	cloudInitV.PostClose = func() error {
@@ -1083,11 +1080,11 @@ func addConfirmInstallPanel(c *Console) error {
 		}
 		options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
 		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
+		if proxy := os.Getenv("HTTP_PROXY"); proxy != "" {
+			options += fmt.Sprintf("proxy address: %v\n", proxy)
+		}
 		if userInputData.SSHKeyURL != "" {
 			options += fmt.Sprintf("ssh key url: %v\n", userInputData.SSHKeyURL)
-		}
-		if proxy, ok := c.config.Environment["http_proxy"]; ok {
-			options += fmt.Sprintf("proxy address: %v\n", proxy)
 		}
 		options += string(installBytes)
 		logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))

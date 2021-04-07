@@ -22,9 +22,6 @@ os:
   - name: nothome
     passphrase: somethingelse
   password: rancher
-  environment:
-    http_proxy: http://myserver
-    https_proxy: http://myserver
 install:
   mode: create
   mgmtInterface: eth0
