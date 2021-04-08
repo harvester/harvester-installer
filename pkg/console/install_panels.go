@@ -607,13 +607,6 @@ func addNetworkPanel(c *Console) error {
 
 	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
 
-	gotoPrevPanel := func(c *Console, names ...string) func(g *gocui.Gui, v *gocui.View) error {
-		return func(g *gocui.Gui, v *gocui.View) error {
-			c.CloseElement(networkValidatorPanel)
-			return showNext(c, names...)
-		}
-	}
-
 	gotoNextPanel := func(c *Console, name string, hooks ...func() (string, error)) func(g *gocui.Gui, v *gocui.View) error {
 		return func(g *gocui.Gui, v *gocui.View) error {
 			c.CloseElement(networkValidatorPanel)
@@ -734,7 +727,7 @@ func addNetworkPanel(c *Console) error {
 		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel, askNetworkMethodPanel)
 	}
 	askInterfaceV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoPrevPanel(c, hostNamePanel),
+		gocui.KeyArrowUp:   gotoNextPanel(c, hostNamePanel),
 		gocui.KeyArrowDown: interfaceVConfirm,
 		gocui.KeyEnter:     interfaceVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -762,7 +755,7 @@ func addNetworkPanel(c *Console) error {
 		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoPrevPanel(c, askInterfacePanel),
+		gocui.KeyArrowUp:   gotoNextPanel(c, askInterfacePanel),
 		gocui.KeyArrowDown: askNetworkMethodVConfirm,
 		gocui.KeyEnter:     askNetworkMethodVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -796,7 +789,10 @@ func addNetworkPanel(c *Console) error {
 	}
 	addressVConfirm := gotoNextPanel(c, gatewayPanel, validateAddress)
 	addressV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoPrevPanel(c, askNetworkMethodPanel),
+		gocui.KeyArrowUp: gotoNextPanel(c, askNetworkMethodPanel, func() (string, error) {
+			userInputData.Address, err = addressV.GetData()
+			return "", err
+		}),
 		gocui.KeyArrowDown: addressVConfirm,
 		gocui.KeyEnter:     addressVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -826,7 +822,10 @@ func addNetworkPanel(c *Console) error {
 	}
 	gatewayVConfirm := gotoNextPanel(c, dnsServersPanel, validateGateway)
 	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoPrevPanel(c, addressPanel),
+		gocui.KeyArrowUp: gotoNextPanel(c, addressPanel, func() (string, error) {
+			mgmtNetwork.Gateway, err = gatewayV.GetData()
+			return "", err
+		}),
 		gocui.KeyArrowDown: gatewayVConfirm,
 		gocui.KeyEnter:     gatewayVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -861,9 +860,12 @@ func addNetworkPanel(c *Console) error {
 		return gotoNextPanel(c, getNextPagePanel(), validateDNSServers, preGotoNextPage)(g, v)
 	}
 	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoPrevPanel(c, gatewayPanel),
-		gocui.KeyEnter:   dnsServersVConfirm,
-		gocui.KeyEsc:     gotoPrevPage,
+		gocui.KeyArrowUp: gotoNextPanel(c, gatewayPanel, func() (string, error) {
+			userInputData.DNSServers, err = dnsServersV.GetData()
+			return "", err
+		}),
+		gocui.KeyEnter: dnsServersVConfirm,
+		gocui.KeyEsc:   gotoPrevPage,
 	}
 	setLocation(dnsServersV.Panel, 3)
 	c.AddElement(dnsServersPanel, dnsServersV)
