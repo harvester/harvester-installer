@@ -69,3 +69,28 @@ RUN apk --no-cache add \
 
 # Harvester additional tools
 RUN apk --no-cache add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+
+RUN apk --no-cache add sysstat \
+    smartmontools \
+    hwinfo \
+    gotop \
+    bcc-tools \
+    bcc-doc \
+    iperf \
+    iftop \
+    iotop  \
+    fio \
+    scapy \
+    tcpdump \
+    tshark \
+    ethtool \
+    socat \
+    httpie \
+    tcptraceroute \
+    mtr \
+    bind-tools \
+    tmux \
+    fd \
+    the_silver_searcher
+
+RUN ln -s /usr/bin/python3 /usr/bin/python
