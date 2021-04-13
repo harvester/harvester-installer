@@ -736,12 +736,52 @@ func addNetworkPanel(c *Console) error {
 	c.AddElement(askInterfacePanel, askInterfaceV)
 
 	// askNetworkMethodV
+	validateDHCPAddresses := func() (string, error) {
+		if mgmtNetwork.Method == networkMethodStatic {
+			return "", nil
+		}
+		nic, err := net.InterfaceByName(mgmtNetwork.Interface)
+		if err != nil {
+			return "", err
+		}
+		addrList, err := nic.Addrs()
+		if err != nil {
+			return "", err
+		}
+		for _, addr := range addrList {
+			if ipNet, ok := addr.(*net.IPNet); ok {
+				if ipNet.IP.To4() != nil {
+					_, cidrIPNet, err := net.ParseCIDR(ipNet.String())
+					if err != nil {
+						return err.Error(), nil
+					}
+					if cidrIPNet.String() != "169.254.0.0/16" {
+						return "", nil
+					}
+				}
+			}
+		}
+		askInterfaceV.Close()
+		askInterfaceV.Show()
+		if output, err := setupNetwork(); err != nil {
+			return fmt.Sprintf("Configure network failed: %s", string(output)), nil
+		}
+		return "Can't get a valid IP address from DHCP server", nil
+	}
 	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
 		selected, err := askNetworkMethodV.GetData()
 		if err != nil {
 			return err
 		}
 		mgmtNetwork.Method = selected
+		c.CloseElement(networkValidatorPanel)
+		msg, err := validateDHCPAddresses()
+		if err != nil {
+			return err
+		}
+		if msg != "" {
+			return c.setContentByName(networkValidatorPanel, msg)
+		}
 		if selected != networkMethodStatic {
 			userInputData.Address = ""
 			userInputData.DNSServers = ""
