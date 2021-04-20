@@ -2,6 +2,8 @@ ssh_authorized_keys:
 - ssh-rsa AAAAB3NzaC1yc2EAAAADAQAB...
 - github:username
 hostname: myhost
+run_cmd:
+- rm -rf /dev/loop
 k3os:
   modules:
   - kvm
