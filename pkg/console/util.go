@@ -221,10 +221,10 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 	cloudConfig.K3OS.Install.Debug = cfg.Install.Debug
 	cloudConfig.K3OS.Install.TTY = cfg.Install.TTY
 
+	// remove the /dev/loop directory as the workaround for https://github.com/rancher/harvester/issues/665
+	cloudConfig.Runcmd = append(cloudConfig.Runcmd, "rm -rf /dev/loop")
+
 	for _, network := range cfg.Install.Networks {
-		if cloudConfig.Runcmd == nil {
-			cloudConfig.Runcmd = []string{}
-		}
 		if network.Method == networkMethodStatic {
 			cloudConfig.Runcmd = append(cloudConfig.Runcmd, getConfigureNetworkCMD(network))
 		}
