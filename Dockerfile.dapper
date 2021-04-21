@@ -36,7 +36,7 @@ RUN mkdir /usr/tmp && \
 
 ENV GO111MODULE off
 ENV DAPPER_ENV REPO TAG DRONE_TAG CROSS
-ENV DAPPER_SOURCE /go/src/github.com/rancher/harvester-installer/
+ENV DAPPER_SOURCE /go/src/github.com/harvester/harvester-installer/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock"

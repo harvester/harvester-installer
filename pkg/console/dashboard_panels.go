@@ -15,9 +15,9 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/harvester-installer/pkg/util"
-	"github.com/rancher/harvester-installer/pkg/version"
-	"github.com/rancher/harvester-installer/pkg/widgets"
+	"github.com/harvester/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/version"
+	"github.com/harvester/harvester-installer/pkg/widgets"
 )
 
 const (

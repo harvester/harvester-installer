@@ -8,8 +8,8 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/harvester-installer/pkg/config"
-	"github.com/rancher/harvester-installer/pkg/widgets"
+	"github.com/harvester/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/widgets"
 )
 
 var (

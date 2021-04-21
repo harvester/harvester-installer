@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/validation"
 
-	"github.com/rancher/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/config"
 )
 
 var (

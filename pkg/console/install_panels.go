@@ -15,10 +15,10 @@ import (
 	"golang.org/x/sys/unix"
 	"k8s.io/apimachinery/pkg/util/validation"
 
-	"github.com/rancher/harvester-installer/pkg/config"
-	"github.com/rancher/harvester-installer/pkg/util"
-	"github.com/rancher/harvester-installer/pkg/version"
-	"github.com/rancher/harvester-installer/pkg/widgets"
+	"github.com/harvester/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/version"
+	"github.com/harvester/harvester-installer/pkg/widgets"
 )
 
 type UserInputData struct {

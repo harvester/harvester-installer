@@ -21,8 +21,8 @@ import (
 	"golang.org/x/net/http/httpproxy"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"github.com/rancher/harvester-installer/pkg/config"
-	"github.com/rancher/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 const (
@@ -221,7 +221,7 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 	cloudConfig.K3OS.Install.Debug = cfg.Install.Debug
 	cloudConfig.K3OS.Install.TTY = cfg.Install.TTY
 
-	// remove the /dev/loop directory as the workaround for https://github.com/rancher/harvester/issues/665
+	// remove the /dev/loop directory as the workaround for https://github.com/harvester/harvester/issues/665
 	cloudConfig.Runcmd = append(cloudConfig.Runcmd, "rm -rf /dev/loop")
 
 	for _, network := range cfg.Install.Networks {

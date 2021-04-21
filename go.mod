@@ -1,4 +1,4 @@
-module github.com/rancher/harvester-installer
+module github.com/harvester/harvester-installer
 
 go 1.13
 

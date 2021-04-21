@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/rancher/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/config"
 )
 
 func TestParseWebhook(t *testing.T) {

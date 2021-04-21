@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/rancher/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 func TestToHarvesterConfig(t *testing.T) {
