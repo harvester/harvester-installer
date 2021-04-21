@@ -14,7 +14,7 @@ import (
 	"github.com/rancher/k3os/pkg/transferroot"
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/harvester-installer/pkg/console"
+	"github.com/harvester/harvester-installer/pkg/console"
 )
 
 func main() {
