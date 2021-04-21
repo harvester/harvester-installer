@@ -3,7 +3,7 @@ package console
 import (
 	"os"
 
-	"github.com/rancher/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 func getLastTTY() string {

@@ -3,7 +3,7 @@ package config
 import (
 	"github.com/rancher/mapper/convert"
 
-	"github.com/rancher/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 const (
