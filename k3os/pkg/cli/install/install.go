@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/harvester-installer/pkg/console"
+	"github.com/harvester/harvester-installer/pkg/console"
 )
 
 func Command() cli.Command {
