@@ -30,7 +30,7 @@ k3os:
   - --flannel-iface
   - eth0
   labels:
-    harvester.cattle.io/managed: "true"
+    harvesterhci.io/managed: "true"
   install:
     mode: create
     mgmtInterface: eth0

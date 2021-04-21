@@ -232,7 +232,7 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 
 	// k3os & k3s
 	cloudConfig.K3OS.Labels = map[string]string{
-		"harvester.cattle.io/managed": "true",
+		"harvesterhci.io/managed": "true",
 	}
 
 	var extraK3sArgs []string
