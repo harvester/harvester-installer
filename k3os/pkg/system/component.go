@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/docker/docker/pkg/mount"
 	"github.com/otiai10/copy"
@@ -51,7 +53,7 @@ func CopyComponent(src, dst string, remount bool, key string) (bool, error) {
 		return false, err
 	}
 	dstInfo, _ := StatComponentVersion(dst, key, VersionCurrent)
-	if dstInfo != nil && dstInfo.Name() == srcInfo.Name() {
+	if dstInfo != nil && dstInfo.Name() == srcInfo.Name() && key != "k3os" {
 		logrus.Infof("skipping %q because destination version matches source: %s", key, dstInfo.Name())
 		return false, nil
 	}
@@ -88,7 +90,7 @@ func CopyComponent(src, dst string, remount bool, key string) (bool, error) {
 	// if the destination already exists, attempt to move it out of the way
 	if dstInfo, err := os.Stat(dstPath); err == nil {
 		if dstInfo.IsDir() {
-			dstExist := dstPath + `.old`
+			dstExist := dstPath + `.old-` + strconv.FormatInt(time.Now().Unix(), 10)
 			if err = os.Rename(dstPath, dstExist); err != nil {
 				return false, err
 			}
