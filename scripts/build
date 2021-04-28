@@ -30,13 +30,17 @@ sed -i 's/$HARVESTER_CHART/'$HARVESTER_CHART'/' manifests/harvester.yaml
 
 # Prepare the Rancher chart
 helm pull https://releases.rancher.com/server-charts/latest/rancher-${RANCHER_VERSION}.tgz -d k3os/images/70-iso/charts
+# chart sanity check
+tar zxvf k3os/images/70-iso/charts/rancher-*.tgz >/dev/null
 
 # Prepare Rancher manifests
 RANCHER_CHART=$(ls k3os/images/70-iso/charts/rancher* | xargs basename)
 sed -i 's/$RANCHER_CHART/'$RANCHER_CHART'/' manifests/rancher.yaml
 
 # Prepare the cert-manager chart
-helm pull https://charts.jetstack.io/charts/cert-manager-${CERT_MANAGER_VERSION}.tgz -d k3os/images/70-iso/charts
+helm pull https://charts.jetstack.io/cert-manager-${CERT_MANAGER_VERSION}.tgz -d k3os/images/70-iso/charts
+# chart sanity check
+tar zxvf k3os/images/70-iso/charts/cert-manager-*.tgz >/dev/null
 
 # Prepare cert-manager manifests
 CERT_MANAGER_CHART=$(ls k3os/images/70-iso/charts/cert* | xargs basename)
