@@ -13,20 +13,12 @@ import (
 	"github.com/rancher/k3os/pkg/enterchroot"
 	"github.com/rancher/k3os/pkg/transferroot"
 	"github.com/sirupsen/logrus"
-
-	"github.com/harvester/harvester-installer/pkg/console"
 )
 
 func main() {
 	reexec.Register("/init", initrd)      // mode=live
 	reexec.Register("/sbin/init", initrd) // mode=local
 	reexec.Register("enter-root", enterchroot.Enter)
-	// console
-	reexec.Register("harvester-console", func() {
-		if err := console.RunConsole(); err != nil {
-			logrus.Fatal(err)
-		}
-	})
 
 	if !reexec.Init() {
 		app := app.New()

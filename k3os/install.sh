@@ -13,7 +13,6 @@ get_url()
 {
     FROM=$1
     TO=$2
-    echo "Downloading ${FROM} to ${TO}..."
     case $FROM in
         ftp*|http*|tftp*)
             n=0
@@ -56,7 +55,7 @@ usage()
     echo ""
     echo "Example: $PROG /dev/vda https://github.com/rancher/k3os/releases/download/v0.8.0/k3os.iso"
     echo ""
-    echo "DEVICE must be the disk that will be partitioned (/dev/vda). If you are using --no-format it should be the device of the HARVESTER_STATE partition (/dev/vda2)"
+    echo "DEVICE must be the disk that will be partitioned (/dev/vda). If you are using --no-format it should be the device of the K3OS_STATE partition (/dev/vda2)"
     echo ""
     echo "The parameters names refer to the same names used in the cmdline, refer to README.md for"
     echo "more info."
@@ -67,10 +66,10 @@ usage()
 do_format()
 {
     if [ "$K3OS_INSTALL_NO_FORMAT" = "true" ]; then
-        STATE=$(blkid -L HARVESTER_STATE || true)
+        STATE=$(blkid -L K3OS_STATE || true)
         if [ -z "$STATE" ] && [ -n "$DEVICE" ]; then
-            tune2fs -L HARVESTER_STATE $DEVICE
-            STATE=$(blkid -L HARVESTER_STATE)
+            tune2fs -L K3OS_STATE $DEVICE
+            STATE=$(blkid -L K3OS_STATE)
         fi
 
         return 0
@@ -82,11 +81,11 @@ do_format()
         BOOT_NUM=1
         STATE_NUM=2
         parted -s ${DEVICE} mkpart primary fat32 0% 50MB
-        parted -s ${DEVICE} mkpart primary ext4 50MB 20480MB
+        parted -s ${DEVICE} mkpart primary ext4 50MB 750MB
     else
         BOOT_NUM=
         STATE_NUM=1
-        parted -s ${DEVICE} mkpart primary ext4 0% 20430MB
+        parted -s ${DEVICE} mkpart primary ext4 0% 700MB
     fi
     parted -s ${DEVICE} set 1 ${BOOTFLAG} on
     partprobe ${DEVICE} 2>/dev/null || true
@@ -107,7 +106,7 @@ do_format()
     fi
     STATE=${PREFIX}${STATE_NUM}
 
-    mkfs.ext4 -F -L HARVESTER_STATE ${STATE}
+    mkfs.ext4 -F -L K3OS_STATE ${STATE}
     if [ -n "${BOOT}" ]; then
         mkfs.vfat -F 32 ${BOOT}
         fatlabel ${BOOT} K3OS_GRUB
@@ -148,60 +147,6 @@ do_copy()
             touch ${TARGET}/k3os/system/poweroff
         fi
     fi
-
-
-    #copy offline artifacts and decompress offline images
-    echo "Copying ISO artifacts"
-    root_path="${TARGET}/k3os/data"
-    mkdir -p "${root_path}"
-    cp -r "${DISTRO}/var" "${root_path}"
-
-    offline_image_path="var/lib/rancher/k3s/agent/images/harvester-images.tar"
-    if [ -f "${root_path}/${offline_image_path}.zst" ]; then
-      echo "Decompressing container images"
-      zstd -d --rm "${root_path}/${offline_image_path}.zst" -o "${root_path}/${offline_image_path}" > /dev/null
-      cd ${root_path}
-      mkdir lib bin sbin k3os dev proc etc sys
-      mount --bind /bin bin
-      mount --bind /sbin sbin
-      mount --bind /run/k3os/iso/k3os k3os
-      mount --bind /dev dev
-      mount --bind /proc proc
-      mount --bind /etc etc
-      mount -r --rbind /lib lib
-      mount -r --rbind /sys sys
-      echo "Loading images. This may take a few minutes"
-      chroot . /bin/bash <<"EOF"
-      # invoke k3s to set up data dir
-      k3s agent --no-flannel &>/dev/null || true
-      # start containerd
-      /var/lib/rancher/k3s/data/current/bin/containerd \
-      -c /var/lib/rancher/k3s/agent/etc/containerd/config.toml \
-      -a /run/k3s/containerd/containerd.sock \
-      --state /run/k3s/containerd \
-      --root /var/lib/rancher/k3s/agent/containerd &>/dev/null &
-
-      #wait for containerd to be ready
-      until ctr --connect-timeout 1s version>/dev/null
-      do
-        sleep 1
-      done
-      # import images
-      ctr -n k8s.io images import /var/lib/rancher/k3s/agent/images/harvester*
-      rm /var/lib/rancher/k3s/agent/images/harvester*
-      # stop containerd
-      pkill containerd
-      exit
-EOF
-      sleep 5
-      #cleanup
-      umount bin sbin k3os dev proc etc
-      mount --make-rslave lib
-      mount --make-rslave sys
-      umount -R lib
-      umount -R sys
-      rm -r lib bin sbin k3os dev proc etc sys
-    fi
 }
 
 install_grub()
@@ -220,13 +165,40 @@ set gfxpayload=keep
 insmod all_video
 insmod gfxterm
 
-menuentry "Start Harvester" {
-  search.fs_label HARVESTER_STATE root
+menuentry "k3OS Current" {
+  search.fs_label K3OS_STATE root
   set sqfile=/k3os/system/kernel/current/kernel.squashfs
   loopback loop0 /\$sqfile
   set root=(\$root)
   linux (loop0)/vmlinuz printk.devkmsg=on console=tty1 $GRUB_DEBUG
   initrd /k3os/system/kernel/current/initrd
+}
+
+menuentry "k3OS Previous" {
+  search.fs_label K3OS_STATE root
+  set sqfile=/k3os/system/kernel/previous/kernel.squashfs
+  loopback loop0 /\$sqfile
+  set root=(\$root)
+  linux (loop0)/vmlinuz printk.devkmsg=on console=tty1 $GRUB_DEBUG
+  initrd /k3os/system/kernel/previous/initrd
+}
+
+menuentry "k3OS Rescue (current)" {
+  search.fs_label K3OS_STATE root
+  set sqfile=/k3os/system/kernel/current/kernel.squashfs
+  loopback loop0 /\$sqfile
+  set root=(\$root)
+  linux (loop0)/vmlinuz printk.devkmsg=on rescue console=tty1
+  initrd /k3os/system/kernel/current/initrd
+}
+
+menuentry "k3OS Rescue (previous)" {
+  search.fs_label K3OS_STATE root
+  set sqfile=/k3os/system/kernel/previous/kernel.squashfs
+  loopback loop0 /\$sqfile
+  set root=(\$root)
+  linux (loop0)/vmlinuz printk.devkmsg=on rescue console=tty1
+  initrd /k3os/system/kernel/previous/initrd
 }
 EOF
     if [ -z "${K3OS_INSTALL_TTY}" ]; then
@@ -396,3 +368,10 @@ if [ -n "$INTERACTIVE" ]; then
     exit 0
 fi
 
+if [ "$K3OS_INSTALL_POWER_OFF" = true ] || grep -q 'k3os.install.power_off=true' /proc/cmdline; then
+    poweroff -f
+else
+    echo " * Rebooting system in 5 seconds (CTRL+C to cancel)"
+    sleep 5
+    reboot -f
+fi

@@ -9,14 +9,6 @@ setup_ttys()
         fi
     done
 
-    HVST_CONSOLE_ENV=/opt/harvester-mode
-    mkdir -p /opt
-    if [ "$K3OS_MODE" = "local" ]; then
-        echo "export HARVESTER_DASHBOARD=true" > ${HVST_CONSOLE_ENV}
-    else
-        echo "export HARVESTER_DASHBOARD=false" > ${HVST_CONSOLE_ENV}
-    fi
-
     for x in $(cat /proc/cmdline); do
     case $x in
         rescue)
@@ -24,36 +16,14 @@ setup_ttys()
             ;;
         console=*)
             CONSOLE_SPEC=${x#console=}
-            IFS=, read TTY BAUDRATE _ <<<"${CONSOLE_SPEC}"
-            if [ -n "${BAUDRATE}" ]; then
-                # remove "n8" from 115200n8, getty doesn't like it.
-                BAUDRATE=${BAUDRATE%n*}
-                BAUDRATE=${BAUDRATE%o*}
-                BAUDRATE=${BAUDRATE%e*}
-            else
-                if echo ${TTY} | grep -q -E "^tty[1-6]$"; then
-                    BAUDRATE="38400"
-                else
-                    BAUDRATE="9600"
-                fi
-            fi
-
+            IFS=, read TTY BAUDRATE _ <<<"${CONSOLE_SPEC},9600"
             if [ -e /dev/${TTY} ] && ! grep -q "^${TTY}::" /etc/inittab; then
-                echo "${TTY}::respawn:/sbin/getty -L ${BAUDRATE} ${TTY}" >> /etc/inittab
+                echo "${TTY}::respawn:/sbin/getty -L ${BAUDRATE} ${TTY} vt100" >> /etc/inittab
                 echo ${TTY} >> /etc/securetty
             fi
-
-            HVST_TTY="${TTY}"
-            HVST_BAUDRATE="${BAUDRATE}"
             ;;
         esac
     done
-
-    # Display installer on the last TTY defined in the `console=` parameters
-    if [ -n "${HVST_TTY}" -a -n "${HVST_BAUDRATE}" ]; then
-        sed -i "/^${HVST_TTY}::/d" /etc/inittab
-        echo "${HVST_TTY}::respawn:/sbin/getty -l /usr/bin/start-harvester-console.sh -n ${HVST_BAUDRATE} ${HVST_TTY}" >> /etc/inittab
-    fi
 }
 
 setup_sudoers()
@@ -72,7 +42,7 @@ setup_services()
         ln -s /etc/init.d/$i /etc/runlevels/boot
     done
 
-    for i in sshd "local" ccapply iscsid k3s-restarter-service; do
+    for i in sshd "local" ccapply iscsid; do
         ln -s /etc/init.d/$i /etc/runlevels/default
     done
 
@@ -208,7 +178,7 @@ grow_live()
         if [ ! -e "${DEV}${NUM}" ]; then
             # /dev/sda2 => /dev/sda2
             # /dev/nvme0n1p2 => /dev/nvme0n1p2
-            PART=$(blkid -L HARVESTER_STATE)
+            PART=$(blkid -L K3OS_STATE)
 
             # /dev/sda2 => /dev/sda
             # /dev/nvme0n1p2 => /dev/nvme0n1

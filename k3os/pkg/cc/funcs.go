@@ -197,8 +197,6 @@ func ApplyDNS(cfg *config.CloudConfig) error {
 		buf.WriteString("FallbackTimeservers=")
 		buf.WriteString(ntp)
 		buf.WriteString("\n")
-	} else {
-		buf.WriteString("FallbackTimeservers=ntp.ubuntu.com\n")
 	}
 
 	err := ioutil.WriteFile("/etc/connman/main.conf", buf.Bytes(), 0644)
