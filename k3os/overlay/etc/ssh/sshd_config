@@ -3,7 +3,7 @@
 
 AllowTcpForwarding      no
 GatewayPorts            no
-PasswordAuthentication  yes
+PasswordAuthentication  no
 X11Forwarding           no
 PermitRootLogin         no
 LoginGraceTime          30s

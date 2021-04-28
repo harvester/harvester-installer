@@ -12,7 +12,6 @@ FROM ${REPO}/k3os-k3s:${TAG} as k3s
 
 FROM base as k3os-build
 ARG VERSION
-ARG HARVESTER_VERSION
 ARG ARCH
 RUN apk add squashfs-tools
 COPY --from=base /bin /usr/src/image/bin/
@@ -87,7 +86,6 @@ RUN rm -rf \
 COPY --from=k3s /output/install.sh /usr/src/image/libexec/k3os/k3s-install.sh
 COPY --from=progs /output/metadata /usr/src/image/sbin/metadata
 COPY --from=progs /output/kubectx/kubectx /output/kubectx/kubens /usr/src/image/bin/
-COPY --from=progs /usr/bin/zstd /usr/src/image/bin/
 
 COPY overlay/ /usr/src/image/
 
@@ -96,10 +94,8 @@ RUN ln -s /k3os/system/k3s/current/k3s /usr/src/image/sbin/k3s
 RUN ln -s k3s /usr/src/image/sbin/kubectl
 RUN ln -s k3s /usr/src/image/sbin/crictl
 RUN ln -s k3s /usr/src/image/sbin/ctr
-RUN ln -s /k3os/system/k3os/current/k3os /usr/src/image/sbin/harvester-console
 
 COPY install.sh /usr/src/image/libexec/k3os/install
-COPY shutdown.sh /usr/src/image/libexec/k3os/shutdown
-RUN sed -i -e "s/%VERSION%/${VERSION}/g" -e "s/%HARVESTER_VERSION%/${HARVESTER_VERSION}/g" -e "s/%ARCH%/${ARCH}/g" /usr/src/image/lib/os-release
+RUN sed -i -e "s/%VERSION%/${VERSION}/g" -e "s/%ARCH%/${ARCH}/g" /usr/src/image/lib/os-release
 RUN mkdir -p /output && \
     mksquashfs /usr/src/image /output/rootfs.squashfs

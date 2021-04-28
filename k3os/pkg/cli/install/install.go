@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rancher/k3os/pkg/cliinstall"
 	"github.com/rancher/k3os/pkg/mode"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-
-	"github.com/harvester/harvester-installer/pkg/console"
 )
 
 func Command() cli.Command {
@@ -24,7 +23,7 @@ func Command() cli.Command {
 			return nil
 		},
 		Action: func(*cli.Context) {
-			if err := console.RunConsole(); err != nil {
+			if err := cliinstall.Run(); err != nil {
 				logrus.Error(err)
 			}
 		},

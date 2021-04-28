@@ -66,31 +66,3 @@ RUN apk --no-cache add \
 # replicate the default "no idea, friend" behavior of virt-what
  && touch /usr/sbin/virt-what \
  && chmod +x /usr/sbin/virt-what
-
-# Harvester additional tools
-RUN apk --no-cache add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
-
-RUN apk --no-cache add sysstat \
-    smartmontools \
-    hwinfo \
-    gotop \
-    bcc-tools \
-    bcc-doc \
-    iperf \
-    iftop \
-    iotop  \
-    fio \
-    scapy \
-    tcpdump \
-    tshark \
-    ethtool \
-    socat \
-    httpie \
-    tcptraceroute \
-    mtr \
-    bind-tools \
-    tmux \
-    fd \
-    the_silver_searcher
-
-RUN ln -s /usr/bin/python3 /usr/bin/python
