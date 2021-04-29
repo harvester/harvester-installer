@@ -71,6 +71,7 @@ busybox:1.32.0
 rancher/system-upgrade-controller:v0.6.2
 alpine:3
 kubevirt/virtio-container-disk
+rancher/harvester-support-bundle-utils:master-head
 EOF
 
 # get longhorn image list
