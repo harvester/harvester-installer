@@ -4,6 +4,12 @@ os:
   ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQAB...
   - github:username
+  write_files:
+  - encoding: b64
+    content: CiMgVGhpcyBmaWxlIGNvbnRyb2xzIHRoZSBzdGF0ZSBvZiBTRUxpbnV4...
+    owner: root
+    path: /etc/abc.txt
+    permissions: '0755'
   hostname: myhost
   modules:
   - kvm

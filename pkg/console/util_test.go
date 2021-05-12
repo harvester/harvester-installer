@@ -165,9 +165,9 @@ func TestToCloudConfig(t *testing.T) {
 			if err != nil {
 				t.Fatalf("fail to load %q", testCase.resultFile)
 			}
-			cloudConfig := toCloudConfig(cfg)
-
+			cloudConfig, err := toCloudConfig(cfg)
 			assert.Equal(t, expected, cloudConfig)
+			assert.Equal(t, nil, err)
 		})
 	}
 }
