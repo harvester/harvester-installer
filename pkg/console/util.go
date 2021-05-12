@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/harvester/harvester-installer/pkg/config"
-	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 const (
@@ -183,43 +182,11 @@ func getConfigureNetworkCMD(network config.Network) string {
 	return fmt.Sprintf("/sbin/harvester-configure-network %s %s", network.Interface, networkMethodDHCP)
 }
 
-func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
-	cloudConfig := &k3os.CloudConfig{
-		K3OS: k3os.K3OS{
-			Install: &k3os.Install{},
-		},
+func toCloudConfig(cfg *config.HarvesterConfig) (*k3os.CloudConfig, error) {
+	cloudConfig, err := config.ConvertToK3OS(cfg)
+	if err != nil {
+		return nil, err
 	}
-
-	// cfg
-	cloudConfig.K3OS.ServerURL = cfg.ServerURL
-	cloudConfig.K3OS.Token = cfg.Token
-
-	// cfg.OS
-	cloudConfig.SSHAuthorizedKeys = util.DupStrings(cfg.OS.SSHAuthorizedKeys)
-	cloudConfig.Hostname = cfg.OS.Hostname
-	cloudConfig.K3OS.Modules = util.DupStrings(cfg.OS.Modules)
-	cloudConfig.K3OS.Sysctls = util.DupStringMap(cfg.OS.Sysctls)
-	cloudConfig.K3OS.NTPServers = util.DupStrings(cfg.OS.NTPServers)
-	cloudConfig.K3OS.DNSNameservers = util.DupStrings(cfg.OS.DNSNameservers)
-	if cfg.OS.Wifi != nil {
-		cloudConfig.K3OS.Wifi = make([]k3os.Wifi, len(cfg.Wifi))
-		for i, w := range cfg.Wifi {
-			cloudConfig.K3OS.Wifi[i].Name = w.Name
-			cloudConfig.K3OS.Wifi[i].Passphrase = w.Passphrase
-		}
-	}
-	cloudConfig.K3OS.Password = cfg.OS.Password
-	cloudConfig.K3OS.Environment = util.DupStringMap(cfg.OS.Environment)
-
-	// cfg.OS.Install
-	cloudConfig.K3OS.Install.ForceEFI = cfg.Install.ForceEFI
-	cloudConfig.K3OS.Install.Device = cfg.Install.Device
-	cloudConfig.K3OS.Install.Silent = cfg.Install.Silent
-	cloudConfig.K3OS.Install.ISOURL = cfg.Install.ISOURL
-	cloudConfig.K3OS.Install.PowerOff = cfg.Install.PowerOff
-	cloudConfig.K3OS.Install.NoFormat = cfg.Install.NoFormat
-	cloudConfig.K3OS.Install.Debug = cfg.Install.Debug
-	cloudConfig.K3OS.Install.TTY = cfg.Install.TTY
 
 	// remove the /dev/loop directory as the workaround for https://github.com/harvester/harvester/issues/665
 	cloudConfig.Runcmd = append(cloudConfig.Runcmd, "rm -rf /dev/loop")
@@ -242,7 +209,7 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 
 	if cfg.Install.Mode == modeJoin {
 		cloudConfig.K3OS.K3sArgs = append([]string{"agent"}, extraK3sArgs...)
-		return cloudConfig
+		return cloudConfig, nil
 	}
 
 	cloudConfig.K3OS.K3sArgs = append([]string{
@@ -262,7 +229,7 @@ func toCloudConfig(cfg *config.HarvesterConfig) *k3os.CloudConfig {
 		"10.53.0.10",
 	}, extraK3sArgs...)
 
-	return cloudConfig
+	return cloudConfig, nil
 }
 
 func execute(g *gocui.Gui, env []string, cmdName string) error {

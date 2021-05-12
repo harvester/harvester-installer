@@ -58,8 +58,17 @@ type Wifi struct {
 	Passphrase string `json:"passphrase,omitempty"`
 }
 
+type File struct {
+	Encoding           string `json:"encoding"`
+	Content            string `json:"content"`
+	Owner              string `json:"owner"`
+	Path               string `json:"path"`
+	RawFilePermissions string `json:"permissions"`
+}
+
 type OS struct {
 	SSHAuthorizedKeys []string `json:"sshAuthorizedKeys,omitempty"`
+	WriteFiles        []File   `json:"writeFiles,omitempty"`
 	Hostname          string   `json:"hostname,omitempty"`
 
 	Modules        []string          `json:"modules,omitempty"`
@@ -83,7 +92,7 @@ func NewHarvesterConfig() *HarvesterConfig {
 	return &HarvesterConfig{}
 }
 
-func (c *HarvesterConfig) copy() (*HarvesterConfig, error) {
+func (c *HarvesterConfig) DeepCopy() (*HarvesterConfig, error) {
 	newConf := NewHarvesterConfig()
 	if err := mergo.Merge(newConf, c, mergo.WithAppendSlice); err != nil {
 		return nil, fmt.Errorf("fail to create copy of %T at %p: %s", *c, c, err.Error())
@@ -92,7 +101,7 @@ func (c *HarvesterConfig) copy() (*HarvesterConfig, error) {
 }
 
 func (c *HarvesterConfig) sanitized() (*HarvesterConfig, error) {
-	copied, err := c.copy()
+	copied, err := c.DeepCopy()
 	if err != nil {
 		return nil, err
 	}
