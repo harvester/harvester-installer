@@ -17,6 +17,7 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"
 	k3os "github.com/rancher/k3os/pkg/config"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/http/httpproxy"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -372,6 +373,35 @@ func getRemoteConfig(configURL string) (*config.HarvesterConfig, error) {
 	harvestCfg, err := config.LoadHarvesterConfig(b)
 	if err != nil {
 		return nil, err
+	}
+	return harvestCfg, nil
+}
+
+func retryRemoteConfig(configURL string, g *gocui.Gui) (*config.HarvesterConfig, error) {
+	var confData []byte
+	client := newProxyClient()
+
+	retries := 30
+	interval := 10
+	err := retryOnError(int64(retries), int64(interval), func() error {
+		var e error
+		confData, e = getURL(client, configURL)
+		if e != nil {
+			logrus.Error(e)
+			printToPanel(g, e.Error(), installPanel)
+			printToPanel(g, fmt.Sprintf("Retry after %d seconds (Remaining: %d)...", interval, retries), installPanel)
+			retries--
+		}
+		return e
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("Fail to fetch config: %w", err)
+	}
+
+	harvestCfg, err := config.LoadHarvesterConfig(confData)
+	if err != nil {
+		return nil, fmt.Errorf("Fail to load config: %w", err)
 	}
 	return harvestCfg, nil
 }
