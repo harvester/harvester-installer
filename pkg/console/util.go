@@ -335,7 +335,16 @@ func doUpgrade(g *gocui.Gui) error {
 }
 
 func printToPanel(g *gocui.Gui, message string, panelName string) {
+	// block printToPanel call in the same goroutine.
+	// This ensures messages are printed out in the calling order.
+	ch := make(chan struct{})
+
 	g.Update(func(g *gocui.Gui) error {
+
+		defer func() {
+			ch <- struct{}{}
+		}()
+
 		v, err := g.View(panelName)
 		if err != nil {
 			return err
@@ -350,6 +359,8 @@ func printToPanel(g *gocui.Gui, message string, panelName string) {
 		}
 		return nil
 	})
+
+	<-ch
 }
 
 func getRemoteConfig(configURL string) (*config.HarvesterConfig, error) {
