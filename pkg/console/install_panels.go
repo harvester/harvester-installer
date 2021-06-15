@@ -1250,6 +1250,7 @@ func addInstallPanel(c *Console) error {
 	}
 	installV.Title = " Installing Harvester "
 	installV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8*7)
+	installV.Wrap = true
 	c.AddElement(installPanel, installV)
 	installV.Frame = true
 	return nil
