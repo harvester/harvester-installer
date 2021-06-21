@@ -23,3 +23,4 @@ spec:
     service.harvester.type: "NodePort"
     service.harvester.httpsNodePort: 30443
     rancherEmbedded: "true"
+    webhook.image.imagePullPolicy: "IfNotPresent"
