@@ -16,6 +16,7 @@ spec:
     ingress.tls.source: "rancher"
     privateCA: "true"
     antiAffinity: "required"
+    rancherImageTag: master-3e44415af2332fcc305cdb68907794d8b3b3e29a-head
 ---
 apiVersion: v1
 kind: Service
