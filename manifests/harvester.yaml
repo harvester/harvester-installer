@@ -16,7 +16,6 @@ spec:
     multus.enabled: "true"
     longhorn.enabled: "true"
     longhorn.defaultSettings.taintToleration: "kubevirt.io/drain:NoSchedule"
-    minio.persistence.storageClass: "longhorn"
     containers.apiserver.image.imagePullPolicy: "IfNotPresent"
     containers.apiserver.hciMode: "true"
     harvester-network-controller.image.pullPolicy: "IfNotPresent"
