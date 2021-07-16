@@ -66,7 +66,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	initramfs.Environment = cfg.OS.Environment
 
-	// TODO(kiefer): Install
 	if len(cfg.Networks) > 0 {
 		if err := UpdateNetworkConfig(&initramfs, cfg.Networks, false); err != nil {
 			return nil, err
@@ -247,4 +246,8 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 	}
 
 	return nil
+}
+
+func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {
+	return ToEnv("COS_INSTALL_", c.Install)
 }
