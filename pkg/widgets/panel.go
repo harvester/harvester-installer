@@ -11,18 +11,19 @@ const (
 )
 
 type Panel struct {
-	g       *gocui.Gui
-	Name    string
-	Title   string
-	Frame   bool
-	Wrap    bool
-	Focus   bool
-	FgColor gocui.Attribute
-	Content string
-	X0      int
-	X1      int
-	Y0      int
-	Y1      int
+	g          *gocui.Gui
+	Name       string
+	Title      string
+	Frame      bool
+	Wrap       bool
+	Focus      bool
+	FgColor    gocui.Attribute
+	Content    string
+	X0         int
+	X1         int
+	Y0         int
+	Y1         int
+	Autoscroll bool
 
 	// Hook functions
 	PreShow   func() error
@@ -86,6 +87,7 @@ func (p *Panel) Show() error {
 		v.Frame = p.Frame
 		v.Wrap = p.Wrap
 		v.FgColor = p.FgColor
+		v.Autoscroll = p.Autoscroll
 		if _, err := fmt.Fprint(v, p.Content); err != nil {
 			return err
 		}

@@ -351,13 +351,6 @@ func printToPanel(g *gocui.Gui, message string, panelName string) {
 			return err
 		}
 		fmt.Fprintln(v, message)
-
-		lines := len(v.BufferLines())
-		_, sy := v.Size()
-		if lines > sy {
-			ox, oy := v.Origin()
-			v.SetOrigin(ox, oy+1)
-		}
 		return nil
 	})
 
