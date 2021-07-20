@@ -53,7 +53,7 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
 		if cfg, err := config.ReadConfig(); err == nil {
-			if cfg.Install.Automatic {
+			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
 				mergo.Merge(c.config, cfg, mergo.WithAppendSlice)
 				if cfg.Install.Mode == config.ModeUpgrade {
@@ -1227,7 +1227,7 @@ func addInstallPanel(c *Console) error {
 				c.config.Hostname = generateHostName()
 			}
 			if c.config.TTY == "" {
-				c.config.TTY = getLastTTY()
+				c.config.TTY = getFirstConsoleTTY()
 			}
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToPanel(c.Gui, err.Error(), installPanel)

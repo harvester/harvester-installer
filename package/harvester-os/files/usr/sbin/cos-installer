@@ -372,7 +372,7 @@ install_grub()
     cp -rfv /etc/cos/grub.cfg $GRUBDIR/grub.cfg
 
     if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
-        sed -i "s!console=tty1!console=tty1 console=${TTY}!g" $GRUBDIR/grub.cfg
+        sed -i "s/console_params=\"console=tty1\"/console_params=\"console=${TTY} console=tty1\"/g" ${TARGET}/etc/cos/bootargs.cfg
     fi
 }
 

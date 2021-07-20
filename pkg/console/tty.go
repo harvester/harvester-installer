@@ -1,28 +1,32 @@
 package console
 
 import (
+	"io/ioutil"
 	"os"
+	"strings"
 
-	"github.com/harvester/harvester-installer/pkg/util"
+	"github.com/sirupsen/logrus"
 )
 
-func getLastTTY() string {
-	tty := os.Getenv("TTY")
-	if tty == "" || tty == "/dev/tty1" {
-		return ""
-	}
-	kernelParams, err := util.ReadCmdline("")
+func getFirstConsoleTTY() string {
+	b, err := ioutil.ReadFile("/sys/class/tty/console/active")
 	if err != nil {
+		logrus.Error(err)
 		return ""
 	}
-	if value, ok := kernelParams["console"]; ok {
-		switch value.(type) {
-		case []string:
-			consoles := value.([]string)
-			return consoles[len(consoles)-1]
-		case string:
-			return value.(string)
-		}
+
+	ttys := strings.Split(strings.TrimRight(string(b), "\n"), " ")
+	if len(ttys) > 0 {
+		return ttys[0]
 	}
 	return ""
+}
+
+func isFirstConsoleTTY() bool {
+	tty := os.Getenv("TTY")
+	logrus.Infof("my tty is %s", tty)
+	if tty == "" {
+		return false
+	}
+	return strings.TrimPrefix(tty, "/dev/") == getFirstConsoleTTY()
 }
