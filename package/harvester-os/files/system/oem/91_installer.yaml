@@ -1,0 +1,12 @@
+name: "Setup installer"
+stages:
+  boot:
+    - commands:
+      - setup-installer.sh
+  initramfs:
+    - environment_file: "/etc/rancher/installer/env"
+      environment:
+        HARVESTER_DASHBOARD: "true"
+        KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+        PATH: /var/lib/rancher/rke2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      if: 'grep -q root=LABEL=COS_ACTIVE /proc/cmdline && [ -n "$(blkid -L COS_ACTIVE)" ]'
