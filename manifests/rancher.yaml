@@ -16,7 +16,11 @@ spec:
     ingress.tls.source: "rancher"
     privateCA: "true"
     antiAffinity: "required"
-    rancherImageTag: master-3e44415af2332fcc305cdb68907794d8b3b3e29a-head
+    rancherImageTag: master-861fb9208fd59c7f0c5266f087ccf050c1577ead-head
+  valuesContent: |-
+    extraEnv:
+    - name: CATTLE_BOOTSTRAP_PASSWORD
+      value: admin
 ---
 apiVersion: v1
 kind: Service
