@@ -1,0 +1,14 @@
+rancherValues:
+  rancherImagePullPolicy: IfNotPresent
+  rancherImage: bk201z/rancher
+  rancherImageTag: bfb72b6
+  extraEnv:
+  - name: CATTLE_SYSTEM_AGENT_UPGRADE_IMAGE
+    value: bk201z/suc
+  - name: CATTLE_BOOTSTRAP_PASSWORD
+    value: admin
+  - name: CATTLE_NO_DEFAULT_ADMIN
+    value: "false"
+  - name: CATTLE_FEATURES
+    value: multi-cluster-management=false,multi-cluster-management-agent=false
+rancherInstallerImage: ibuildthecloud/system-agent-installer-rancher:dev

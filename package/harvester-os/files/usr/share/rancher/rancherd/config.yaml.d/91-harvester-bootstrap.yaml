@@ -57,6 +57,8 @@ bootstrapResources:
         apiserver:
           authMode: "rancher"
           image:
+            repository: rancher/harvester
+            tag: master-head
             imagePullPolicy: "IfNotPresent"
           hciMode: true
       multus:
@@ -75,6 +77,8 @@ bootstrapResources:
       rancherEmbedded: true
       webhook:
         image:
+          repository: rancher/harvester-webhook
+          tag: master-head
           imagePullPolicy: "IfNotPresent"
     version: $HARVESTER_CHART_VERSION
 - apiVersion: management.cattle.io/v3
