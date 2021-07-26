@@ -281,6 +281,9 @@ preload_rancherd_images()
 
 do_preload()
 {
+    cp $TARGET/etc/resolv.conf $TARGET/etc/resolv.conf.bak || true
+    cp /etc/resolv.conf $TARGET/etc/resolv.conf || true
+
     # Bind mount persistent folder to preload images
     BIND_MOUNTS=("var/lib/rancher")
 
@@ -296,6 +299,9 @@ do_preload()
     for i in ${BIND_MOUNTS[@]}; do
         umount $TARGET/$i
     done
+
+    rm -f $TARGET/etc/resolv.conf
+    cp $TARGET/etc/resolv.conf.bak $TARGET/etc/resolv.conf || true
 }
 
 do_copy()
