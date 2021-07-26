@@ -21,6 +21,8 @@ spec:
     extraEnv:
     - name: CATTLE_BOOTSTRAP_PASSWORD
       value: admin
+    - name: CATTLE_FEATURES
+      value: continuous-delivery=false,embedded-cluster-api=false,fleet=false,monitoringv1=false,multi-cluster-management=false,multi-cluster-management-agent=false,provisioningv2=false,rke2=false
 ---
 apiVersion: v1
 kind: Service
