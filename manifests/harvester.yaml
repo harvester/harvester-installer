@@ -12,6 +12,7 @@ spec:
   chart: https://%{KUBERNETES_API}%/static/charts/$HARVESTER_CHART
   targetNamespace: harvester-system
   set:
+    auth.enabled: "true"
     multus.enabled: "true"
     longhorn.enabled: "true"
     longhorn.defaultSettings.taintToleration: "kubevirt.io/drain:NoSchedule"
