@@ -4,10 +4,11 @@ set -e
 PROG=$0
 PROGS="dd curl mkfs.ext4 mkfs.vfat fatlabel parted partprobe grub2-install"
 DISTRO=/run/rootfsbase
-ISOBOOT=/run/initramfs/live/boot
+ISOMNT=/run/initramfs/live
+ISOBOOT=${ISOMNT}/boot
 TARGET=/run/cos/target
 RECOVERYDIR=/run/cos/recovery
-RECOVERYSQUASHFS=/run/initramfs/live/recovery.squashfs
+RECOVERYSQUASHFS=${ISOMNT}/recovery.squashfs
 
 if [ "$COS_DEBUG" = true ]; then
     set -x
@@ -30,6 +31,7 @@ cleanup2()
     umount_target || true
     umount ${STATEDIR}
     umount ${RECOVERYDIR}
+    [ -n "COS_INSTALL_ISO_URL" ] && umount ${ISOMNT} || true
 }
 
 cleanup()
@@ -214,14 +216,14 @@ get_url()
 
 preload_rke2_images()
 {
-    preload=$(ls /run/initramfs/live/bundle/harvester/images/*.tar.zst 2>/dev/null || true)
+    preload=$(ls ${ISOMNT}/bundle/harvester/images/*.tar.zst 2>/dev/null || true)
     if [ -z "$preload" ]; then
         return
     fi
 
     RKE2_IMAGES_DIR="/var/lib/rancher/rke2/agent/images"
     mkdir -p $TARGET/$RKE2_IMAGES_DIR
-    mount --bind /run/initramfs/live/bundle/harvester/images $TARGET/$RKE2_IMAGES_DIR
+    mount --bind ${ISOMNT}/bundle/harvester/images $TARGET/$RKE2_IMAGES_DIR
 
     cd $TARGET
     mkdir dev
@@ -270,13 +272,13 @@ EOF
 
 preload_rancherd_images()
 {
-    preload=$(ls /run/initramfs/live/bundle/rancherd/images/*.tar.zst 2>/dev/null || true)
+    preload=$(ls ${ISOMNT}/bundle/rancherd/images/*.tar.zst 2>/dev/null || true)
     if [ -z "$preload" ]; then
         return
     fi
 
     mkdir -p $TARGET/var/lib/rancher/agent/images
-    cp /run/initramfs/live/bundle/rancherd/images/* $TARGET/var/lib/rancher/agent/images
+    cp ${ISOMNT}/bundle/rancherd/images/* $TARGET/var/lib/rancher/agent/images
 }
 
 do_preload()
@@ -388,6 +390,17 @@ install_grub()
     fi
 }
 
+get_iso()
+{
+    if [ -n "$COS_INSTALL_ISO_URL" ]; then
+        ISOMNT=$(mktemp -d -p /tmp cos.XXXXXXXX.isomnt)
+        TEMP_FILE=$(mktemp -p /tmp cos.XXXXXXXX.iso)
+        get_url ${COS_INSTALL_ISO_URL} ${TEMP_FILE}
+        ISO_DEVICE=$(losetup --show -f $TEMP_FILE)
+        mount -o ro ${ISO_DEVICE} ${ISOMNT}
+    fi
+}
+
 setup_style()
 {
     if [ "$COS_INSTALL_FORCE_EFI" = "true" ] || [ -e /sys/firmware/efi ]; then
@@ -483,6 +496,7 @@ validate_device
 
 trap cleanup exit
 
+get_iso
 setup_style
 do_format
 do_mount
