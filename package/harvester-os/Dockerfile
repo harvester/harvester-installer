@@ -21,7 +21,9 @@ RUN mkdir -p $PRELOAD_DIR/binaries/ && \
 ARG CACHEBUST
 # packages
 RUN zypper ref
-RUN zypper in -y wget zstd
+RUN zypper in -y zstd
 
 COPY files/ /
 RUN chmod 0600 /system/oem/*
+
+RUN mkinitrd
