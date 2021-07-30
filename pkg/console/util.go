@@ -342,13 +342,5 @@ func retryRemoteConfig(configURL string, g *gocui.Gui) (*config.HarvesterConfig,
 
 // harvesterInstalled check existing harvester installation by partition label
 func harvesterInstalled() (bool, error) {
-	output, err := exec.Command("blkid", "-L", "HARVESTER_STATE").CombinedOutput()
-	if err != nil {
-		return false, err
-	}
-	if string(output) != "" {
-		return true, nil
-	}
-
 	return false, nil
 }

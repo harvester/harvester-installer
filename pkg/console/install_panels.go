@@ -56,11 +56,7 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
 				mergo.Merge(c.config, cfg, mergo.WithAppendSlice)
-				if cfg.Install.Mode == config.ModeUpgrade {
-					initPanel = upgradePanel
-				} else {
-					initPanel = installPanel
-				}
+				initPanel = installPanel
 			}
 		}
 
