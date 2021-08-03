@@ -1,3 +1,0 @@
-quay.io/jetstack/cert-manager-cainjector:
-quay.io/jetstack/cert-manager-controller:
-quay.io/jetstack/cert-manager-webhook:

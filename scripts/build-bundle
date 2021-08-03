@@ -19,6 +19,18 @@ mkdir -p ${CHARTS_DIR}
 mkdir -p ${IMAGES_DIR}
 mkdir -p ${RANCHERD_IMAGES_DIR}
 
+save_image()
+{
+  image_list=$1
+  save_dir=$2
+
+  archive_name="$(basename ${image_list%.txt}).tar"
+  archive_file="${save_dir}/${archive_name}"
+  xargs -n1 -t docker image pull --quiet < $image_list
+  docker image save -o $archive_file $(<${image_list})
+  zstd --rm $archive_file
+}
+
 # Prepare Harvester chart
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
@@ -42,31 +54,12 @@ fi
 
 # Rancherd bootstrap images
 # FIXME(kiefer): most images are still under devlopment
-xargs -n1 -t docker image pull --quiet << EOF > ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt
-  ibuildthecloud/system-agent-installer-rancher:dev
-  rancher/system-agent-installer-rke2:v1.21.2-rke2r1
-EOF
-docker image save -o ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.tar $(<${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt)
-zstd --rm ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.tar -o ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.tar.zst
+cp ${SCRIPTS_DIR}/images/rancherd-bootstrap-images.txt ${RANCHERD_IMAGES_DIR}
+save_image ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt ${RANCHERD_IMAGES_DIR}
 
-
-# Images needed during cluster-init stage.
-# ibuildthecloud/suc:latest
-xargs -n1 -t docker image pull --quiet << EOF > ${IMAGES_DIR}/rancherd-images.txt
-  bk201z/rancher:bfb72b6
-  bk201z/suc:latest
-  rancher/hardened-cni-plugins:v0.9.1-build20210414
-  rancher/shell:v0.1.8
-  rancher/rancher-webhook:v0.2.0-alpha02
-  rancher/gitjob:v0.1.15
-  rancher/fleet:v0.3.6-rc3
-  rancher/fleet-agent:v0.3.6-rc3
-  rancher/system-upgrade-controller:v0.7.0
-  rancher/system-upgrade-controller:v0.7.1
-EOF
-docker image save -o ${IMAGES_DIR}/rancherd-images.tar $(<${IMAGES_DIR}/rancherd-images.txt)
-zstd --rm ${IMAGES_DIR}/rancherd-images.tar -o ${IMAGES_DIR}/rancherd-images.tar.zst
-
+# Images needed during rancherd cluster-init stage.
+cp ${SCRIPTS_DIR}/images/rancherd-images.txt ${IMAGES_DIR}
+save_image ${IMAGES_DIR}/rancherd-images.txt ${IMAGES_DIR}
 
 # RKE2 images
 RKE2_VERSION="v1.21.2+rke2r1"
@@ -114,15 +107,4 @@ sort -u "${image_list_file}.tmp" | \
 grep -Ev "local-path-provisioner|library-traefik|klipper-lb|multus" >"${image_list_file}"
 
 cp ${image_list_file} ${IMAGES_DIR}
-
-output_image_tar_file="${IMAGES_DIR}/harvester-images.tar"
-if [ -z "${HARVESTER_INSTALLER_OFFLINE_BUILD}" ] && [ ! -f $output_image_tar_file.zst ]; then
-  images=$(cat "${image_list_file}")
-  echo "${images}" | while read -r image
-  do
-    echo "=> pulling ${image}"
-    docker pull "${image}" > /dev/null 2>&1
-  done
-  docker image save -o ${output_image_tar_file} $(<${IMAGES_DIR}/${image_list_file})
-  zstd --rm ${output_image_tar_file} -o ${output_image_tar_file}.zst
-fi
+save_image ${IMAGES_DIR}/${image_list_file} ${IMAGES_DIR}
