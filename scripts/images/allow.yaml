@@ -1,0 +1,3 @@
+rke2-images-multus:
+  - docker.io/rancher/hardened-multus-cni
+  - docker.io/rancher/hardened-cni-plugins

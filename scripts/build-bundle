@@ -19,6 +19,29 @@ mkdir -p ${CHARTS_DIR}
 mkdir -p ${IMAGES_DIR}
 mkdir -p ${RANCHERD_IMAGES_DIR}
 
+save_image_list()
+{
+  app=$1
+  in_file=$2
+  out_file=$3
+
+  case $in_file in
+    http*)
+      images=$(curl -sfL $in_file)
+      ;;
+    *)
+      images=$(<$in_file)
+      ;;
+  esac
+
+  for image in $images; do
+    repository=${image%:*}
+    if yq -e e ".${app}[] | select(. == \"${repository}\")" ${SCRIPTS_DIR}/images/allow.yaml &>/dev/null; then
+      echo $image >> $out_file
+    fi
+  done
+}
+
 save_image()
 {
   image_list=$1
@@ -66,8 +89,10 @@ RKE2_VERSION="v1.21.2+rke2r1"
 RKE2_IMAGES_URL="https://github.com/rancher/rke2/releases/download/${RKE2_VERSION}"
 curl -fL "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" -o "${IMAGES_DIR}/rke2-images.linux-amd64.txt"
 curl -fL "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" -o "${IMAGES_DIR}/rke2-images.linux-amd64.tar.zst"
-curl -fL "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.tar.zst" -o "${IMAGES_DIR}/rke2-images-multus.linux-amd64.tar.zst"
-curl -fL "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.txt" -o "${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt"
+
+# exclude SR-IOV images
+save_image_list "rke2-images-multus" "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.txt" ${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt
+save_image ${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt ${IMAGES_DIR}
 
 
 # Harvester images: get image list from harvester chart's values file
