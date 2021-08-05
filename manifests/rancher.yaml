@@ -34,7 +34,7 @@ spec:
     app: rancher
   ports:
     - name: https-internal
-      nodePort: 30444
+      nodePort: 30443
       port: 443
       protocol: TCP
       targetPort: 444
