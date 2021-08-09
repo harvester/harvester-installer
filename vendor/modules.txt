@@ -40,10 +40,10 @@ github.com/rancher/wrangler/pkg/name
 github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.6.1
 github.com/stretchr/testify/assert
-# github.com/tredoe/osutil v1.0.5
-github.com/tredoe/osutil/user/crypt
-github.com/tredoe/osutil/user/crypt/common
-github.com/tredoe/osutil/user/crypt/sha512_crypt
+# github.com/tredoe/osutil v1.1.8
+github.com/tredoe/osutil/userutil/crypt
+github.com/tredoe/osutil/userutil/crypt/common
+github.com/tredoe/osutil/userutil/crypt/sha512_crypt
 # github.com/vishvananda/netlink v1.1.0
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl

@@ -3,8 +3,8 @@ package util
 import (
 	"strings"
 
-	"github.com/tredoe/osutil/user/crypt/common"
-	"github.com/tredoe/osutil/user/crypt/sha512_crypt"
+	"github.com/tredoe/osutil/userutil/crypt/common"
+	"github.com/tredoe/osutil/userutil/crypt/sha512_crypt"
 )
 
 func CompareByShadow(key, shadowLine string) bool {
