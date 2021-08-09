@@ -12,7 +12,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/tredoe/osutil/user/crypt/common"
+	"github.com/tredoe/osutil/userutil/crypt/common"
 )
 
 var ErrKeyMismatch = errors.New("hashed value is not the hash of the given password")
