@@ -81,8 +81,3 @@ bootstrapResources:
           tag: master-head
           imagePullPolicy: "IfNotPresent"
     version: $HARVESTER_CHART_VERSION
-- apiVersion: management.cattle.io/v3
-  kind: Setting
-  metadata:
-    name: system-agent-install-script
-  value: http://harvester-cluster-repo.cattle-system/system-agent/system-agent-install.sh
