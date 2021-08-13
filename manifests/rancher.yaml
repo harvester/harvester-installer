@@ -14,15 +14,12 @@ spec:
   set:
     ingress.enabled: "false"
     ingress.tls.source: "rancher"
-    privateCA: "true"
     antiAffinity: "required"
-    rancherImageTag: master-861fb9208fd59c7f0c5266f087ccf050c1577ead-head
+    bootstrapPassword: "admin"
   valuesContent: |-
     extraEnv:
-    - name: CATTLE_BOOTSTRAP_PASSWORD
-      value: admin
     - name: CATTLE_FEATURES
-      value: continuous-delivery=false,embedded-cluster-api=false,fleet=false,monitoringv1=false,multi-cluster-management=false,multi-cluster-management-agent=false,provisioningv2=false,rke2=false
+      value: multi-cluster-management=false,multi-cluster-management-agent=false,
 ---
 apiVersion: v1
 kind: Service
