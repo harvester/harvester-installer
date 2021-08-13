@@ -10,7 +10,7 @@ echo "Start building ISO"
 K3S_VERSION=v1.21.3+k3s1
 K3S_IMAGE_URL=https://raw.githubusercontent.com/rancher/k3s/${K3S_VERSION}/scripts/airgap/image-list.txt
 
-RANCHER_VERSION=2.5.7
+RANCHER_VERSION=2.6.0-rc3
 RANCHER_IMAGE_URL=https://github.com/rancher/rancher/releases/download/v{$RANCHER_VERSION}/rancher-images.txt
 CERT_MANAGER_VERSION=v1.2.0
 
