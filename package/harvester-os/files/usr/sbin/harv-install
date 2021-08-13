@@ -1,0 +1,202 @@
+#!/bin/bash -e
+
+ISOMNT=/run/initramfs/live
+TARGET=/run/cos/target
+
+umount_target() {
+    sync
+    umount ${TARGET}/usr/local
+    umount ${TARGET}/boot/efi || true
+    umount ${TARGET}
+    if [ -n "$LOOP" ]; then
+        losetup -d $LOOP
+    fi
+}
+
+cleanup2()
+{
+    sync
+    umount_target || true
+    umount ${STATEDIR}
+    [ -n "COS_INSTALL_ISO_URL" ] && umount ${ISOMNT} || true
+}
+
+cleanup()
+{
+    EXIT=$?
+    cleanup2 2>/dev/null || true
+    return $EXIT
+}
+
+get_url()
+{
+    FROM=$1
+    TO=$2
+    case $FROM in
+        ftp*|http*|tftp*)
+            n=0
+            attempts=5
+            until [ "$n" -ge "$attempts" ]
+            do
+                curl -o $TO -fL ${FROM} && break
+                n=$((n+1))
+                echo "Failed to download, retry attempt ${n} out of ${attempts}"
+                sleep 2
+            done
+            ;;
+        *)
+            cp -f $FROM $TO
+            ;;
+    esac
+}
+
+get_iso()
+{
+    if [ -n "$COS_INSTALL_ISO_URL" ]; then
+        ISOMNT=$(mktemp -d -p /tmp cos.XXXXXXXX.isomnt)
+        TEMP_FILE=$(mktemp -p /tmp cos.XXXXXXXX.iso)
+        get_url ${COS_INSTALL_ISO_URL} ${TEMP_FILE}
+        ISO_DEVICE=$(losetup --show -f $TEMP_FILE)
+        mount -o ro ${ISO_DEVICE} ${ISOMNT}
+    fi
+}
+
+do_detect()
+{
+    echo "Detecting drives.."
+
+    OEM=$(blkid -L COS_OEM || true)
+    STATE=$(blkid -L COS_STATE || true)
+    PERSISTENT=$(blkid -L COS_PERSISTENT || true)
+}
+
+do_mount()
+{
+    echo "Mounting critical endpoints.."
+
+    mkdir -p ${TARGET}
+
+    STATEDIR=/tmp/mnt/STATE
+    mkdir -p $STATEDIR || true
+    mount ${STATE} $STATEDIR
+
+    LOOP=$(losetup --show -f ${STATEDIR}/cOS/active.img)
+    mount -t ext2 $LOOP $TARGET
+
+    mount ${PERSISTENT} ${TARGET}/usr/local
+}
+
+
+preload_rke2_images()
+{
+    preload=$(ls ${ISOMNT}/bundle/harvester/images/*.tar.zst 2>/dev/null || true)
+    if [ -z "$preload" ]; then
+        return
+    fi
+
+    RKE2_IMAGES_DIR="/var/lib/rancher/rke2/agent/images"
+    mkdir -p $TARGET/$RKE2_IMAGES_DIR
+    mount --bind ${ISOMNT}/bundle/harvester/images $TARGET/$RKE2_IMAGES_DIR
+
+    cd $TARGET
+    mount --bind /dev dev
+    mount --bind /proc proc
+
+    echo "Loading images. This may take a few minutes..."
+    chroot . /bin/bash <<"EOF"
+      set -e
+
+      rke2 server &> /rke2.log &
+
+      export PATH=/var/lib/rancher/rke2/bin:$PATH
+      export CONTAINERD_ADDRESS=/run/k3s/containerd/containerd.sock
+
+      # wait for containerd to be ready
+      until ctr --connect-timeout 1s version&>/dev/null
+      do
+        sleep 1
+      done
+
+      # make sure all preloading images are ready
+      for i in /var/lib/rancher/rke2/agent/images/*.txt; do
+        stdbuf -oL ctr-check-images.sh $i
+      done
+
+      # stop containerd
+      pkill rke2
+      rm /rke2.log
+
+      rm -rf /var/lib/rancher/rke2/server
+      rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
+EOF
+
+    until umount dev&>/dev/null
+    do
+      sleep 1
+    done
+    umount proc
+    cd - &> /dev/null
+    umount ${TARGET}/${RKE2_IMAGES_DIR}
+}
+
+preload_rancherd_images()
+{
+    preload=$(ls ${ISOMNT}/bundle/rancherd/images/*.tar.zst 2>/dev/null || true)
+    if [ -z "$preload" ]; then
+        return
+    fi
+
+    mkdir -p $TARGET/var/lib/rancher/agent/images
+    cp ${ISOMNT}/bundle/rancherd/images/* $TARGET/var/lib/rancher/agent/images
+}
+
+do_preload()
+{
+    touch $TARGET/etc/resolv.conf && mount -o bind,ro /etc/resolv.conf $TARGET/etc/resolv.conf
+
+    # Bind mount persistent folder to preload images
+    BIND_MOUNTS=("var/lib/rancher")
+
+    for i in ${BIND_MOUNTS[@]}; do
+        mkdir -p $TARGET/$i
+        mkdir -p $TARGET/usr/local/.ros-state/$i
+        mount -o bind $TARGET/usr/local/.ros-state/$i $TARGET/$i
+    done
+
+    preload_rancherd_images
+    preload_rke2_images
+
+    for i in ${BIND_MOUNTS[@]}; do
+        umount $TARGET/$i
+    done
+
+    umount $TARGET/etc/resolv.conf
+}
+
+update_grub_settings()
+{
+    if [ -z "${COS_INSTALL_TTY}" ]; then
+        TTY=$(tty | sed 's!/dev/!!')
+    else
+        TTY=$COS_INSTALL_TTY
+    fi
+
+    if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
+        sed -i "s/console_params=\"console=tty1\"/console_params=\"console=${TTY} console=tty1\"/g" ${TARGET}/etc/cos/bootargs.cfg
+    fi
+}
+
+trap cleanup exit
+
+# For PXE Boot
+get_iso
+
+# Run cOS installer but do not shutdown
+INTERACTIVE=yes cos-installer
+
+# Preload images
+do_detect
+do_mount
+do_preload
+
+update_grub_settings

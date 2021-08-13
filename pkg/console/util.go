@@ -234,7 +234,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 	}
 
 	env := append(os.Environ(), ev...)
-	if err := execute(g, env, "/usr/sbin/cos-installer"); err != nil {
+	if err := execute(g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
 		return err
 	}
