@@ -105,8 +105,18 @@ preload_rke2_images()
     echo "Loading images. This may take a few minutes..."
     chroot . /bin/bash <<"EOF"
       set -e
+      inst_tmp=$(mktemp -d -p /usr/local)
+      trap "rm -rf $inst_tmp" exit
 
-      rke2 server &> /rke2.log &
+      # extract rke2 tarball from image
+      rke2_image=$(grep 'docker.io/rancher/system-agent-installer-rke2:' /var/lib/rancher/agent/images/rancherd-bootstrap-images.txt)
+      wharfie --images-dir /var/lib/rancher/agent/images/ $rke2_image $inst_tmp
+
+      # extract rke2 binary
+      rke2_tmp="$inst_tmp/rke2"
+      mkdir -p $rke2_tmp && tar xf $inst_tmp/rke2.linux-amd64.tar.gz -C $rke2_tmp
+
+      $rke2_tmp/bin/rke2 server &> /rke2.log &
 
       export PATH=/var/lib/rancher/rke2/bin:$PATH
       export CONTAINERD_ADDRESS=/run/k3s/containerd/containerd.sock
