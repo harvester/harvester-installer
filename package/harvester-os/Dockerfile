@@ -12,6 +12,9 @@ ARG CACHEBUST
 RUN zypper ref
 RUN zypper in -y zstd
 
+# Newer RKE2 needs this
+RUN zypper in -y apparmor-parser
+
 COPY files/ /
 RUN chmod 0600 /system/oem/*
 
