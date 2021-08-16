@@ -84,8 +84,9 @@ type HarvesterConfig struct {
 	ServerURL string `json:"serverUrl,omitempty"`
 	Token     string `json:"token,omitempty"`
 
-	OS      `json:"os,omitempty"`
-	Install `json:"install,omitempty"`
+	OS             `json:"os,omitempty"`
+	Install        `json:"install,omitempty"`
+	RuntimeVersion string `json:"runtimeVersion,omitempty"`
 }
 
 func NewHarvesterConfig() *HarvesterConfig {

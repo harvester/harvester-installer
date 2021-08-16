@@ -54,6 +54,15 @@ save_image()
   zstd --rm $archive_file
 }
 
+get_url()
+{
+  from=$1
+  save_to=$2
+
+  echo "Download ${from} to ${save_to}..."
+  curl -sfL $from -o $save_to
+}
+
 # Prepare Harvester chart
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
@@ -75,9 +84,13 @@ fi
 
 # Offline images
 
+source ${SCRIPTS_DIR}/version-rke2
+
 # Rancherd bootstrap images
 # FIXME(kiefer): most images are still under devlopment
 cp ${SCRIPTS_DIR}/images/rancherd-bootstrap-images.txt ${RANCHERD_IMAGES_DIR}
+RKE2_IMAGE_TAG=${RKE2_VERSION/+/-} # v1.21.3-rc6+rke2r2 -> v1.21.3-rc6-rke2r2
+sed -i "s,\$RKE2_VERSION,${RKE2_IMAGE_TAG}," ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt
 save_image ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt ${RANCHERD_IMAGES_DIR}
 
 # Images needed during rancherd cluster-init stage.
@@ -85,10 +98,9 @@ cp ${SCRIPTS_DIR}/images/rancherd-images.txt ${IMAGES_DIR}
 save_image ${IMAGES_DIR}/rancherd-images.txt ${IMAGES_DIR}
 
 # RKE2 images
-RKE2_VERSION="v1.21.2+rke2r1"
 RKE2_IMAGES_URL="https://github.com/rancher/rke2/releases/download/${RKE2_VERSION}"
-curl -fL "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" -o "${IMAGES_DIR}/rke2-images.linux-amd64.txt"
-curl -fL "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" -o "${IMAGES_DIR}/rke2-images.linux-amd64.tar.zst"
+get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" "${IMAGES_DIR}/rke2-images.linux-amd64.txt"
+get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" "${IMAGES_DIR}/rke2-images.linux-amd64.tar.zst"
 
 # exclude SR-IOV images
 save_image_list "rke2-images-multus" "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.txt" ${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt

@@ -5,6 +5,6 @@ role: agent
 role: cluster-init
 {{- end }}
 token: {{ .Token }}
-kubernetesVersion: v1.21.2+rke2r1
+kubernetesVersion: {{ .RuntimeVersion }}
 labels:
  - harvesterhci.io/managed=true

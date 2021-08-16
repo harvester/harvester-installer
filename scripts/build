@@ -5,15 +5,19 @@ TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 SCRIPTS_DIR="${TOP_DIR}/scripts"
 PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
 
+source ${SCRIPTS_DIR}/version-rke2
+
 cd ${TOP_DIR}
 
 mkdir -p bin
+
+LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$RKE2_VERSION $LINKFLAGS"
 
 if [ "$(uname)" = "Linux" ]; then
     OTHER_LINKFLAGS="-extldflags -static -s"
 fi
 
-CGO_ENABLED=0 go build -ldflags "$OTHER_LINKFLAGS" -o bin/harvester-installer .
+CGO_ENABLED=0 go build -ldflags "$LINKFLAGS $OTHER_LINKFLAGS" -o bin/harvester-installer .
 
 # Copy to harvester package folder
 mkdir -p ${PACKAGE_HARVESTER_OS_DIR}/files/usr/bin

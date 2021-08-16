@@ -14,6 +14,11 @@ const (
 	cosLoginUser = "rancher"
 )
 
+var (
+	// RKE2Version is replaced by ldflags
+	RKE2Version = ""
+)
+
 // ConvertToCOS converts HarvesterConfig to cOS configuration.
 func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	cfg, err := config.DeepCopy()
@@ -104,6 +109,10 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 }
 
 func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+	if config.RuntimeVersion == "" {
+		config.RuntimeVersion = RKE2Version
+	}
+
 	rancherdConfig, err := render("rancherd-config.yaml", config)
 	if err != nil {
 		return err
