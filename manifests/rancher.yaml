@@ -19,7 +19,7 @@ spec:
   valuesContent: |-
     extraEnv:
     - name: CATTLE_FEATURES
-      value: multi-cluster-management=false,multi-cluster-management-agent=false,
+      value: multi-cluster-management=false,multi-cluster-management-agent=false
 ---
 apiVersion: v1
 kind: Service
