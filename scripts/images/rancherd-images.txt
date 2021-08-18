@@ -1,5 +1,5 @@
 docker.io/bk201z/rancher:d8c185e74
-docker.io/bk201z/suc:latest
+docker.io/rancher/system-agent:v0.0.1-alpha35-suc
 docker.io/rancher/hardened-cni-plugins:v0.9.1-build20210414
 docker.io/rancher/shell:v0.1.9
 docker.io/rancher/rancher-webhook:v0.2.0-beta02
