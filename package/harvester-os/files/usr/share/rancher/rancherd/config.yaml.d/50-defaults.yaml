@@ -6,8 +6,6 @@ rancherValues:
   features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
   extraEnv:
-  - name: CATTLE_SYSTEM_AGENT_UPGRADE_IMAGE
-    value: bk201z/suc
   - name: CATTLE_BOOTSTRAP_PASSWORD
     value: admin
 rancherInstallerImage: ibuildthecloud/system-agent-installer-rancher:dev
