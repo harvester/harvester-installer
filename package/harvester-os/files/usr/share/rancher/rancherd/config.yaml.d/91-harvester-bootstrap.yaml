@@ -68,6 +68,7 @@ bootstrapResources:
         defaultSettings:
           taintToleration: "kubevirt.io/drain:NoSchedule"
       harvester-network-controller:
+        enabled: true
         image:
           pullPolicy: "IfNotPresent"
       rancherEmbedded: true
