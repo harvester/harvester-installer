@@ -94,8 +94,8 @@ sed -i "s,\$RKE2_VERSION,${RKE2_IMAGE_TAG}," ${RANCHERD_IMAGES_DIR}/rancherd-boo
 save_image ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt ${RANCHERD_IMAGES_DIR}
 
 # Images needed during rancherd cluster-init stage.
-cp ${SCRIPTS_DIR}/images/rancherd-images.txt ${IMAGES_DIR}
-save_image ${IMAGES_DIR}/rancherd-images.txt ${IMAGES_DIR}
+cp ${SCRIPTS_DIR}/images/rancher-images.txt ${IMAGES_DIR}
+save_image ${IMAGES_DIR}/rancher-images.txt ${IMAGES_DIR}
 
 # RKE2 images
 RKE2_IMAGES_URL="https://github.com/rancher/rke2/releases/download/${RKE2_VERSION}"

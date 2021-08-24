@@ -1,11 +1,9 @@
 rancherValues:
   rancherImagePullPolicy: IfNotPresent
-  rancherImage: bk201z/rancher
-  rancherImageTag: d8c185e74
+  rancherImage: rancher/rancher
+  rancherImageTag: v2.6.0-rc4
   noDefaultAdmin: false
   features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
-  extraEnv:
-  - name: CATTLE_BOOTSTRAP_PASSWORD
-    value: admin
+  bootstrapPassword: admin
 rancherInstallerImage: ibuildthecloud/system-agent-installer-rancher:dev
