@@ -75,7 +75,9 @@ helm repo index ${CHARTS_DIR}
 
 # Update chart version in Rancherd bootstrap resources
 harvester_chart_version=$(yq e .version ${harvester_chart_path}/Chart.yaml --exit-status)
-sed -i "s/\$HARVESTER_CHART_VERSION/${harvester_chart_version}/" ${PACKAGE_HARVESTER_OS_DIR}/files/usr/share/rancher/rancherd/config.yaml.d/91-harvester-bootstrap.yaml
+sed "s/\$HARVESTER_CHART_VERSION/${harvester_chart_version}/" \
+  ${PACKAGE_HARVESTER_OS_DIR}/templates/91-harvester-bootstrap-chart.yaml > \
+  ${PACKAGE_HARVESTER_OS_DIR}/files/usr/share/rancher/rancherd/config.yaml.d/91-harvester-bootstrap-chart.yaml
 
 if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
  cp -rf /bundle/* ${BUNDLE_DIR}/
