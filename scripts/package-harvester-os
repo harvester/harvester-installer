@@ -22,15 +22,20 @@ docker build --pull \
 KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/vmlinuz)
 INITRD=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/initrd)
 docker create --cidfile=os-img-container ${HARVESTER_OS_IMAGE}
-docker cp $(<os-img-container):/boot/${KERNEL} ${ARTIFACTS_DIR}/harvester-${VERSION}-vmlinuz-${ARCH}
-docker cp $(<os-img-container):/boot/${INITRD} ${ARTIFACTS_DIR}/harvester-${VERSION}-initrd-${ARCH}
-chmod +r ${ARTIFACTS_DIR}/harvester-${VERSION}-initrd-${ARCH}
+docker cp $(<os-img-container):/boot/${KERNEL} ${ARTIFACTS_DIR}/harvester-vmlinuz-${ARCH}
+docker cp $(<os-img-container):/boot/${INITRD} ${ARTIFACTS_DIR}/harvester-initrd-${ARCH}
+chmod +r ${ARTIFACTS_DIR}/harvester-initrd-${ARCH}
 docker rm $(<os-img-container) && rm -f os-img-container
 
 # build ISO
-ISO_PREFIX=harvester-${VERSION}-${ARCH}
+ISO_PREFIX=harvester-${ARCH}
 [ -d iso ] && yq e ".overlay.isoimage = \"$(pwd)/iso\"" iso.yaml -i
 luet-makeiso iso.yaml --image "${HARVESTER_OS_IMAGE}" --output ${ARTIFACTS_DIR}/${ISO_PREFIX}
 
+# remove leading directory components of the ISO name
+CHECKSUM_FILE=${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
+CHECKSUM=$(cat $CHECKSUM_FILE | awk '{print $1}')
+echo "$CHECKSUM ${ISO_PREFIX}.iso" > $CHECKSUM_FILE
+
 # Extract the squashfs image for PXE boot
-xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract /rootfs.squashfs ${ARTIFACTS_DIR}/harvester-${VERSION}-rootfs-${ARCH}.squashfs
+xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract /rootfs.squashfs ${ARTIFACTS_DIR}/harvester-rootfs-${ARCH}.squashfs
