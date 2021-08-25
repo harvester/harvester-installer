@@ -7,3 +7,19 @@ rancherValues:
   useBundledSystemChart: true
   bootstrapPassword: admin
 rancherInstallerImage: ibuildthecloud/system-agent-installer-rancher:dev
+bootstrapResources:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: rancher-expose
+    namespace: cattle-system
+  spec:
+    type: NodePort
+    selector:
+      app: rancher
+    ports:
+      - name: https-internal
+        nodePort: 30443
+        port: 443
+        protocol: TCP
+        targetPort: 444
