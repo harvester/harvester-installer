@@ -1,3 +1,13 @@
 rke2-images-multus:
   - docker.io/rancher/hardened-multus-cni
   - docker.io/rancher/hardened-cni-plugins
+rancher:
+  - docker.io/rancher/rancher
+  - docker.io/rancher/system-agent
+  - docker.io/rancher/shell
+  - docker.io/rancher/rancher-webhook
+  - docker.io/rancher/gitjob
+  - docker.io/rancher/fleet
+  - docker.io/rancher/fleet-agent
+  - docker.io/rancher/system-upgrade-controller
+  - docker.io/rancher/kubectl

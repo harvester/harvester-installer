@@ -9,6 +9,8 @@ PACKAGE_HARVESTER_REPO_DIR="${TOP_DIR}/package/harvester-repo"
 cd ${TOP_DIR}
 
 source ${SCRIPTS_DIR}/version
+source ${SCRIPTS_DIR}/lib/http
+source ${SCRIPTS_DIR}/lib/image
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 CHARTS_DIR="${BUNDLE_DIR}/harvester/static/charts"
@@ -20,50 +22,6 @@ MONITORING_VERSION=100.0.0+up16.6.0
 mkdir -p ${CHARTS_DIR} ${MANIFESTS_DIR}
 mkdir -p ${IMAGES_DIR}
 mkdir -p ${RANCHERD_IMAGES_DIR}
-
-save_image_list()
-{
-  app=$1
-  in_file=$2
-  out_file=$3
-
-  case $in_file in
-    http*)
-      images=$(curl -sfL $in_file)
-      ;;
-    *)
-      images=$(<$in_file)
-      ;;
-  esac
-
-  for image in $images; do
-    repository=${image%:*}
-    if yq -e e ".${app}[] | select(. == \"${repository}\")" ${SCRIPTS_DIR}/images/allow.yaml &>/dev/null; then
-      echo $image >> $out_file
-    fi
-  done
-}
-
-save_image()
-{
-  image_list=$1
-  save_dir=$2
-
-  archive_name="$(basename ${image_list%.txt}).tar"
-  archive_file="${save_dir}/${archive_name}"
-  xargs -n1 -t docker image pull --quiet < $image_list
-  docker image save -o $archive_file $(<${image_list})
-  zstd --rm $archive_file
-}
-
-get_url()
-{
-  from=$1
-  save_to=$2
-
-  echo "Download ${from} to ${save_to}..."
-  curl -sfL $from -o $save_to
-}
 
 # Prepare Harvester chart
 harvester_path=../harvester
