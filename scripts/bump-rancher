@@ -1,0 +1,39 @@
+#!/bin/bash -eu
+# This script bump Rancher dependent files
+# e.g., scripts/bump-rancher v2.6.0-rc7
+
+RANCHER_VERSION=$1
+RANCHER_IMAGES_URL="https://github.com/rancher/rancher/releases/download/$RANCHER_VERSION/rancher-images.txt"
+
+TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
+SCRIPTS_DIR="${TOP_DIR}/scripts"
+
+source ${SCRIPTS_DIR}/lib/image
+
+
+# update image list
+save_image_list rancher $RANCHER_IMAGES_URL $SCRIPTS_DIR/images/rancher-images.txt
+
+# check duplicated images
+# anyway to automate this?
+DUP_RANCHER_IMAGES=$(awk -F ':' '{print $1}' $SCRIPTS_DIR/images/rancher-images.txt | uniq -d)
+if [ -n "$DUP_RANCHER_IMAGES" ]; then
+    echo "Warning: duplicated images found in $SCRIPTS_DIR/images/rancher-images.txt"
+    echo "--------------------------------------------------------------------------------"
+    echo "$DUP_RANCHER_IMAGES"
+    echo "--------------------------------------------------------------------------------"
+    echo "Please remove unused images manually."
+fi
+
+# rancherd bootstrap images
+sed -i "s,.*system-agent-installer-rancher:.*,docker.io/rancher/system-agent-installer-rancher:${RANCHER_VERSION}," ${SCRIPTS_DIR}/images/rancherd-bootstrap-images.txt
+
+# update bootstrap version
+RANCHER_IMAGE_TAG=$RANCHER_VERSION \
+  yq e -i '.rancherValues.rancherImageTag = strenv(RANCHER_IMAGE_TAG)' \
+  "${TOP_DIR}/package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml"
+
+
+RANCHER_IMAGE_TAG="rancher/system-agent-installer-rancher:$RANCHER_VERSION" \
+  yq e -i '.rancherInstallerImage = strenv(RANCHER_IMAGE_TAG)' \
+  "${TOP_DIR}/package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml"

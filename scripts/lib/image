@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Prefix registry to images
+# rancher -> docker.io/library/rancher
+# rancher/rancher -> docker.io/rancher/rancher
+# test.com/rancher/rancher -> test.com/rancher/rancher
+normalize_image()
+{
+  echo $1 | awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=1){print "docker.io/library/"$0}}'
+}
+
+save_image_list()
+{
+  local app=$1
+  local in_file=$2
+  local out_file=$3
+  local images
+  local image
+
+  case $in_file in
+    http*)
+      images=$(curl -sfL $in_file)
+      ;;
+    *)
+      images=$(<$in_file)
+      ;;
+  esac
+
+  local repository
+  local want
+
+  for image in $images; do
+    repository=${image%:*}
+
+    # Add docker.io prefix if there is no prefixed registry URL
+    repository=$(normalize_image $repository)
+
+    if yq -e e ".${app}[] | select(. == \"${repository}\")" ${SCRIPTS_DIR}/images/allow.yaml &>/dev/null; then
+      want+="$(normalize_image $image)"$'\n'
+    fi
+  done
+
+  echo -n "$want" | sort | uniq > $out_file
+}
+
+save_image()
+{
+  local image_list=$1
+  local save_dir=$2
+
+  local archive_name="$(basename ${image_list%.txt}).tar"
+  local archive_file="${save_dir}/${archive_name}"
+  xargs -n1 -t docker image pull --quiet < $image_list
+  docker image save -o $archive_file $(<${image_list})
+  zstd --rm $archive_file
+}
