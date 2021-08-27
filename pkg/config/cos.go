@@ -26,6 +26,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		return nil, err
 	}
 
+	preStage := yipSchema.Stage{}
+	preStage.Commands = append(preStage.Commands, "rm -f /etc/sysconfig/network/ifcfg-eth0")
+
 	initramfs := yipSchema.Stage{
 		SSHKeys:   make(map[string][]string),
 		Users:     make(map[string]yipSchema.User),
@@ -71,10 +74,26 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	initramfs.Environment = cfg.OS.Environment
 
-	if len(cfg.Networks) > 0 {
-		if err := UpdateNetworkConfig(&initramfs, cfg.Networks, false); err != nil {
-			return nil, err
+	// ensure network that contains mgmtInterface exists
+	if cfg.MgmtInterface != "" {
+		mgmtInterfaceNetwork := false
+		for _, network := range cfg.Networks {
+			if network.Interface == cfg.MgmtInterface {
+				mgmtInterfaceNetwork = true
+				break
+			}
 		}
+
+		if !mgmtInterfaceNetwork {
+			cfg.Networks = append(cfg.Networks, Network{
+				Interface: cfg.MgmtInterface,
+				Method:    NetworkMethodDHCP,
+			})
+		}
+	}
+
+	if err := UpdateNetworkConfig(&initramfs, cfg.Networks, false); err != nil {
+		return nil, err
 	}
 
 	// mgmt interface: https://docs.rke2.io/install/network_options/#canal-options
@@ -101,7 +120,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
 		Stages: map[string][]yipSchema.Stage{
-			"initramfs": {initramfs},
+			"initramfs": {preStage, initramfs},
 		},
 	}
 
