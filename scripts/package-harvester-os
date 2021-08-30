@@ -15,7 +15,7 @@ HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 cd ${PACKAGE_HARVESTER_OS_DIR}
 docker build --pull \
 	--build-arg BASE_OS_IMAGE="${BASE_OS_IMAGE}" \
-	--build-arg CACHEBUST="$(date)" \
+	--build-arg HARVESTER_INSTALLER_VERSION="${VERSION}" \
 	-t ${HARVESTER_OS_IMAGE} .
 
 PROJECT_PREFIX="harvester"
