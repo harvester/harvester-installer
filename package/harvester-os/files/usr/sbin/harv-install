@@ -168,9 +168,10 @@ do_preload()
     BIND_MOUNTS=("var/lib/rancher")
 
     for i in ${BIND_MOUNTS[@]}; do
+        state_dir="/usr/local/.state/${i//\//-}.bind"
         mkdir -p $TARGET/$i
-        mkdir -p $TARGET/usr/local/.ros-state/$i
-        mount -o bind $TARGET/usr/local/.ros-state/$i $TARGET/$i
+        mkdir -p $TARGET/$state_dir
+        mount -o bind $TARGET/$state_dir $TARGET/$i
     done
 
     preload_rancherd_images
@@ -201,8 +202,8 @@ trap cleanup exit
 # For PXE Boot
 get_iso
 
-# Run cOS installer but do not shutdown
-INTERACTIVE=yes cos-installer
+# Run cOS installer but do not let it fetch ISO and shutdown
+COS_INSTALL_ISO_URL="" INTERACTIVE=yes cos-installer
 
 # Preload images
 do_detect
