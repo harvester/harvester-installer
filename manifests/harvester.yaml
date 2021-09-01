@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: harvester-system
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: harvester
+  namespace: kube-system
+spec:
+  bootstrap: true
+  chart: https://localhost:9345/static/charts/$HARVESTER_CHART_TARBALL
+  targetNamespace: harvester-system
+  valuesContent: |-
+    auth:
+      enabled: true
+    containers:
+      apiserver:
+        image:
+          imagePullPolicy: "IfNotPresent"
+        hciMode: true
+    multus:
+      enabled: false
+    longhorn:
+      enabled: true
+      defaultSettings:
+        taintToleration: "kubevirt.io/drain:NoSchedule"
+    harvester-network-controller:
+      enabled: true
+      image:
+        pullPolicy: "IfNotPresent"
+    rancherEmbedded: true
+    webhook:
+      image:
+        imagePullPolicy: "IfNotPresent"

@@ -286,7 +286,7 @@ func k8sIsReady() bool {
 }
 
 func chartIsInstalled() bool {
-	cmd := exec.Command("/bin/sh", "-c", `kubectl -n fleet-local get ManagedChart harvester -o jsonpath='{.status.conditions}' | jq 'map(select(.type == "Processed" and .status == "True")) | length'`)
+	cmd := exec.Command("/bin/sh", "-c", `kubectl -n kube-system get job helm-install-harvester -o jsonpath='{.status.succeeded}'`)
 	cmd.Env = os.Environ()
 	output, err := cmd.Output()
 	outStr := string(output)
