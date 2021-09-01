@@ -10,12 +10,13 @@ cd ${TOP_DIR}
 
 source ${SCRIPTS_DIR}/version
 
-CHARTS_DIR="${PACKAGE_HARVESTER_REPO_DIR}/charts"
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
+CHARTS_DIR="${BUNDLE_DIR}/harvester/static/charts"
+MANIFESTS_DIR="${BUNDLE_DIR}/harvester/manifests"
 IMAGES_DIR="${BUNDLE_DIR}/harvester/images"
 RANCHERD_IMAGES_DIR="${BUNDLE_DIR}/rancherd/images"
 
-mkdir -p ${CHARTS_DIR}
+mkdir -p ${CHARTS_DIR} ${MANIFESTS_DIR}
 mkdir -p ${IMAGES_DIR}
 mkdir -p ${RANCHERD_IMAGES_DIR}
 
@@ -71,13 +72,15 @@ if [ ! -d ${harvester_path} ];then
 fi
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
-helm repo index ${CHARTS_DIR}
+cp -r ${TOP_DIR}/manifests/* ${MANIFESTS_DIR}
 
-# Update chart version in Rancherd bootstrap resources
-harvester_chart_version=$(yq e .version ${harvester_chart_path}/Chart.yaml --exit-status)
-sed "s/\$HARVESTER_CHART_VERSION/${harvester_chart_version}/" \
-  ${PACKAGE_HARVESTER_OS_DIR}/templates/91-harvester-bootstrap-chart.yaml > \
-  ${PACKAGE_HARVESTER_OS_DIR}/files/usr/share/rancher/rancherd/config.yaml.d/91-harvester-bootstrap-chart.yaml
+# Update chart tarball in the manifest
+harvester_chart_tarball=$(find ${CHARTS_DIR} -type f -name 'harvester-*.tgz' -exec basename {} \;)
+if [ -z "$harvester_chart_tarball" ]; then
+  echo "Unable to find Harvester chart tarball!"
+  exit 1
+fi
+sed -i "s/\$HARVESTER_CHART_TARBALL/${harvester_chart_tarball}/" ${MANIFESTS_DIR}/harvester.yaml
 
 if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
  cp -rf /bundle/* ${BUNDLE_DIR}/
