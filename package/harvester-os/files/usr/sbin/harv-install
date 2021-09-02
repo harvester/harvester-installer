@@ -105,6 +105,9 @@ preload_rke2_images()
     echo "Loading images. This may take a few minutes..."
     chroot . /bin/bash <<"EOF"
       set -e
+      # update the nameserver
+      netconfig update
+
       inst_tmp=$(mktemp -d -p /usr/local)
       trap "rm -rf $inst_tmp" exit
 
@@ -170,8 +173,6 @@ preload_rancherd_images()
 
 do_preload()
 {
-    touch $TARGET/etc/resolv.conf && mount -o bind,ro /etc/resolv.conf $TARGET/etc/resolv.conf
-
     # Bind mount persistent folder to preload images
     BIND_MOUNTS=("var/lib/rancher")
 
@@ -189,8 +190,6 @@ do_preload()
     for i in ${BIND_MOUNTS[@]}; do
         umount $TARGET/$i
     done
-
-    umount $TARGET/etc/resolv.conf
 }
 
 update_grub_settings()
