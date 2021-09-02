@@ -5,7 +5,7 @@ const (
 	ModeJoin    = "join"
 	ModeUpgrade = "upgrade"
 
-	NetworkMethodDHCP   = "dhcp"
+	NetworkMethodDHCP   = "DHCP"
 	NetworkMethodStatic = "static"
 
 	RancherdConfigFile = "/etc/rancher/rancherd/config.yaml"

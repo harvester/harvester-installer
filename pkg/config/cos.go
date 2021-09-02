@@ -12,6 +12,9 @@ import (
 
 const (
 	cosLoginUser = "rancher"
+	manifestsDirectory = "/var/lib/rancher/rke2/server/manifests/"
+	canalConfig = "rke2-canal-config.yaml"
+	harvesterConfig = "harvester-config.yaml"
 )
 
 var (
@@ -55,7 +58,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			Permissions: uint32(perm),
 			OwnerString: ff.Owner,
 		})
-
 	}
 
 	initramfs.Hostname = cfg.OS.Hostname
@@ -99,24 +101,41 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	// mgmt interface: https://docs.rke2.io/install/network_options/#canal-options
-	if cfg.Install.Mode == "create" && cfg.Install.MgmtInterface != "" {
-		canalHelmChartConfig, err := render("rke2-canal-config.yaml", config)
-		if err != nil {
-			return nil, err
-		}
+	if cfg.Install.Mode == "create" {
 		initramfs.Directories = append(initramfs.Directories, yipSchema.Directory{
-			Path:        "/var/lib/rancher/rke2/server/manifests/",
+			Path:        manifestsDirectory,
 			Permissions: 0600,
 			Owner:       0,
 			Group:       0,
 		})
-		initramfs.Files = append(initramfs.Files, yipSchema.File{
-			Path:        "/var/lib/rancher/rke2/server/manifests/rke2-canal-config.yaml",
-			Content:     canalHelmChartConfig,
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
+
+		if cfg.Install.MgmtInterface != "" {
+			canalHelmChartConfig, err := render(canalConfig, config)
+			if err != nil {
+				return nil, err
+			}
+			initramfs.Files = append(initramfs.Files, yipSchema.File{
+				Path:        manifestsDirectory+canalConfig,
+				Content:     canalHelmChartConfig,
+				Permissions: 0600,
+				Owner:       0,
+				Group:       0,
+			})
+		}
+
+		if cfg.Install.Vip != "" {
+			harvesterHelmChartConfig, err := render(harvesterConfig, config)
+			if err != nil {
+				return nil, err
+			}
+			initramfs.Files = append(initramfs.Files, yipSchema.File{
+				Path: manifestsDirectory+harvesterConfig,
+				Content: harvesterHelmChartConfig,
+				Permissions: 0600,
+				Owner: 0,
+				Group: 0,
+			})
+		}
 	}
 
 	cosConfig := &yipSchema.YipConfig{

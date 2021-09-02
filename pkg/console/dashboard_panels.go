@@ -213,8 +213,8 @@ func syncManagementURL(ctx context.Context, g *gocui.Gui) {
 
 func doSyncManagementURL(g *gocui.Gui) {
 	managementURL := "Unavailable"
-	if managementIP := getFirstReadyMasterIP(); managementIP != "" {
-		managementURL = fmt.Sprintf("https://%s:%s", managementIP, harvesterNodePort)
+	if managementIP := getVIP(); managementIP != "" {
+		managementURL = fmt.Sprintf("https://%s", managementIP)
 	}
 	g.Update(func(g *gocui.Gui) error {
 		v, err := g.View("url")
@@ -227,18 +227,14 @@ func doSyncManagementURL(g *gocui.Gui) {
 	})
 }
 
-func getFirstReadyMasterIP() string {
-	// get first ready master node's internal ip
-	cmd := exec.Command("/bin/sh", "-c", `kubectl get no -l 'node-role.kubernetes.io/master=true' --sort-by='.metadata.creationTimestamp' \
--o jsonpath='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{range @.status.addresses[*]}{@.type}={@.address};{end}{"\n"}{end}' 2>/dev/null \
-| grep 'Ready=True' | head -n 1 | tr ';' '\n' | awk -F '=' '/InternalIP/{printf $2}'`)
-	cmd.Env = os.Environ()
-	output, err := cmd.Output()
-	outStr := string(output)
+func getVIP() string {
+	out, err := exec.Command("/bin/sh", "-c", `kubectl get service -n harvester-system harvester -o jsonpath='{.status.loadBalancer.ingress[*].ip}'`).Output()
+	outStr := string(out)
 	if err != nil {
-		logrus.Error(err, outStr)
+		logrus.Errorf(err.Error(), outStr)
 		return ""
 	}
+
 	return outStr
 }
 
