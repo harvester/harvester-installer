@@ -1,0 +1,15 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: harvester
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    kube-vip:
+      config:
+        vip_interface: "{{ .MgmtInterface }}"
+    service:
+      harvester:
+        vipMode: "{{ .VipMode }}"
+        vip: "{{ .Vip }}"
+        vipHwAddr: "{{ .VipHwAddr }}"

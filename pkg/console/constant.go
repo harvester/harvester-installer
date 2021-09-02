@@ -27,6 +27,9 @@ const (
 	confirmInstallPanel   = "confirmInstall"
 	confirmUpgradePanel   = "confirmUpgrade"
 	upgradePanel          = "upgrade"
+	askVipMethodPanel     = "askVipMethodPanel"
+	vipPanel              = "vipPanel"
+	vipTextPanel          = "vipTextPanel"
 
 	networkTitle          = "Configure network connection"
 	askInterfaceLabel     = "Management NIC"
@@ -38,6 +41,10 @@ const (
 
 	networkMethodDHCPText   = "Automatic (DHCP)"
 	networkMethodStaticText = "Static"
+
+	vipTitle               = "Configure VIP"
+	vipLabel               = "VIP"
+	askVipMethodLabel      = "VIP Mode"
 
 	clusterTokenCreateNote = "Note: The token is used for adding nodes to the cluster"
 	clusterTokenJoinNote   = "Note: Input the token of the existing cluster"

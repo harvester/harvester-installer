@@ -102,6 +102,14 @@ func checkIP(addr string) error {
 	return nil
 }
 
+func checkHwAddr(hwAddr string) error {
+	if _, err := net.ParseMAC(hwAddr); err != nil {
+		return fmt.Errorf("%s is an invalid hardware address, error: %w", hwAddr, err)
+	}
+
+	return nil
+}
+
 func checkIPList(ipList []string) error {
 	for _, ip := range ipList {
 		if err := checkIP(ip); err != nil {
@@ -152,6 +160,25 @@ func checkNetworks(networks []config.Network) error {
 	return nil
 }
 
+func checkVip(vip, vipHwAddr, vipMode string) error {
+	if err := checkIP(vip); err != nil {
+		return err
+	}
+
+	switch vipMode {
+	case config.NetworkMethodDHCP:
+		if err := checkHwAddr(vipHwAddr); err != nil {
+			return err
+		}
+	case config.NetworkMethodStatic:
+		return nil
+	default:
+		return prettyError(ErrMsgNetworkMethodUnknown, vipMode)
+	}
+
+	return nil
+}
+
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	if cfg.Install.Mode == config.ModeCreate && cfg.Install.MgmtInterface == "" {
 		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
@@ -167,6 +194,12 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 
 	if err := checkNetworks(cfg.Install.Networks); err != nil {
 		return err
+	}
+
+	if cfg.Install.Mode == config.ModeCreate {
+		if err := checkVip(cfg.Vip, cfg.VipHwAddr, cfg.VipMode); err != nil {
+			return err
+		}
 	}
 
 	return nil

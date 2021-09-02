@@ -40,6 +40,10 @@ type Install struct {
 	MgmtInterface string    `json:"mgmtInterface,omitempty"`
 	Networks      []Network `json:"networks,omitempty"`
 
+	Vip       string `json:"vip,omitempty"`
+	VipHwAddr string `json:"vipHwAddr,omitempty"`
+	VipMode   string `json:"vipMode,omitempty"`
+
 	ForceEFI  bool   `json:"forceEfi,omitempty"`
 	Device    string `json:"device,omitempty"`
 	ConfigURL string `json:"configUrl,omitempty"`

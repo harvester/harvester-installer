@@ -26,6 +26,7 @@ spec:
         taintToleration: "kubevirt.io/drain:NoSchedule"
     harvester-network-controller:
       enabled: true
+      vipEnabled: true
       image:
         pullPolicy: "IfNotPresent"
     harvester-node-disk-manager:
@@ -36,3 +37,6 @@ spec:
     webhook:
       image:
         imagePullPolicy: "IfNotPresent"
+    service:
+      harvester:
+        type: LoadBalancer

@@ -90,6 +90,7 @@ func setPanels(c *Console) error {
 		addAskCreatePanel,
 		addDiskPanel,
 		addNetworkPanel,
+		addVIPPanel,
 		addServerURLPanel,
 		addTokenPanel,
 		addPasswordPanels,
@@ -536,7 +537,7 @@ func addTokenPanel(c *Console) error {
 			closeThisPage()
 			if c.config.Install.Mode == config.ModeCreate {
 				g.Cursor = false
-				return showNetworkPage(c)
+				return showNext(c, vipTextPanel, vipPanel, askVipMethodPanel)
 			}
 			return showNext(c, serverURLPanel)
 		},
@@ -603,7 +604,7 @@ func addNetworkPanel(c *Console) error {
 
 	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
 
-	gotoNextPanel := func(c *Console, name string, hooks ...func() (string, error)) func(g *gocui.Gui, v *gocui.View) error {
+	gotoNextPanel := func(c *Console, name []string, hooks ...func() (string, error)) func(g *gocui.Gui, v *gocui.View) error {
 		return func(g *gocui.Gui, v *gocui.View) error {
 			c.CloseElement(networkValidatorPanel)
 			for _, hook := range hooks {
@@ -615,7 +616,7 @@ func addNetworkPanel(c *Console) error {
 					return c.setContentByName(networkValidatorPanel, msg)
 				}
 			}
-			return showNext(c, name)
+			return showNext(c, name...)
 		}
 	}
 
@@ -648,11 +649,11 @@ func addNetworkPanel(c *Console) error {
 		return "", nil
 	}
 
-	getNextPagePanel := func() string {
+	getNextPagePanel := func() []string {
 		if c.config.Install.Mode == config.ModeCreate {
-			return tokenPanel
+			return []string{vipTextPanel, vipPanel, askVipMethodPanel}
 		}
-		return serverURLPanel
+		return []string{serverURLPanel}
 	}
 
 	gotoNextPage := func() error {
@@ -663,7 +664,7 @@ func addNetworkPanel(c *Console) error {
 		if msg != "" {
 			return c.setContentByName(networkValidatorPanel, msg)
 		}
-		return showNext(c, getNextPagePanel())
+		return showNext(c, getNextPagePanel()...)
 	}
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
@@ -691,7 +692,7 @@ func addNetworkPanel(c *Console) error {
 		c.config.Hostname = hostName
 		return "", nil
 	}
-	hostNameVConfirm := gotoNextPanel(c, askInterfacePanel, validateHostName)
+	hostNameVConfirm := gotoNextPanel(c, []string{askInterfacePanel}, validateHostName)
 	hostNameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowDown: hostNameVConfirm,
 		gocui.KeyEnter:     hostNameVConfirm,
@@ -723,7 +724,7 @@ func addNetworkPanel(c *Console) error {
 		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel, askNetworkMethodPanel)
 	}
 	askInterfaceV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, hostNamePanel),
+		gocui.KeyArrowUp:   gotoNextPanel(c, []string{hostNamePanel}),
 		gocui.KeyArrowDown: interfaceVConfirm,
 		gocui.KeyEnter:     interfaceVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -791,7 +792,7 @@ func addNetworkPanel(c *Console) error {
 		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, askInterfacePanel),
+		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askInterfacePanel}),
 		gocui.KeyArrowDown: askNetworkMethodVConfirm,
 		gocui.KeyEnter:     askNetworkMethodVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -823,9 +824,9 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3])
 		return "", nil
 	}
-	addressVConfirm := gotoNextPanel(c, gatewayPanel, validateAddress)
+	addressVConfirm := gotoNextPanel(c, []string{gatewayPanel}, validateAddress)
 	addressV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, askNetworkMethodPanel, func() (string, error) {
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{askNetworkMethodPanel}, func() (string, error) {
 			userInputData.Address, err = addressV.GetData()
 			return "", err
 		}),
@@ -856,9 +857,9 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.Gateway = gateway
 		return "", nil
 	}
-	gatewayVConfirm := gotoNextPanel(c, dnsServersPanel, validateGateway)
+	gatewayVConfirm := gotoNextPanel(c, []string{dnsServersPanel}, validateGateway)
 	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, addressPanel, func() (string, error) {
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{addressPanel}, func() (string, error) {
 			mgmtNetwork.Gateway, err = gatewayV.GetData()
 			return "", err
 		}),
@@ -896,7 +897,7 @@ func addNetworkPanel(c *Console) error {
 		return gotoNextPanel(c, getNextPagePanel(), validateDNSServers, preGotoNextPage)(g, v)
 	}
 	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, gatewayPanel, func() (string, error) {
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{gatewayPanel}, func() (string, error) {
 			userInputData.DNSServers, err = dnsServersV.GetData()
 			return "", err
 		}),
@@ -1273,5 +1274,126 @@ func addUpgradePanel(c *Console) error {
 	upgradeV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8*7)
 	c.AddElement(upgradePanel, upgradeV)
 	upgradeV.Frame = true
+	return nil
+}
+
+func addVIPPanel(c *Console) error {
+	askVipMethodV, err := widgets.NewDropDown(c.Gui, askVipMethodPanel, askVipMethodLabel, getNetworkMethodOptions)
+	if err != nil {
+		return err
+	}
+	vipV, err := widgets.NewInput(c.Gui, vipPanel, vipLabel, false)
+	if err != nil {
+		return err
+	}
+
+	vipTextV := widgets.NewPanel(c.Gui, vipTextPanel)
+
+	closeThisPage := func() {
+		c.CloseElements(
+			askVipMethodPanel,
+			vipPanel,
+			vipTextPanel)
+	}
+
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+		closeThisPage()
+		return showNetworkPage(c)
+	}
+	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+		closeThisPage()
+		return showNext(c, tokenPanel)
+	}
+	gotoVipPanel := func(g *gocui.Gui, v *gocui.View) error {
+		selected, err := askVipMethodV.GetData()
+		if err != nil {
+			return err
+		}
+		if selected == config.NetworkMethodDHCP {
+			spinner := NewSpinner(c.Gui, vipTextPanel, "Requesting IP through DHCP...")
+			spinner.Start()
+			go func(g *gocui.Gui) {
+				vip, err := getVipThroughDHCP(mgmtNetwork.Interface)
+				if err != nil {
+					spinner.Stop(true, err.Error())
+					g.Update(func(g *gocui.Gui) error {
+						return showNext(c, askVipMethodPanel)
+					})
+					return
+				}
+				spinner.Stop(false, "")
+				c.config.Vip = vip.ipv4Addr
+				c.config.VipMode = selected
+				c.config.VipHwAddr = vip.hwAddr
+				g.Update(func(g *gocui.Gui) error {
+					return vipV.SetData(vip.ipv4Addr)
+				})
+			}(c.Gui)
+		} else {
+			vipTextV.SetContent("")
+			g.Update(func(gui *gocui.Gui) error {
+				return vipV.SetData("")
+			})
+			c.config.VipMode = config.NetworkMethodStatic
+		}
+
+		return showNext(c, vipPanel)
+	}
+	gotoVerifyIP := func(g *gocui.Gui, v *gocui.View) error {
+		vip, err := vipV.GetData()
+		if err != nil {
+			return err
+		}
+
+		if c.config.VipMode == config.NetworkMethodDHCP {
+			if vip != c.config.Vip {
+				vipTextV.SetContent("Forbid to modify the VIP obtained through DHCP")
+				return nil
+			}
+			return gotoNextPage(g, v)
+		}
+
+		// verify static IP
+		if net.ParseIP(vip) == nil {
+			vipTextV.SetContent(fmt.Sprintf("Invalid VIP: %s", vip))
+			return nil
+		}
+		c.config.Vip = vip
+		c.config.VipHwAddr = ""
+
+		return gotoNextPage(g, v)
+	}
+	gotoAskVipMethodPanel := func(g *gocui.Gui, v *gocui.View) error {
+		return showNext(c, askVipMethodPanel)
+	}
+	askVipMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowDown: gotoVipPanel,
+		gocui.KeyEnter:     gotoVipPanel,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	vipV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp:   gotoAskVipMethodPanel,
+		gocui.KeyArrowDown: gotoVerifyIP,
+		gocui.KeyEnter:     gotoVerifyIP,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+
+	askVipMethodV.PreShow = func() error {
+		c.Gui.Cursor = true
+		return c.setContentByName(titlePanel, vipTitle)
+	}
+
+	maxX, maxY := c.Gui.Size()
+	askVipMethodV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8+2)
+	c.AddElement(askVipMethodPanel, askVipMethodV)
+
+	vipV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+5)
+	c.AddElement(vipPanel, vipV)
+
+	vipTextV.FgColor = gocui.ColorRed
+	vipTextV.Focus = false
+	vipTextV.SetLocation(maxX/8, maxY/8+6, maxX/8*7, maxY/8+8)
+	c.AddElement(vipTextPanel, vipTextV)
+
 	return nil
 }
