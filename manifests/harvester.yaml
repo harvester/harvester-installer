@@ -13,8 +13,6 @@ spec:
   chart: https://localhost:9345/static/charts/$HARVESTER_CHART_TARBALL
   targetNamespace: harvester-system
   valuesContent: |-
-    auth:
-      enabled: true
     containers:
       apiserver:
         image:
