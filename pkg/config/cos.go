@@ -62,7 +62,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	initramfs.Modules = cfg.OS.Modules
 	initramfs.Sysctl = cfg.OS.Sysctls
 	initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
-	initramfs.Dns.Nameservers = cfg.OS.DNSNameservers
+	if len(cfg.OS.DNSNameservers) > 0 {
+		initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
+	}
 
 	if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
 		return nil, err
@@ -201,6 +203,7 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 // - call `wicked ifreload <interface...>` if `run` flag is true.
 func UpdateNetworkConfig(stage *yipSchema.Stage, networks []Network, run bool) error {
 	var interfaces []string
+	var staticDNSServers []string
 
 	for _, network := range networks {
 		interfaces = append(interfaces, network.Interface)
@@ -242,18 +245,25 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks []Network, run bool) e
 			stage.Commands = append(stage.Commands, fmt.Sprintf("rm -f /etc/sysconfig/network/ifroute-%s", network.Interface))
 		}
 
-		if len(network.DNSNameservers) > 0 {
-			for _, nameServer := range network.DNSNameservers {
-				if util.StringSliceContains(stage.Dns.Nameservers, nameServer) {
-					continue
-				}
-				stage.Dns.Nameservers = append(stage.Dns.Nameservers, nameServer)
+		for _, nameServer := range network.DNSNameservers {
+			if util.StringSliceContains(staticDNSServers, nameServer) {
+				continue
 			}
+			staticDNSServers = append(staticDNSServers, nameServer)
 		}
+	}
+
+	// Set static DNS servers before wicked reload
+	if len(staticDNSServers) > 0 {
+		// Not using stage.Environment because it's run after stage.Commands in Yip
+		stage.Commands = append(stage.Commands, getAddStaticDNSServersCmd(staticDNSServers))
 	}
 
 	if run {
 		stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload %s", strings.Join(interfaces, " ")))
+
+		// in case wicked config is not changed and netconfig is not called
+		stage.Commands = append(stage.Commands, "netconfig update")
 	}
 
 	return nil
@@ -288,6 +298,10 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 	}
 
 	return nil
+}
+
+func getAddStaticDNSServersCmd(servers []string) string {
+	return fmt.Sprintf(`sed -i 's/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS="%s"/' /etc/sysconfig/network/config`, strings.Join(servers, " "))
 }
 
 func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {
