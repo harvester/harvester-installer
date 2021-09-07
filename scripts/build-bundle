@@ -132,7 +132,7 @@ cat <<EOF >> ${image_list_file}
 busybox:1.32.0
 alpine:3
 kubevirt/virtio-container-disk
-rancher/harvester-support-bundle-utils:master-head
+rancher/support-bundle-kit:v0.0.3
 EOF
 
 # get longhorn image list
