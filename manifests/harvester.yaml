@@ -28,6 +28,10 @@ spec:
       enabled: true
       image:
         pullPolicy: "IfNotPresent"
+    harvester-node-disk-manager:
+      enabled: true
+      image:
+        pullPolicy: "IfNotPresent"
     rancherEmbedded: true
     webhook:
       image:
