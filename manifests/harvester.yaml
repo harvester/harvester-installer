@@ -37,6 +37,9 @@ spec:
     webhook:
       image:
         imagePullPolicy: "IfNotPresent"
-    service:
-      harvester:
-        type: LoadBalancer
+    harvester-load-balancer:
+      enabled: true
+    kube-vip:
+      enabled: true
+    kube-vip-cloud-provider:
+      enabled: true

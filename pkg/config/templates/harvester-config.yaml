@@ -9,7 +9,8 @@ spec:
       config:
         vip_interface: "{{ .MgmtInterface }}"
     service:
-      harvester:
-        vipMode: "{{ .VipMode }}"
-        vip: "{{ .Vip }}"
-        vipHwAddr: "{{ .VipHwAddr }}"
+      vip:
+        enabled: true
+        mode: "{{ .VipMode }}"
+        ip: "{{ .Vip }}"
+        hwAddress: "{{ .VipHwAddr }}"
