@@ -5,6 +5,7 @@ TARGET=/run/cos/target
 
 umount_target() {
     sync
+    umount ${TARGET}/oem
     umount ${TARGET}/usr/local
     umount ${TARGET}/boot/efi || true
     umount ${TARGET}
@@ -83,6 +84,9 @@ do_mount()
     LOOP=$(losetup --show -f ${STATEDIR}/cOS/active.img)
     mount -t ext2 $LOOP $TARGET
 
+    mkdir -p ${TARGET}/oem
+    mount ${OEM} ${TARGET}/oem
+    mkdir -p ${TARGET}/usr/local
     mount ${PERSISTENT} ${TARGET}/usr/local
 }
 
@@ -205,6 +209,13 @@ update_grub_settings()
     fi
 }
 
+save_config()
+{
+    if [ -e "$HARVESTER_CONFIG" ]; then
+        cp $HARVESTER_CONFIG ${TARGET}/oem/harvester.config
+    fi 
+}
+
 trap cleanup exit
 
 # For PXE Boot
@@ -216,6 +227,7 @@ COS_INSTALL_ISO_URL="" INTERACTIVE=yes cos-installer
 # Preload images
 do_detect
 do_mount
+save_config
 do_preload
 
 update_grub_settings
