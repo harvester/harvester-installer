@@ -198,35 +198,42 @@ func execute(g *gocui.Gui, env []string, cmdName string) error {
 	return cmd.Wait()
 }
 
+func saveTemp(obj interface{}, prefix string) (string, error) {
+	tempFile, err := ioutil.TempFile("/tmp", fmt.Sprintf("%s.", prefix))
+	if err != nil {
+		return "", err
+	}
+
+	bytes, err := yaml.Marshal(obj)
+	if err != nil {
+		return "", err
+	}
+	if _, err := tempFile.Write(bytes); err != nil {
+		return "", err
+	}
+	if err := tempFile.Close(); err != nil {
+		return "", err
+	}
+
+	return tempFile.Name(), nil
+}
+
 func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipSchema.YipConfig, webhooks RendererWebhooks) error {
 	webhooks.Handle(EventInstallStarted)
 
-	var (
-		err      error
-		tempFile *os.File
-	)
-
-	tempFile, err = ioutil.TempFile("/tmp", "cos.XXXXXXXX")
+	cosConfigFile, err := saveTemp(cosConfig, "cos")
 	if err != nil {
 		return err
 	}
-	defer tempFile.Close()
+	defer os.Remove(cosConfigFile)
 
-	if tempFile != nil {
-		bytes, err := yaml.Marshal(cosConfig)
-		if err != nil {
-			return err
-		}
-		if _, err := tempFile.Write(bytes); err != nil {
-			return err
-		}
-		if err := tempFile.Close(); err != nil {
-			return err
-		}
-		defer os.Remove(tempFile.Name())
+	hvstConfigFile, err := saveTemp(hvstConfig, "harvester")
+	if err != nil {
+		return err
 	}
+	defer os.Remove(hvstConfigFile)
 
-	hvstConfig.Install.ConfigURL = tempFile.Name()
+	hvstConfig.Install.ConfigURL = cosConfigFile
 
 	ev, err := hvstConfig.ToCosInstallEnv()
 	if err != nil {
@@ -234,6 +241,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 	}
 
 	env := append(os.Environ(), ev...)
+	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
 	if err := execute(g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
 		return err
