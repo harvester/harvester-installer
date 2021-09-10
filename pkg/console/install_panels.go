@@ -763,7 +763,7 @@ func addNetworkPanel(c *Console) error {
 		if output, err := setupNetwork(); err != nil {
 			return fmt.Sprintf("Configure network failed: %s", string(output)), nil
 		}
-		return "Can't get a valid IP address from DHCP server", nil
+		return "", nil
 	}
 	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
 		selected, err := askNetworkMethodV.GetData()
