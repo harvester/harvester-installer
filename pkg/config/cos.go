@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	cosLoginUser = "rancher"
+	cosLoginUser       = "rancher"
 	manifestsDirectory = "/var/lib/rancher/rke2/server/manifests/"
-	canalConfig = "rke2-canal-config.yaml"
-	harvesterConfig = "harvester-config.yaml"
+	canalConfig        = "rke2-canal-config.yaml"
+	harvesterConfig    = "harvester-config.yaml"
 )
 
 var (
@@ -28,9 +28,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	preStage := yipSchema.Stage{}
-	preStage.Commands = append(preStage.Commands, "rm -f /etc/sysconfig/network/ifcfg-eth0")
 
 	initramfs := yipSchema.Stage{
 		SSHKeys:   make(map[string][]string),
@@ -115,7 +112,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 				return nil, err
 			}
 			initramfs.Files = append(initramfs.Files, yipSchema.File{
-				Path:        manifestsDirectory+canalConfig,
+				Path:        manifestsDirectory + canalConfig,
 				Content:     canalHelmChartConfig,
 				Permissions: 0600,
 				Owner:       0,
@@ -129,11 +126,11 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 				return nil, err
 			}
 			initramfs.Files = append(initramfs.Files, yipSchema.File{
-				Path: manifestsDirectory+harvesterConfig,
-				Content: harvesterHelmChartConfig,
+				Path:        manifestsDirectory + harvesterConfig,
+				Content:     harvesterHelmChartConfig,
 				Permissions: 0600,
-				Owner: 0,
-				Group: 0,
+				Owner:       0,
+				Group:       0,
 			})
 		}
 	}
@@ -141,7 +138,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
 		Stages: map[string][]yipSchema.Stage{
-			"initramfs": {preStage, initramfs},
+			"initramfs": {initramfs},
 		},
 	}
 
