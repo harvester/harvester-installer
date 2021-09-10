@@ -1226,6 +1226,13 @@ func addInstallPanel(c *Console) error {
 			if c.config.TTY == "" {
 				c.config.TTY = getFirstConsoleTTY()
 			}
+
+			// case insensitive for network method and vip mode
+			for i, network := range c.config.Networks {
+				c.config.Networks[i].Method = strings.ToLower(network.Method)
+			}
+			c.config.VipMode = strings.ToLower(c.config.VipMode)
+
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToPanel(c.Gui, err.Error(), installPanel)
 				return
