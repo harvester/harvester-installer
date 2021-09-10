@@ -3,7 +3,6 @@ package console
 import (
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -125,8 +124,8 @@ func checkNetworks(networks []config.Network) error {
 		if err := checkInterface(network.Interface); err != nil {
 			return err
 		}
-		networkMethod := strings.ToLower(network.Method)
-		switch networkMethod {
+
+		switch network.Method {
 		case config.NetworkMethodDHCP, "":
 			return nil
 		case config.NetworkMethodStatic:
@@ -155,7 +154,7 @@ func checkNetworks(networks []config.Network) error {
 				return err
 			}
 		default:
-			return prettyError(ErrMsgNetworkMethodUnknown, networkMethod)
+			return prettyError(ErrMsgNetworkMethodUnknown, network.Method)
 		}
 	}
 
@@ -167,9 +166,7 @@ func checkVip(vip, vipHwAddr, vipMode string) error {
 		return err
 	}
 
-	mode := strings.ToLower(vipMode)
-
-	switch mode {
+	switch vipMode {
 	case config.NetworkMethodDHCP:
 		if err := checkHwAddr(vipHwAddr); err != nil {
 			return err
