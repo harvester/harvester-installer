@@ -16,6 +16,13 @@ github.com/hashicorp/go-multierror
 # github.com/imdario/mergo v0.3.12
 ## explicit
 github.com/imdario/mergo
+# github.com/insomniacslk/dhcp v0.0.0-20210827173440-b95caade3eac
+## explicit
+github.com/insomniacslk/dhcp/dhcpv4
+github.com/insomniacslk/dhcp/dhcpv4/nclient4
+github.com/insomniacslk/dhcp/iana
+github.com/insomniacslk/dhcp/interfaces
+github.com/insomniacslk/dhcp/rfc1035label
 # github.com/itchyny/gojq v0.12.2
 github.com/itchyny/gojq
 # github.com/itchyny/timefmt-go v0.1.2
@@ -27,6 +34,10 @@ github.com/jroimartin/gocui
 github.com/mattn/go-runewidth
 # github.com/mattn/go-shellwords v1.0.10
 github.com/mattn/go-shellwords
+# github.com/mdlayher/ethernet v0.0.0-20190606142754-0394541c37b7
+github.com/mdlayher/ethernet
+# github.com/mdlayher/raw v0.0.0-20191009151244-50f2db8cc065
+github.com/mdlayher/raw
 # github.com/mudler/yip v0.0.0-20210627214129-f2533528376f
 ## explicit
 github.com/mudler/yip/pkg/schema
@@ -60,6 +71,10 @@ github.com/tredoe/osutil/userutil/crypt/common
 github.com/tredoe/osutil/userutil/crypt/sha512_crypt
 # github.com/twpayne/go-vfs v1.5.0
 github.com/twpayne/go-vfs
+# github.com/u-root/uio v0.0.0-20210528114334-82958018845c
+github.com/u-root/uio/rand
+github.com/u-root/uio/ubinary
+github.com/u-root/uio/uio
 # github.com/vishvananda/netlink v1.1.0
 ## explicit
 github.com/vishvananda/netlink
@@ -80,6 +95,7 @@ golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 # golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 ## explicit
+golang.org/x/net/bpf
 golang.org/x/net/http/httpproxy
 golang.org/x/net/idna
 # golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c

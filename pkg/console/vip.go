@@ -1,15 +1,19 @@
 package console
 
 import (
-	"fmt"
-	"os/exec"
-	"strings"
+	"context"
+	"math/rand"
+	"net"
+	"strconv"
+	"time"
 
+	"github.com/insomniacslk/dhcp/dhcpv4/nclient4"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
 
-const tempMacvlanName = "macvlan-0"
+const tempMacvlanPrefix = "macvlan-"
 
 type vipAddr struct {
 	hwAddr   string
@@ -21,21 +25,23 @@ func createMacvlan(name string) (netlink.Link, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch %s", name)
 	}
+	rand.Seed(time.Now().UnixNano())
+	macvlanName := tempMacvlanPrefix+strconv.Itoa(rand.Intn(100))
 	macvlan := &netlink.Macvlan{
 		LinkAttrs: netlink.LinkAttrs{
-			Name:        tempMacvlanName,
+			Name:        macvlanName,
 			ParentIndex: l.Attrs().Index,
 		},
 	}
 
 	if err = netlink.LinkAdd(macvlan); err != nil {
-		return nil, errors.Wrapf(err, "failed to add %s", tempMacvlanName)
+		return nil, errors.Wrapf(err, "failed to add %s", macvlanName)
 	}
 	if err = netlink.LinkSetUp(macvlan); err != nil {
-		return nil, errors.Wrapf(err, "failed to set %s up", tempMacvlanName)
+		return nil, errors.Wrapf(err, "failed to set %s up", macvlanName)
 	}
 
-	return netlink.LinkByName(tempMacvlanName)
+	return netlink.LinkByName(macvlanName)
 }
 
 func deleteMacvlan(l netlink.Link) error {
@@ -44,7 +50,7 @@ func deleteMacvlan(l netlink.Link) error {
 		return errors.Wrapf(err, "failed to set %s down", err)
 	}
 	if err := netlink.LinkDel(l); err != nil {
-		return errors.Wrapf(err, "failed to del %s", tempMacvlanName)
+		return errors.Wrapf(err, "failed to del %s", l.Attrs().Name)
 	}
 
 	return nil
@@ -56,7 +62,7 @@ func getVipThroughDHCP(iface string) (*vipAddr, error) {
 		return nil, err
 	}
 
-	ip, err := getIPThroughDHCP(l)
+	ip, err := getIPThroughDHCP(l.Attrs().Name)
 	if err != nil {
 		return nil, err
 	}
@@ -67,42 +73,23 @@ func getVipThroughDHCP(iface string) (*vipAddr, error) {
 
 	return &vipAddr{
 		hwAddr: l.Attrs().HardwareAddr.String(),
-		ipv4Addr: ip,
+		ipv4Addr: ip.String(),
 	}, nil
 }
 
-func getIPThroughDHCP(l netlink.Link) (string, error) {
-	out, err := exec.Command("/bin/sh", "-c", "/usr/lib/wicked/bin/wickedd-dhcp4 --test "+l.Attrs().Name).CombinedOutput()
+func getIPThroughDHCP(iface string) (net.IP, error) {
+	broadcast, err := nclient4.New(iface)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get IP through DHCP")
+		return nil, err
+	}
+	defer broadcast.Close()
+
+	lease, err := broadcast.Request(context.TODO())
+	if err != nil {
+		return nil, err
 	}
 
-	return parseIPFromWickedOutput(out)
-}
+	logrus.Info(lease)
 
-func parseIPFromWickedOutput(out []byte) (string, error) {
-	lines := strings.Split(string(out), "\n")
-
-	var ip string
-	for _, line := range lines {
-		words := strings.FieldsFunc(line, func(c rune) bool {
-			if c == '=' || c == '\'' {
-				return true
-			}
-			return false
-		})
-		if len(words) < 2 {
-			continue
-		}
-		if words[0] == "IPADDR" {
-			ip = strings.Split(words[1], "/")[0]
-			break
-		}
-	}
-
-	if ip == "" {
-		return ip, fmt.Errorf("IPv4 address can not be empty string")
-	}
-
-	return ip, nil
+	return lease.Offer.YourIPAddr, nil
 }
