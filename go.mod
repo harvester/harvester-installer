@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/imdario/mergo v0.3.12
+	github.com/insomniacslk/dhcp v0.0.0-20210827173440-b95caade3eac
 	github.com/jroimartin/gocui v0.4.0
 	github.com/mudler/yip v0.0.0-20210627214129-f2533528376f
 	github.com/nsf/termbox-go v1.1.1 // indirect
