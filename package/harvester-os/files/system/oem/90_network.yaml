@@ -1,7 +1,27 @@
-name: "Bring up interface"
+name: "Network configuration"
 stages:
+  rootfs:
+    - name: Create DHCP config for boot interfaces
+      if: cat /proc/cmdline | grep -q "harvester.install.automatic=true"
+      commands:
+      - |
+        if [ ! -e /tmp/net.ifaces ]; then
+          echo "net.ifaces is not found. Skip configuring boot interface."
+          exit 0
+        fi
+        
+        for iface in $(</tmp/net.ifaces); do
+          echo "Create DHCP config for $iface"
+        
+          cat > /sysroot/etc/sysconfig/network/ifcfg-$iface <<'EOF'
+        BOOTPROTO='dhcp'
+        STARTMODE='onboot'
+        EOF
+        
+        done
   initramfs:
-    - commands:
+    - name: Bring up interfaces
+      commands:
       - |
         for i in /sys/class/net/{eth*,en*,ib*}; do
           [ -e $i ] || continue
