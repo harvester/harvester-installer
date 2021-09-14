@@ -12,6 +12,7 @@ type Spinner struct {
 	panel  string
 	prefix string
 	ticker *time.Ticker
+	focus  bool
 
 	stop    chan TaskResult
 	stopped chan bool
@@ -35,6 +36,17 @@ func NewSpinner(g *gocui.Gui, panel string, prefix string) *Spinner {
 		prefix:  prefix,
 		stop:    make(chan TaskResult),
 		stopped: make(chan bool),
+	}
+}
+
+func NewFocusSpinner(g *gocui.Gui, panel string, prefix string) *Spinner {
+	return &Spinner{
+		g:       g,
+		panel:   panel,
+		prefix:  prefix,
+		stop:    make(chan TaskResult),
+		stopped: make(chan bool),
+		focus:   true,
 	}
 }
 
@@ -78,8 +90,15 @@ func (s *Spinner) writePanel(message string, clear bool, fgColor gocui.Attribute
 			ch <- struct{}{}
 		}()
 		v, err := g.View(s.panel)
+		if err == gocui.ErrUnknownView {
+			return nil
+		}
 		if err != nil {
 			return err
+		}
+
+		if s.focus {
+			g.SetCurrentView(s.panel)
 		}
 		if clear {
 			v.Clear()

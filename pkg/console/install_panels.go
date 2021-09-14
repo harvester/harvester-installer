@@ -607,6 +607,14 @@ func addNetworkPanel(c *Console) error {
 
 	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
 
+	updateValidatorMessage := func(msg string) error {
+		if err := networkValidatorV.Close(); err != nil {
+			return err
+		}
+		networkValidatorV.Focus = false
+		return c.setContentByName(networkValidatorPanel, msg)
+	}
+
 	gotoNextPanel := func(c *Console, name []string, hooks ...func() (string, error)) func(g *gocui.Gui, v *gocui.View) error {
 		return func(g *gocui.Gui, v *gocui.View) error {
 			c.CloseElement(networkValidatorPanel)
@@ -616,7 +624,7 @@ func addNetworkPanel(c *Console) error {
 					return err
 				}
 				if msg != "" {
-					return c.setContentByName(networkValidatorPanel, msg)
+					return updateValidatorMessage(msg)
 				}
 			}
 			return showNext(c, name...)
@@ -648,7 +656,6 @@ func addNetworkPanel(c *Console) error {
 		c.config.Networks = []config.Network{
 			mgmtNetwork,
 		}
-		closeThisPage()
 		return "", nil
 	}
 
@@ -659,15 +666,37 @@ func addNetworkPanel(c *Console) error {
 		return []string{serverURLPanel}
 	}
 
-	gotoNextPage := func() error {
-		msg, err := preGotoNextPage()
-		if err != nil {
+	gotoNextPage := func(fromPanel string) error {
+		if err := networkValidatorV.Show(); err != nil {
 			return err
 		}
-		if msg != "" {
-			return c.setContentByName(networkValidatorPanel, msg)
-		}
-		return showNext(c, getNextPagePanel()...)
+		spinner := NewFocusSpinner(c.Gui, networkValidatorPanel, fmt.Sprintf("Applying network configuration..."))
+		spinner.Start()
+		go func(g *gocui.Gui) {
+			msg, err := preGotoNextPage()
+			if err != nil || msg != "" {
+				var isErr bool
+				var errMsg string
+				if err != nil {
+					isErr, errMsg = true, fmt.Sprintf("failed to execute preGotoNextPage hook: %s", err)
+				} else {
+					isErr, errMsg = true, msg
+				}
+
+				spinner.Stop(isErr, errMsg)
+				// Go back to the panel that triggered gotoNextPage
+				g.Update(func(g *gocui.Gui) error {
+					return showNext(c, fromPanel)
+				})
+			} else {
+				spinner.Stop(false, "")
+				g.Update(func(g *gocui.Gui) error {
+					closeThisPage()
+					return showNext(c, getNextPagePanel()...)
+				})
+			}
+		}(c.Gui)
+		return nil
 	}
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
@@ -713,11 +742,11 @@ func addNetworkPanel(c *Console) error {
 		c.CloseElement(networkValidatorPanel)
 		switch nicState := getNICState(selected); nicState {
 		case NICStateNotFound:
-			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s not found", selected))
+			return updateValidatorMessage(fmt.Sprintf("NIC %s not found", selected))
 		case NICStateDown:
-			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is down", selected))
+			return updateValidatorMessage(fmt.Sprintf("NIC %s is down", selected))
 		case NICStateLowerDown:
-			return c.setContentByName(networkValidatorPanel, fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", selected))
+			return updateValidatorMessage(fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", selected))
 		}
 		c.config.Install.MgmtInterface = selected
 		mgmtNetwork.Interface = selected
@@ -740,32 +769,12 @@ func addNetworkPanel(c *Console) error {
 		if mgmtNetwork.Method == config.NetworkMethodStatic {
 			return "", nil
 		}
-		nic, err := net.InterfaceByName(mgmtNetwork.Interface)
+		addr, err := getIPThroughDHCP(mgmtNetwork.Interface)
 		if err != nil {
-			return "", err
+			msg := fmt.Sprintf("Requesting IP through DHCP failed: %s", err)
+			return msg, nil
 		}
-		addrList, err := nic.Addrs()
-		if err != nil {
-			return "", err
-		}
-		for _, addr := range addrList {
-			if ipNet, ok := addr.(*net.IPNet); ok {
-				if ipNet.IP.To4() != nil {
-					_, cidrIPNet, err := net.ParseCIDR(ipNet.String())
-					if err != nil {
-						return err.Error(), nil
-					}
-					if cidrIPNet.String() != "169.254.0.0/16" {
-						return "", nil
-					}
-				}
-			}
-		}
-		askInterfaceV.Close()
-		askInterfaceV.Show()
-		if output, err := setupNetwork(); err != nil {
-			return fmt.Sprintf("Configure network failed: %s", string(output)), nil
-		}
+		logrus.Infof("DHCP test passed. Got IP: %s", addr)
 		return "", nil
 	}
 	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
@@ -774,25 +783,48 @@ func addNetworkPanel(c *Console) error {
 			return err
 		}
 		mgmtNetwork.Method = selected
-		c.CloseElement(networkValidatorPanel)
-		msg, err := validateDHCPAddresses()
-		if err != nil {
+
+		if selected == config.NetworkMethodStatic {
+			return showNext(c, dnsServersPanel, gatewayPanel, addressPanel)
+		}
+
+		c.CloseElements(dnsServersPanel, gatewayPanel, addressPanel)
+		if err := networkValidatorV.Show(); err != nil {
 			return err
 		}
-		if msg != "" {
-			return c.setContentByName(networkValidatorPanel, msg)
-		}
-		if selected != config.NetworkMethodStatic {
-			userInputData.Address = ""
-			userInputData.DNSServers = ""
-			mgmtNetwork.IP = ""
-			mgmtNetwork.SubnetMask = ""
-			mgmtNetwork.Gateway = ""
-			mgmtNetwork.DNSNameservers = nil
-			c.config.OS.DNSNameservers = nil
-			return gotoNextPage()
-		}
-		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel)
+		spinner := NewFocusSpinner(g, networkValidatorPanel, fmt.Sprintf("Requesting IP through DHCP..."))
+		spinner.Start()
+		go func(g *gocui.Gui) {
+			msg, err := validateDHCPAddresses()
+			if err != nil || msg != "" {
+				var isErr bool
+				var errMsg string
+				if err != nil {
+					isErr, errMsg = true, fmt.Sprintf("DHCP validation error: %s", err)
+				} else {
+					isErr, errMsg = true, msg
+				}
+
+				spinner.Stop(isErr, errMsg)
+				g.Update(func(g *gocui.Gui) error {
+					return showNext(c, askNetworkMethodPanel)
+				})
+			} else {
+				userInputData.Address = ""
+				userInputData.DNSServers = ""
+				mgmtNetwork.IP = ""
+				mgmtNetwork.SubnetMask = ""
+				mgmtNetwork.Gateway = ""
+				mgmtNetwork.DNSNameservers = nil
+				c.config.OS.DNSNameservers = nil
+
+				spinner.Stop(false, "")
+				g.Update(func(g *gocui.Gui) error {
+					return gotoNextPage(askNetworkMethodPanel)
+				})
+			}
+		}(c.Gui)
+		return nil
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askInterfacePanel}),
@@ -897,7 +929,15 @@ func addNetworkPanel(c *Console) error {
 		return "", nil
 	}
 	dnsServersVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		return gotoNextPanel(c, getNextPagePanel(), validateDNSServers, preGotoNextPage)(g, v)
+		msg, err := validateDNSServers()
+		if err != nil {
+			return err
+		}
+		if msg != "" {
+			return updateValidatorMessage(msg)
+		}
+
+		return gotoNextPage(dnsServersPanel)
 	}
 	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: gotoNextPanel(c, []string{gatewayPanel}, func() (string, error) {
@@ -913,7 +953,6 @@ func addNetworkPanel(c *Console) error {
 	// networkValidatorV
 	networkValidatorV.FgColor = gocui.ColorRed
 	networkValidatorV.Wrap = true
-	networkValidatorV.Focus = false
 	setLocation(networkValidatorV, 0)
 	c.AddElement(networkValidatorPanel, networkValidatorV)
 
