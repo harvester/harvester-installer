@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -77,6 +78,31 @@ func validatePingServerURL(url string) error {
 		_, err := getURL(client, url)
 		return err
 	})
+}
+
+func validateNTPServers(ntpServerList []string) error {
+	for _, ntpServer := range ntpServerList {
+		host, port, err := net.SplitHostPort(ntpServer)
+		if err != nil {
+			if addrErr, ok := err.(*net.AddrError); ok && addrErr.Err == "missing port in address" {
+				host = ntpServer
+				// default ntp server port
+				// RFC: https://datatracker.ietf.org/doc/html/rfc4330#section-4
+				port = "123"
+			} else {
+				return err
+			}
+		}
+		// ntp servers use udp protocol
+		// RFC: https://datatracker.ietf.org/doc/html/rfc4330
+		conn, err := net.Dial("udp", fmt.Sprintf("%s:%s", host, port))
+		if err != nil {
+			return err
+		}
+		conn.Close()
+	}
+
+	return nil
 }
 
 func retryOnError(retryNum, retryInterval int64, process func() error) error {
