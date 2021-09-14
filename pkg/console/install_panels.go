@@ -28,6 +28,7 @@ type UserInputData struct {
 	PasswordConfirm string
 	Address         string
 	DNSServers      string
+	NTPServers      string
 }
 
 const (
@@ -39,8 +40,10 @@ const (
 
 var (
 	once          sync.Once
-	userInputData = UserInputData{}
-	mgmtNetwork   = config.Network{}
+	userInputData = UserInputData{
+		NTPServers: "ntp.ubuntu.com",
+	}
+	mgmtNetwork = config.Network{}
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -49,7 +52,6 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 		setPanels(c)
 		initPanel := askCreatePanel
 
-		c.config.OS.NTPServers = []string{"ntp.ubuntu.com"}
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
 		if cfg, err := config.ReadConfig(); err == nil {
@@ -91,6 +93,7 @@ func setPanels(c *Console) error {
 		addDiskPanel,
 		addNetworkPanel,
 		addVIPPanel,
+		addNTPServersPanel,
 		addServerURLPanel,
 		addTokenPanel,
 		addPasswordPanels,
@@ -402,7 +405,7 @@ func addPasswordPanels(c *Console) error {
 				return err
 			}
 			c.config.Password = encrypted
-			return showNext(c, proxyPanel)
+			return showNext(c, ntpServersPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			passwordV.Close()
@@ -1024,7 +1027,7 @@ func addProxyPanel(c *Console) error {
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			proxyV.Close()
 			c.CloseElement(notePanel)
-			return showNext(c, passwordConfirmPanel, passwordPanel)
+			return showNext(c, ntpServersPanel)
 		},
 	}
 	c.AddElement(proxyPanel, proxyV)
@@ -1119,6 +1122,9 @@ func addConfirmInstallPanel(c *Console) error {
 		}
 		options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
 		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
+		if userInputData.NTPServers != "" {
+			options += fmt.Sprintf("ntp servers: %v\n", userInputData.NTPServers)
+		}
 		if proxy := os.Getenv("HTTP_PROXY"); proxy != "" {
 			options += fmt.Sprintf("proxy address: %v\n", proxy)
 		}
@@ -1394,6 +1400,97 @@ func addVIPPanel(c *Console) error {
 	vipTextV.Focus = false
 	vipTextV.SetLocation(maxX/8, maxY/8+6, maxX/8*7, maxY/8+8)
 	c.AddElement(vipTextPanel, vipTextV)
+
+	return nil
+}
+
+func addNTPServersPanel(c *Console) error {
+	ntpServersV, err := widgets.NewInput(c.Gui, ntpServersPanel, ntpServersLabel, false)
+	if err != nil {
+		return err
+	}
+
+	ntpServersV.PreShow = func() error {
+		c.Gui.Cursor = true
+		ntpServersV.Value = userInputData.NTPServers
+		if err = c.setContentByName(titlePanel, "Optional: Configure NTP Servers"); err != nil {
+			return err
+		}
+		return c.setContentByName(notePanel, ntpServersNote)
+	}
+
+	closeThisPage := func() error {
+		c.CloseElement(notePanel)
+		return ntpServersV.Close()
+	}
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+		c.config.OS.NTPServers = []string{}
+		closeThisPage()
+		return showNext(c, passwordConfirmPanel, passwordPanel)
+	}
+	gotoNextPage := func() error {
+		closeThisPage()
+		return showNext(c, proxyPanel)
+	}
+
+	ntpServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			// init asyncTaskV
+			asyncTaskV, err := c.GetElement(spinnerPanel)
+			if err != nil {
+				return err
+			}
+			asyncTaskV.Close()
+
+			// get ntp servers
+			ntpServers, err := ntpServersV.GetData()
+			if err != nil {
+				return err
+			}
+
+			// When input servers can't be reached and users don't want to change it, we continue the process.
+			if strings.Join(c.config.OS.NTPServers, ",") == ntpServers {
+				return gotoNextPage()
+			}
+
+			userInputData.NTPServers = ntpServers
+			ntpServerList := strings.Split(ntpServers, ",")
+			c.config.OS.NTPServers = ntpServerList
+
+			// focus on task panel to prevent input
+			asyncTaskV.Show()
+
+			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking NTP Server: %q...", ntpServers))
+			spinner.Start()
+
+			go func(g *gocui.Gui) {
+				if err = validateNTPServers(ntpServerList); err != nil {
+					spinner.Stop(true, "Failed to reach NTP servers. Press Enter to continue or change the input to revalidate.")
+					g.Update(func(g *gocui.Gui) error {
+						return showNext(c, ntpServersPanel)
+					})
+					return
+				}
+				spinner.Stop(false, "")
+				g.Update(func(g *gocui.Gui) error {
+					return gotoNextPage()
+				})
+			}(c.Gui)
+			return nil
+		},
+		gocui.KeyEsc: gotoPrevPage,
+	}
+	ntpServersV.PostClose = func() error {
+		if err := c.setContentByName(notePanel, ""); err != nil {
+			return err
+		}
+		asyncTaskV, err := c.GetElement(spinnerPanel)
+		if err != nil {
+			return err
+		}
+		return asyncTaskV.Close()
+	}
+	c.AddElement(ntpServersPanel, ntpServersV)
 
 	return nil
 }

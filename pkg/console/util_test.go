@@ -136,3 +136,80 @@ func TestGetServerURLFromRancherdConfig(t *testing.T) {
 		assert.Equal(t, testCase.err, err)
 	}
 }
+
+func TestValidateNTPServers(t *testing.T) {
+	quit := make(chan interface{})
+	mockNTPServers, err := startMockNTPServers(quit)
+	if err != nil {
+		t.Fatalf("can't start mock ntp servers, %v", err)
+	}
+	testCases := []struct {
+		name        string
+		input       []string
+		expectError bool
+	}{
+		{
+			name:        "Correct NTP Servers",
+			input:       mockNTPServers,
+			expectError: false,
+		},
+		{
+			name:        "Empty input",
+			input:       []string{},
+			expectError: false,
+		},
+		{
+			name:        "Invalid URL",
+			input:       []string{"error"},
+			expectError: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := validateNTPServers(testCase.input)
+			if testCase.expectError {
+				assert.NotNil(t, err)
+			} else {
+				if err != nil {
+					t.Log(err)
+				}
+				assert.Nil(t, err)
+			}
+		})
+	}
+	close(quit)
+}
+
+func startMockNTPServers(quit chan interface{}) ([]string, error) {
+	ntpServers := []string{}
+	for i := 0; i < 2; i++ {
+		listener, err := net.ListenPacket("udp", "127.0.0.1:0")
+		if err != nil {
+			return nil, err
+		}
+		ntpServers = append(ntpServers, listener.LocalAddr().String())
+
+		go func(listener net.PacketConn) {
+			defer listener.Close()
+
+			for {
+				req := make([]byte, 48)
+				_, addr, err := listener.ReadFrom(req)
+				if err != nil {
+					select {
+					case <-quit:
+						return
+					default:
+						continue
+					}
+				}
+				go func(listener net.PacketConn, addr net.Addr) {
+					listener.WriteTo(make([]byte, 48), addr)
+				}(listener, addr)
+			}
+
+		}(listener)
+	}
+	return ntpServers, nil
+}
