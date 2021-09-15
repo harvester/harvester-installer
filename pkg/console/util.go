@@ -3,8 +3,10 @@ package console
 import (
 	"bufio"
 	"crypto/tls"
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -97,6 +99,29 @@ func validateNTPServers(ntpServerList []string) error {
 		// RFC: https://datatracker.ietf.org/doc/html/rfc4330
 		conn, err := net.Dial("udp", fmt.Sprintf("%s:%s", host, port))
 		if err != nil {
+			return err
+		}
+		if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			return err
+		}
+
+		// RFC: https://datatracker.ietf.org/doc/html/rfc4330#section-4
+		// NTP Packet is 48 bytes and we set the first byte for request.
+		// 00 100 011 (or 0x2B)
+		// |  |   +-- client mode (3)
+		// |  + ----- version (4)
+		// + -------- leap year indicator, 0 no warning
+		req := make([]byte, 48)
+		req[0] = 0x2B
+
+		// send time request
+		if err := binary.Write(conn, binary.BigEndian, req); err != nil {
+			log.Fatalf("failed to send request: %v", err)
+		}
+
+		// block to receive server response
+		rsp := make([]byte, 48)
+		if err := binary.Read(conn, binary.BigEndian, &rsp); err != nil {
 			return err
 		}
 		conn.Close()
