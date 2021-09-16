@@ -1,0 +1,19 @@
+STARTMODE='onboot'
+BONDING_MASTER='yes'
+BOOTPROTO='{{ .Method }}'
+{{ if eq .Method "static" -}}
+IPADDR={{ .IP }}
+NETMASK={{ .SubnetMask }}
+{{- end }}
+{{ range $i, $interface := .Interfaces -}}
+BONDING_SLAVE_{{ $i }}='{{ $interface.Name }}'
+{{ end }}
+{{  with .BondOption -}}
+{{- $bondMode := or .Mode "balance-tlb" -}}
+BONDING_MODULE_OPTS='mode={{ $bondMode }} miimon=100'
+{{- end }}
+{{ $defaultRoute := "no" -}}
+{{- if .DefaultRoute -}}
+  {{- $defaultRoute = "yes" -}}
+{{- end }}
+DHCLIENT_SET_DEFAULT_ROUTE='{{ $defaultRoute }}'

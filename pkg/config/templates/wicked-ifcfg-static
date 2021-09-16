@@ -1,4 +1,0 @@
-BOOTPROTO=static
-STARTMODE=onboot
-IPADDR={{ .IP }}
-NETMASK={{ .SubnetMask }}
