@@ -7,7 +7,7 @@ spec:
   valuesContent: |-
     kube-vip:
       config:
-        vip_interface: "{{ .MgmtInterface }}"
+        vip_interface: harvester-mgmt
     service:
       vip:
         enabled: true

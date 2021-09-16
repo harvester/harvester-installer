@@ -1,0 +1,6 @@
+STARTMODE='onboot'
+BOOTPROTO='{{ .Method }}'
+{{ if eq .Method "static" -}}
+IPADDR={{ .IP }}
+NETMASK={{ .SubnetMask }}
+{{- end }}

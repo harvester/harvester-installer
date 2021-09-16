@@ -8,5 +8,7 @@ const (
 	NetworkMethodDHCP   = "dhcp"
 	NetworkMethodStatic = "static"
 
+	MgmtInterfaceName = "harvester-mgmt"
+
 	RancherdConfigFile = "/etc/rancher/rancherd/config.yaml"
 )

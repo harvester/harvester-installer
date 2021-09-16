@@ -10,13 +10,34 @@ const (
 	SanitizeMask = "***"
 )
 
+type NetworkInterface struct {
+	Name   string `json:"name,omitempty"`
+	HwAddr string `json:"hwAddr,omitempty"`
+}
+
+type BondOption struct {
+	Mode string `json:"mode,omitempty"`
+}
+
+const (
+	BondModeBalanceRR    = "balance-rr"
+	BondModeActiveBackup = "active-backup"
+	BondModeBalnaceXOR   = "balance-xor"
+	BondModeBroadcast    = "broadcast"
+	BondModeIEEE802_3ad  = "802.3ad"
+	BondModeBalanceTLB   = "balance-tlb"
+	BondModeBalanceALB   = "balance-alb"
+)
+
 type Network struct {
-	Interface      string   `json:"interface,omitempty"`
-	Method         string   `json:"method,omitempty"`
-	IP             string   `json:"ip,omitempty"`
-	SubnetMask     string   `json:"subnetMask,omitempty"`
-	Gateway        string   `json:"gateway,omitempty"`
-	DNSNameservers []string `json:"dnsNameservers,omitempty"`
+	Interfaces     []NetworkInterface `json:"interfaces,omitempty"`
+	Method         string             `json:"method,omitempty"`
+	IP             string             `json:"ip,omitempty"`
+	SubnetMask     string             `json:"subnetMask,omitempty"`
+	Gateway        string             `json:"gateway,omitempty"`
+	DNSNameservers []string           `json:"dnsNameservers,omitempty"`
+	DefaultRoute   bool               `json:"-"`
+	BondOption     BondOption         `json:"bondOption,omitempty"`
 }
 
 type HTTPBasicAuth struct {
@@ -35,10 +56,9 @@ type Webhook struct {
 }
 
 type Install struct {
-	Automatic     bool      `json:"automatic,omitempty"`
-	Mode          string    `json:"mode,omitempty"`
-	MgmtInterface string    `json:"mgmtInterface,omitempty"`
-	Networks      []Network `json:"networks,omitempty"`
+	Automatic bool               `json:"automatic,omitempty"`
+	Mode      string             `json:"mode,omitempty"`
+	Networks  map[string]Network `json:"networks,omitempty"`
 
 	Vip       string `json:"vip,omitempty"`
 	VipHwAddr string `json:"vipHwAddr,omitempty"`

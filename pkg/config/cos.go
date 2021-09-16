@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -79,24 +80,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	initramfs.Environment = cfg.OS.Environment
 
-	// ensure network that contains mgmtInterface exists
-	if cfg.MgmtInterface != "" {
-		mgmtInterfaceNetwork := false
-		for _, network := range cfg.Networks {
-			if network.Interface == cfg.MgmtInterface {
-				mgmtInterfaceNetwork = true
-				break
-			}
-		}
-
-		if !mgmtInterfaceNetwork {
-			cfg.Networks = append(cfg.Networks, Network{
-				Interface: cfg.MgmtInterface,
-				Method:    NetworkMethodDHCP,
-			})
-		}
-	}
-
 	if err := UpdateNetworkConfig(&initramfs, cfg.Networks, false); err != nil {
 		return nil, err
 	}
@@ -110,19 +93,17 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			Group:       0,
 		})
 
-		if cfg.Install.MgmtInterface != "" {
-			canalHelmChartConfig, err := render(canalConfig, config)
-			if err != nil {
-				return nil, err
-			}
-			initramfs.Files = append(initramfs.Files, yipSchema.File{
-				Path:        manifestsDirectory + canalConfig,
-				Content:     canalHelmChartConfig,
-				Permissions: 0600,
-				Owner:       0,
-				Group:       0,
-			})
+		canalHelmChartConfig, err := render(canalConfig, config)
+		if err != nil {
+			return nil, err
 		}
+		initramfs.Files = append(initramfs.Files, yipSchema.File{
+			Path:        manifestsDirectory + canalConfig,
+			Content:     canalHelmChartConfig,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		})
 
 		if cfg.Install.Vip != "" {
 			harvesterHelmChartConfig, err := render(harvesterConfig, config)
@@ -220,41 +201,37 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 // UpdateNetworkConfig updates a cOS config stage to include steps that:
 // - generates wicked interface files (`/etc/sysconfig/network/ifcfg-*` and `ifroute-*`)
 // - manipulates nameservers in `/etc/resolv.conf`.
-// - call `wicked ifreload <interface...>` if `run` flag is true.
-func UpdateNetworkConfig(stage *yipSchema.Stage, networks []Network, run bool) error {
-	var interfaces []string
+// - call `wicked ifreload all` if `run` flag is true.
+func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, run bool) error {
 	var staticDNSServers []string
 
-	for _, network := range networks {
-		interfaces = append(interfaces, network.Interface)
-		var templ string
-		switch network.Method {
-		case NetworkMethodDHCP:
-			templ = "wicked-ifcfg-dhcp"
-		case NetworkMethodStatic:
-			templ = "wicked-ifcfg-static"
-		default:
+	if _, ok := networks[MgmtInterfaceName]; !ok {
+		return errors.New("no management network defined")
+	}
+
+	for name, network := range networks {
+		if network.Method != NetworkMethodDHCP && network.Method != NetworkMethodStatic {
 			return fmt.Errorf("unsupported network method %s", network.Method)
 		}
 
-		ifcfg, err := render(templ, network)
+		var err error
+		if len(network.Interfaces) > 0 {
+			if name == MgmtInterfaceName {
+				network.DefaultRoute = true
+			}
+			err = updateBondNIC(stage, name, &network)
+		} else {
+			err = updateNIC(stage, name, &network)
+		}
 		if err != nil {
 			return err
 		}
 
-		stage.Files = append(stage.Files, yipSchema.File{
-			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", network.Interface),
-			Content:     ifcfg,
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
-
 		// default gateway for static mode
 		if network.Method == NetworkMethodStatic {
 			stage.Files = append(stage.Files, yipSchema.File{
-				Path:        fmt.Sprintf("/etc/sysconfig/network/ifroute-%s", network.Interface),
-				Content:     fmt.Sprintf("default %s - %s\n", network.Gateway, network.Interface),
+				Path:        fmt.Sprintf("/etc/sysconfig/network/ifroute-%s", name),
+				Content:     fmt.Sprintf("default %s - %s\n", network.Gateway, name),
 				Permissions: 0600,
 				Owner:       0,
 				Group:       0,
@@ -262,7 +239,7 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks []Network, run bool) e
 		}
 
 		if network.Method == NetworkMethodDHCP {
-			stage.Commands = append(stage.Commands, fmt.Sprintf("rm -f /etc/sysconfig/network/ifroute-%s", network.Interface))
+			stage.Commands = append(stage.Commands, fmt.Sprintf("rm -f /etc/sysconfig/network/ifroute-%s", name))
 		}
 
 		for _, nameServer := range network.DNSNameservers {
@@ -280,10 +257,59 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks []Network, run bool) e
 	}
 
 	if run {
-		stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload %s", strings.Join(interfaces, " ")))
+		stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload all"))
 
 		// in case wicked config is not changed and netconfig is not called
 		stage.Commands = append(stage.Commands, "netconfig update")
+	}
+
+	return nil
+}
+
+func updateNIC(stage *yipSchema.Stage, name string, network *Network) error {
+	ifcfg, err := render("wicked-ifcfg-eth", network)
+	if err != nil {
+		return err
+	}
+
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", name),
+		Content:     ifcfg,
+		Permissions: 0600,
+		Owner:       0,
+		Group:       0,
+	})
+	return nil
+}
+
+func updateBondNIC(stage *yipSchema.Stage, name string, network *Network) error {
+	ifcfg, err := render("wicked-ifcfg-bond-master", network)
+	if err != nil {
+		return err
+	}
+
+	// bond master
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", name),
+		Content:     ifcfg,
+		Permissions: 0600,
+		Owner:       0,
+		Group:       0,
+	})
+
+	// bond slaves
+	for _, iface := range network.Interfaces {
+		ifcfg, err := render("wicked-ifcfg-bond-slave", iface)
+		if err != nil {
+			return err
+		}
+		stage.Files = append(stage.Files, yipSchema.File{
+			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", iface.Name),
+			Content:     ifcfg,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		})
 	}
 
 	return nil
@@ -314,7 +340,7 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 	}
 
 	if run {
-		stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload %s", strings.Join(interfaces, " ")))
+		// stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload %s", strings.Join(interfaces, " ")))
 	}
 
 	return nil
