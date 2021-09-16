@@ -15,6 +15,7 @@ const (
 	manifestsDirectory = "/var/lib/rancher/rke2/server/manifests/"
 	canalConfig        = "rke2-canal-config.yaml"
 	harvesterConfig    = "harvester-config.yaml"
+	ntpdService        = "systemd-timesyncd"
 )
 
 var (
@@ -60,7 +61,10 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	initramfs.Hostname = cfg.OS.Hostname
 	initramfs.Modules = cfg.OS.Modules
 	initramfs.Sysctl = cfg.OS.Sysctls
-	initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
+	if len(cfg.OS.NTPServers) > 0 {
+		initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
+		initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
+	}
 	if len(cfg.OS.DNSNameservers) > 0 {
 		initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
 	}
