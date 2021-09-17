@@ -249,7 +249,14 @@ func getFirstReadyMasterIP() string {
 }
 
 func getVIP() string {
-	out, err := exec.Command("/bin/sh", "-c", `kubectl get configmap -n harvester-system vip -o jsonpath='{.data.ip}'`).Output()
+	var cmd string
+	if current.firstHost {
+		cmd = `kubectl get configmap -n harvester-system vip -o jsonpath='{.data.ip}'`
+	} else {
+		cmd = `kubectl get svc -n cattle-system rancher-expose -o jsonpath='{.status.loadBalancer.ingress[*].ip}'`
+	}
+
+	out, err := exec.Command("/bin/sh", "-c", cmd).Output()
 	outStr := string(out)
 	if err != nil {
 		logrus.Errorf(err.Error(), outStr)
