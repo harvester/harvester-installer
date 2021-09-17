@@ -12,6 +12,7 @@ const (
 	tokenPanel            = "token"
 	proxyPanel            = "proxy"
 	askInterfacePanel     = "askInterface"
+	askBondModePanel      = "askBondMode"
 	askNetworkMethodPanel = "askNetworkMethod"
 	hostNamePanel         = "hostname"
 	addressPanel          = "address"
@@ -33,7 +34,8 @@ const (
 	ntpServersPanel       = "ntpServersPanel"
 
 	networkTitle          = "Configure network connection"
-	askInterfaceLabel     = "Management NIC"
+	askBondModeLabel      = "Bond mode"
+	askInterfaceLabel     = "Management Bond"
 	askNetworkMethodLabel = "IPv4 Method"
 	hostNameLabel         = "HostName"
 	addressLabel          = "IPv4 Address"
