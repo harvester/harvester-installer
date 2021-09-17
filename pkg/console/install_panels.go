@@ -765,18 +765,6 @@ func addNetworkPanel(c *Console) error {
 	c.AddElement(askInterfacePanel, askInterfaceV)
 
 	// askNetworkMethodV
-	validateDHCPAddresses := func() (string, error) {
-		if mgmtNetwork.Method == config.NetworkMethodStatic {
-			return "", nil
-		}
-		addr, err := getIPThroughDHCP(mgmtNetwork.Interface)
-		if err != nil {
-			msg := fmt.Sprintf("Requesting IP through DHCP failed: %s", err)
-			return msg, nil
-		}
-		logrus.Infof("DHCP test passed. Got IP: %s", addr)
-		return "", nil
-	}
 	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
 		selected, err := askNetworkMethodV.GetData()
 		if err != nil {
@@ -795,21 +783,14 @@ func addNetworkPanel(c *Console) error {
 		spinner := NewFocusSpinner(g, networkValidatorPanel, fmt.Sprintf("Requesting IP through DHCP..."))
 		spinner.Start()
 		go func(g *gocui.Gui) {
-			msg, err := validateDHCPAddresses()
-			if err != nil || msg != "" {
-				var isErr bool
-				var errMsg string
-				if err != nil {
-					isErr, errMsg = true, fmt.Sprintf("DHCP validation error: %s", err)
-				} else {
-					isErr, errMsg = true, msg
-				}
-
-				spinner.Stop(isErr, errMsg)
+			addr, err := getIPThroughDHCP(mgmtNetwork.Interface)
+			if err != nil {
+				spinner.Stop(true, fmt.Sprintf("Requesting IP through DHCP failed: %s", err))
 				g.Update(func(g *gocui.Gui) error {
 					return showNext(c, askNetworkMethodPanel)
 				})
 			} else {
+				logrus.Infof("DHCP test passed. Got IP: %s", addr)
 				userInputData.Address = ""
 				userInputData.DNSServers = ""
 				mgmtNetwork.IP = ""
