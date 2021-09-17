@@ -11,6 +11,9 @@ type DropDown struct {
 	InputLen int
 	Value    string
 	Text     string
+
+	// For multiselect dropdown
+	multi bool
 }
 
 func NewDropDown(g *gocui.Gui, name, label string, getOptionsFunc GetOptionsFunc) (*DropDown, error) {
@@ -39,6 +42,11 @@ func NewDropDown(g *gocui.Gui, name, label string, getOptionsFunc GetOptionsFunc
 		},
 		ViewName: name + "-dropdown",
 	}, nil
+}
+
+func (d *DropDown) SetMulti(multi bool) {
+	d.multi = multi
+	d.Select.SetMulti(true)
 }
 
 func (d *DropDown) Show() error {
@@ -70,8 +78,12 @@ func (d *DropDown) Show() error {
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
 		if d.Value == "" && d.Text == "" && len(d.Select.options) > 0 {
-			d.Value = d.Select.options[0].Value
-			d.Text = d.Select.options[0].Text
+			if d.multi {
+				v.Highlight = false
+			} else {
+				d.Value = d.Select.options[0].Value
+				d.Text = d.Select.options[0].Text
+			}
 		}
 		err = d.g.SetKeybinding(d.ViewName, gocui.KeyTab, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
 			d.Select.Value = d.Value
@@ -82,13 +94,19 @@ func (d *DropDown) Show() error {
 			return err
 		}
 		d.Select.KeyBindings[gocui.KeyEnter] = func(g *gocui.Gui, v *gocui.View) error {
-			if len(v.BufferLines()) == 0 {
-				return nil
-			}
-			_, cy := v.Cursor()
-			if len(d.Select.options) >= cy+1 {
-				d.Value = d.Select.options[cy].Value
-				d.Text = d.Select.options[cy].Text
+			if d.multi {
+				// Append multiselect values
+				d.Value = d.Select.Value
+				d.Text = d.Select.Value
+			} else {
+				if len(v.BufferLines()) == 0 {
+					return nil
+				}
+				_, cy := v.Cursor()
+				if len(d.Select.options) >= cy+1 {
+					d.Value = d.Select.options[cy].Value
+					d.Text = d.Select.options[cy].Text
+				}
 			}
 			if err = d.Select.Close(); err != nil {
 				return err
@@ -137,28 +155,41 @@ func (d *DropDown) GetData() (string, error) {
 	return d.Value, nil
 }
 
+func (s *DropDown) GetMultiData() []string {
+	return s.Select.GetMultiData()
+}
+
 func (d *DropDown) SetData(data string) error {
 	v, err := d.g.View(d.ViewName)
 	if err != nil {
 		return err
 	}
 	v.Clear()
-	for _, option := range d.Select.options {
-		if option.Value == data {
-			text := option.Text
-			textLen := len(text)
-			if d.InputLen > textLen {
-				v.Write([]byte(text))
-				for i := 0; i < d.InputLen-textLen-1; i++ {
-					v.Write([]byte{' '})
-				}
-			} else {
-				for i := 0; i < d.InputLen-1; i++ {
-					v.Write([]byte{text[i]})
-				}
+
+	render := func(text string) {
+		textLen := len(text)
+		if d.InputLen > textLen {
+			v.Write([]byte(text))
+			for i := 0; i < d.InputLen-textLen-1; i++ {
+				v.Write([]byte{' '})
 			}
-			v.Write([]byte{'>'})
-			break
+		} else {
+			for i := 0; i < d.InputLen-1; i++ {
+				v.Write([]byte{text[i]})
+			}
+		}
+		v.Write([]byte{'>'})
+	}
+
+	if d.multi {
+		render(d.Value)
+	} else {
+		for _, option := range d.Select.options {
+			if option.Value == data {
+				text := option.Text
+				render(text)
+				break
+			}
 		}
 	}
 	return nil
