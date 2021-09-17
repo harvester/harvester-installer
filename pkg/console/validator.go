@@ -39,23 +39,33 @@ func prettyError(errMsg string, value string) error {
 	return errors.Errorf("%s: %s", errMsg, value)
 }
 
-func checkInterface(name string) error {
-	if name == "" {
+func checkInterface(iface config.NetworkInterface) error {
+	// For now we only accept interface name but not device specifier.
+	if iface.Name == "" {
 		return errors.New(ErrMsgInterfaceNotSpecified)
 	}
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return err
 	}
+
+	checkFlags := func(flags net.Flags, name string) error {
+		if flags&net.FlagLoopback != 0 {
+			return prettyError(ErrMsgInterfaceIsLoop, name)
+		}
+		return nil
+	}
+
 	for _, i := range ifaces {
-		if i.Name == name {
-			if i.Flags&net.FlagLoopback != 0 {
-				return prettyError(ErrMsgInterfaceIsLoop, name)
-			}
-			return nil
+		if i.Name == iface.Name {
+			return checkFlags(i.Flags, iface.Name)
 		}
 	}
-	return prettyError(ErrMsgInterfaceNotFound, name)
+
+	if iface.Name == "" {
+		return prettyError(ErrMsgInterfaceNotFound, iface.Name)
+	}
+	return prettyError(ErrMsgInterfaceNotFound, iface.HwAddr)
 }
 
 func checkDevice(device string) error {
@@ -119,12 +129,21 @@ func checkIPList(ipList []string) error {
 	return nil
 }
 
-func checkNetworks(networks []config.Network) error {
-	for _, network := range networks {
-		if err := checkInterface(network.Interface); err != nil {
-			return err
-		}
+func checkNetworks(networks map[string]config.Network) error {
+	if len(networks) == 0 {
+		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
+	}
 
+	if _, ok := networks[config.MgmtInterfaceName]; !ok {
+		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
+	}
+
+	for _, network := range networks {
+		for _, iface := range network.Interfaces {
+			if err := checkInterface(iface); err != nil {
+				return err
+			}
+		}
 		switch network.Method {
 		case config.NetworkMethodDHCP, "":
 			return nil
@@ -181,14 +200,6 @@ func checkVip(vip, vipHwAddr, vipMode string) error {
 }
 
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
-	if cfg.Install.Mode == config.ModeCreate && cfg.Install.MgmtInterface == "" {
-		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
-	}
-
-	if err := checkInterface(cfg.Install.MgmtInterface); err != nil {
-		return err
-	}
-
 	if err := checkDevice(cfg.Install.Device); err != nil {
 		return err
 	}

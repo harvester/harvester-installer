@@ -9,13 +9,14 @@ import (
 	"github.com/harvester/harvester-installer/pkg/util"
 )
 
+// TODO(weihanglo): do not re-implement logic in test.
 type FakeValidator struct {
 	hasInterfaces []string
 	hasDevices    []string
 }
 
 func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
-	if err := v.checkMgmtInterface(cfg.Install.MgmtInterface); err != nil {
+	if err := v.checkMgmtInterface(cfg.Install.Networks); err != nil {
 		return err
 	}
 	if err := v.checkDevice(cfg.Install.Device); err != nil {
@@ -24,13 +25,11 @@ func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
 	return nil
 }
 
-func (v FakeValidator) checkMgmtInterface(name string) error {
-	for _, i := range v.hasInterfaces {
-		if i == name {
-			return nil
-		}
+func (v FakeValidator) checkMgmtInterface(networks map[string]config.Network) error {
+	if _, ok := networks[config.MgmtInterfaceName]; ok {
+		return nil
 	}
-	return prettyError(ErrMsgInterfaceNotFound, name)
+	return prettyError(ErrMsgMgmtInterfaceNotSpecified, config.MgmtInterfaceName)
 }
 
 func (v FakeValidator) checkDevice(device string) error {
@@ -44,8 +43,7 @@ func (v FakeValidator) checkDevice(device string) error {
 
 func createDefaultFakeValidator() FakeValidator {
 	return FakeValidator{
-		hasInterfaces: []string{"eth0"},
-		hasDevices:    []string{"/dev/vda"},
+		hasDevices: []string{"/dev/vda"},
 	}
 }
 
@@ -66,9 +64,11 @@ func TestValidateConfig(t *testing.T) {
 				Password:          "password",
 			},
 			Install: config.Install{
-				Mode:          config.ModeCreate,
-				MgmtInterface: "eth0",
-				Device:        "/dev/vda",
+				Mode: config.ModeCreate,
+				Networks: map[string]config.Network{
+					config.MgmtInterfaceName: {},
+				},
+				Device: "/dev/vda",
 			},
 		}
 	}
@@ -139,9 +139,11 @@ func TestValidateConfig(t *testing.T) {
 			name: "invalid create config: interface not found",
 			cfg:  createCreateConfig(),
 			preApply: func(c *config.HarvesterConfig) {
-				c.MgmtInterface = "eth1"
+				c.Install.Networks = map[string]config.Network{
+					"bond1": {},
+				}
 			},
-			errMsg: ErrMsgInterfaceNotFound,
+			errMsg: ErrMsgMgmtInterfaceNotSpecified,
 		},
 	}
 

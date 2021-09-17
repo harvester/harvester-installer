@@ -26,7 +26,7 @@ func createMacvlan(name string) (netlink.Link, error) {
 		return nil, errors.Wrapf(err, "failed to fetch %s", name)
 	}
 	rand.Seed(time.Now().UnixNano())
-	macvlanName := tempMacvlanPrefix+strconv.Itoa(rand.Intn(100))
+	macvlanName := tempMacvlanPrefix + strconv.Itoa(rand.Intn(100))
 	macvlan := &netlink.Macvlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        macvlanName,
@@ -72,7 +72,7 @@ func getVipThroughDHCP(iface string) (*vipAddr, error) {
 	}
 
 	return &vipAddr{
-		hwAddr: l.Attrs().HardwareAddr.String(),
+		hwAddr:   l.Attrs().HardwareAddr.String(),
 		ipv4Addr: ip.String(),
 	}, nil
 }
