@@ -41,7 +41,7 @@ const (
 var (
 	once          sync.Once
 	userInputData = UserInputData{
-		NTPServers: "ntp.ubuntu.com",
+		NTPServers: "0.suse.pool.ntp.org",
 	}
 	mgmtNetwork = config.Network{}
 )
