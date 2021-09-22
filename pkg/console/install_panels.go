@@ -1459,6 +1459,12 @@ func addNTPServersPanel(c *Console) error {
 		closeThisPage()
 		return showNext(c, proxyPanel)
 	}
+	gotoSpinnerErrorPage := func(g *gocui.Gui, spinner *Spinner, msg string) {
+		spinner.Stop(true, msg)
+		g.Update(func(g *gocui.Gui) error {
+			return showNext(c, ntpServersPanel)
+		})
+	}
 
 	ntpServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
@@ -1492,10 +1498,11 @@ func addNTPServersPanel(c *Console) error {
 
 			go func(g *gocui.Gui) {
 				if err = validateNTPServers(ntpServerList); err != nil {
-					spinner.Stop(true, "Failed to reach NTP servers. Press Enter to continue or change the input to revalidate.")
-					g.Update(func(g *gocui.Gui) error {
-						return showNext(c, ntpServersPanel)
-					})
+					gotoSpinnerErrorPage(g, spinner, "Failed to reach NTP servers. Press Enter to continue or change the input to revalidate.")
+					return
+				}
+				if err = enableNTPServers(ntpServerList); err != nil {
+					gotoSpinnerErrorPage(g, spinner, "Failed to enalbe NTP servers. Press Enter to continue.")
 					return
 				}
 				spinner.Stop(false, "")

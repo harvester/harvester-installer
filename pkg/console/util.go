@@ -130,6 +130,31 @@ func validateNTPServers(ntpServerList []string) error {
 	return nil
 }
 
+func enableNTPServers(ntpServerList []string) error {
+	if len(ntpServerList) == 0 {
+		return nil
+	}
+
+	file, err := os.OpenFile("/etc/systemd/timesyncd.conf", os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	ntpServersString := fmt.Sprintf("NTP=%s\n", strings.Join(ntpServerList, " "))
+	_, err = file.WriteString(ntpServersString)
+	if err != nil {
+		return err
+	}
+
+	_, err = exec.Command("timedatectl", "set-ntp", "true").Output()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func retryOnError(retryNum, retryInterval int64, process func() error) error {
 	for {
 		if err := process(); err != nil {
