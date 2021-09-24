@@ -666,6 +666,21 @@ func addNetworkPanel(c *Console) error {
 		c.config.Networks = map[string]config.Network{
 			config.MgmtInterfaceName: mgmtNetwork,
 		}
+
+		if mgmtNetwork.Method == config.NetworkMethodDHCP {
+			if addr, err := getIPThroughDHCP(config.MgmtInterfaceName); err != nil {
+				return fmt.Sprintf("Requesting IP through DHCP failed: %s", err.Error()), nil
+			} else {
+				logrus.Infof("DHCP test passed. Got IP: %s", addr)
+				userInputData.Address = ""
+				userInputData.DNSServers = ""
+				mgmtNetwork.IP = ""
+				mgmtNetwork.SubnetMask = ""
+				mgmtNetwork.Gateway = ""
+				mgmtNetwork.DNSNameservers = nil
+				c.config.OS.DNSNameservers = nil
+			}
+		}
 		return "", nil
 	}
 
@@ -802,41 +817,12 @@ func addNetworkPanel(c *Console) error {
 			return err
 		}
 		mgmtNetwork.Method = selected
-
 		if selected == config.NetworkMethodStatic {
 			return showNext(c, dnsServersPanel, gatewayPanel, addressPanel)
 		}
 
 		c.CloseElements(dnsServersPanel, gatewayPanel, addressPanel)
-		if err := networkValidatorV.Show(); err != nil {
-			return err
-		}
-		spinner := NewFocusSpinner(g, networkValidatorPanel, fmt.Sprintf("Requesting IP through DHCP..."))
-		spinner.Start()
-		go func(g *gocui.Gui) {
-			addr, err := getIPThroughDHCP(mgmtNetwork.Interfaces[0].Name)
-			if err != nil {
-				spinner.Stop(true, fmt.Sprintf("Requesting IP through DHCP failed: %s", err))
-				g.Update(func(g *gocui.Gui) error {
-					return showNext(c, askNetworkMethodPanel)
-				})
-			} else {
-				logrus.Infof("DHCP test passed. Got IP: %s", addr)
-				userInputData.Address = ""
-				userInputData.DNSServers = ""
-				mgmtNetwork.IP = ""
-				mgmtNetwork.SubnetMask = ""
-				mgmtNetwork.Gateway = ""
-				mgmtNetwork.DNSNameservers = nil
-				c.config.OS.DNSNameservers = nil
-
-				spinner.Stop(false, "")
-				g.Update(func(g *gocui.Gui) error {
-					return gotoNextPage(askNetworkMethodPanel)
-				})
-			}
-		}(c.Gui)
-		return nil
+		return gotoNextPage(askNetworkMethodPanel)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askBondModePanel}),
