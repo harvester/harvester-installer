@@ -286,10 +286,28 @@ func SaveOriginalNetworkConfig() error {
 func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, run bool) error {
 	var staticDNSServers []string
 
-	if mgmtNetwork, ok := networks[MgmtInterfaceName]; !ok {
+	mgmtNetwork, ok := networks[MgmtInterfaceName]
+	if !ok {
 		return errors.New("no management network defined")
-	} else if len(mgmtNetwork.Interfaces) == 0 {
+	}
+	if len(mgmtNetwork.Interfaces) == 0 {
 		return errors.New("no slave defined for management network bond")
+	}
+
+	// Check if we have the only one default route.
+	// If not, set mgmtNetwork as the default route.
+	defaultRoute := ""
+	for name, network := range networks {
+		if network.DefaultRoute {
+			if defaultRoute != "" {
+				return fmt.Errorf("multi default route found: %s and %s", defaultRoute, name)
+			}
+			defaultRoute = name
+		}
+	}
+	if defaultRoute == "" {
+		mgmtNetwork.DefaultRoute = true
+		networks[MgmtInterfaceName] = mgmtNetwork
 	}
 
 	for name, network := range networks {
@@ -363,11 +381,6 @@ func updateNIC(stage *yipSchema.Stage, name string, network *Network) error {
 }
 
 func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
-	// Set default route for management bond
-	if name == MgmtInterfaceName {
-		network.DefaultRoute = true
-	}
-
 	ifcfg, err := render("wicked-ifcfg-bond-master", network)
 	if err != nil {
 		return err
