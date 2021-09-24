@@ -21,6 +21,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/http/httpproxy"
+	"gopkg.in/ini.v1"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/util/rand"
 
@@ -135,19 +136,23 @@ func enableNTPServers(ntpServerList []string) error {
 		return nil
 	}
 
-	file, err := os.OpenFile("/etc/systemd/timesyncd.conf", os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	ntpServersString := fmt.Sprintf("NTP=%s\n", strings.Join(ntpServerList, " "))
-	_, err = file.WriteString(ntpServersString)
+	cfg, err := ini.Load("/etc/systemd/timesyncd.conf")
 	if err != nil {
 		return err
 	}
 
-	output, err := exec.Command("timedatectl", "set-ntp", "true").CombinedOutput()
+	cfg.Section("Time").Key("NTP").SetValue(strings.Join(ntpServerList, " "))
+	cfg.SaveTo("/etc/systemd/timesyncd.conf")
+
+	// When users want to reset NTP servers, we should stop timesyncd first,
+	// so it can reload timesyncd.conf after restart.
+	output, err := exec.Command("timedatectl", "set-ntp", "false").CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(output))
+		return err
+	}
+
+	output, err = exec.Command("timedatectl", "set-ntp", "true").CombinedOutput()
 	if err != nil {
 		logrus.Error(err, string(output))
 		return err
