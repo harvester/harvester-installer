@@ -205,8 +205,13 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, run bool) error {
 	var staticDNSServers []string
 
-	if _, ok := networks[MgmtInterfaceName]; !ok {
+	if mgmtNetwork, ok := networks[MgmtInterfaceName]; !ok {
 		return errors.New("no management network defined")
+	} else {
+		mgmtNetwork.DefaultRoute = true
+		if len(mgmtNetwork.Interfaces) == 0 {
+			return errors.New("no slave defined for management network bond")
+		}
 	}
 
 	for name, network := range networks {
@@ -216,10 +221,7 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, ru
 
 		var err error
 		if len(network.Interfaces) > 0 {
-			if name == MgmtInterfaceName {
-				network.DefaultRoute = true
-			}
-			err = updateBondNIC(stage, name, &network)
+			err = updateBond(stage, name, &network)
 		} else {
 			err = updateNIC(stage, name, &network)
 		}
@@ -282,7 +284,7 @@ func updateNIC(stage *yipSchema.Stage, name string, network *Network) error {
 	return nil
 }
 
-func updateBondNIC(stage *yipSchema.Stage, name string, network *Network) error {
+func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 	ifcfg, err := render("wicked-ifcfg-bond-master", network)
 	if err != nil {
 		return err
@@ -340,7 +342,7 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 	}
 
 	if run {
-		// stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload %s", strings.Join(interfaces, " ")))
+		stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload %s", strings.Join(interfaces, " ")))
 	}
 
 	return nil

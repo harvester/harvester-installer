@@ -17,13 +17,14 @@ var (
 	ErrMsgModeUnknown                   = "unknown mode"
 	ErrMsgTokenNotSpecified             = "token not specified"
 
-	ErrMsgMgmtInterfaceNotSpecified = "no management interface specified"
-	ErrMsgInterfaceNotSpecified     = "no interface specified"
-	ErrMsgInterfaceNotFound         = "interface not found"
-	ErrMsgInterfaceIsLoop           = "interface is a loopback interface"
-	ErrMsgDeviceNotSpecified        = "no device specified"
-	ErrMsgDeviceNotFound            = "device not found"
-	ErrMsgNoCredentials             = "no SSH authorized keys or passwords are set"
+	ErrMsgMgmtInterfaceNotSpecified    = "no management interface specified"
+	ErrMsgInterfaceNotSpecified        = "no interface specified"
+	ErrMsgInterfaceNotSpecifiedForMgmt = "no interface specified for management network"
+	ErrMsgInterfaceNotFound            = "interface not found"
+	ErrMsgInterfaceIsLoop              = "interface is a loopback interface"
+	ErrMsgDeviceNotSpecified           = "no device specified"
+	ErrMsgDeviceNotFound               = "device not found"
+	ErrMsgNoCredentials                = "no SSH authorized keys or passwords are set"
 
 	ErrMsgNetworkMethodUnknown = "unknown network method"
 )
@@ -61,11 +62,7 @@ func checkInterface(iface config.NetworkInterface) error {
 			return checkFlags(i.Flags, iface.Name)
 		}
 	}
-
-	if iface.Name == "" {
-		return prettyError(ErrMsgInterfaceNotFound, iface.Name)
-	}
-	return prettyError(ErrMsgInterfaceNotFound, iface.HwAddr)
+	return prettyError(ErrMsgInterfaceNotFound, iface.Name)
 }
 
 func checkDevice(device string) error {
@@ -134,8 +131,10 @@ func checkNetworks(networks map[string]config.Network) error {
 		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
 	}
 
-	if _, ok := networks[config.MgmtInterfaceName]; !ok {
+	if mgmtNetwork, ok := networks[config.MgmtInterfaceName]; !ok {
 		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
+	} else if len(mgmtNetwork.Interfaces) == 0 {
+		return errors.New(ErrMsgInterfaceNotSpecifiedForMgmt)
 	}
 
 	for _, network := range networks {
