@@ -3,8 +3,12 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/harvester/harvester-installer/pkg/util"
 	yipSchema "github.com/mudler/yip/pkg/schema"
@@ -17,11 +21,18 @@ const (
 	canalConfig        = "rke2-canal-config.yaml"
 	harvesterConfig    = "harvester-config.yaml"
 	ntpdService        = "systemd-timesyncd"
+
+	networkConfigDirectory = "/etc/sysconfig/network/"
+	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
+	ifrouteGlobPattern     = networkConfigDirectory + "ifroute-*"
 )
 
 var (
 	// RKE2Version is replaced by ldflags
 	RKE2Version = ""
+
+	originalNetworkConfigs        = make(map[string][]byte)
+	saveOriginalNetworkConfigOnce sync.Once
 )
 
 // ConvertToCOS converts HarvesterConfig to cOS configuration.
@@ -196,6 +207,76 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	)
 
 	return nil
+}
+
+// RestoreOriginalNetworkConfig restores the previous state of network
+// configurations saved by `SaveOriginalNetworkConfig`.
+func RestoreOriginalNetworkConfig() error {
+	if len(originalNetworkConfigs) == 0 {
+		return nil
+	}
+
+	remove := func(pattern string) error {
+		paths, err := filepath.Glob(pattern)
+		if err != nil {
+			return err
+		}
+		for _, path := range paths {
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := remove(ifrouteGlobPattern); err != nil {
+		return err
+	}
+	if err := remove(ifcfgGlobPattern); err != nil {
+		return err
+	}
+
+	for name, bytes := range originalNetworkConfigs {
+		if err := ioutil.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SaveOriginalNetworkConfig saves the current state of network configurations.
+// Namely
+// - all `/etc/sysconfig/network/ifroute-*` files, and
+// - all `/etc/sysconfig/network/ifcfg-*` files
+//
+// It can only be invoked once for the whole lifetime of this program.
+func SaveOriginalNetworkConfig() error {
+	var err error
+
+	saveOriginalNetworkConfigOnce.Do(func() {
+		save := func(pattern string) error {
+			filepaths, err := filepath.Glob(pattern)
+			if err != nil {
+				return err
+			}
+			for _, path := range filepaths {
+				if bytes, err := ioutil.ReadFile(path); err != nil {
+					return err
+				} else {
+					originalNetworkConfigs[filepath.Base(path)] = bytes
+				}
+			}
+			return nil
+		}
+
+		if err = save(ifrouteGlobPattern); err != nil {
+			return
+		}
+		err = save(ifcfgGlobPattern)
+		return
+	})
+
+	return err
 }
 
 // UpdateNetworkConfig updates a cOS config stage to include steps that:
