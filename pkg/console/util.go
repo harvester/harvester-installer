@@ -147,8 +147,9 @@ func enableNTPServers(ntpServerList []string) error {
 		return err
 	}
 
-	_, err = exec.Command("timedatectl", "set-ntp", "true").Output()
+	output, err := exec.Command("timedatectl", "set-ntp", "true").CombinedOutput()
 	if err != nil {
+		logrus.Error(err, string(output))
 		return err
 	}
 
