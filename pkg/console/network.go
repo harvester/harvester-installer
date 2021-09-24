@@ -12,6 +12,13 @@ import (
 )
 
 func applyNetworks(networks map[string]config.Network) ([]byte, error) {
+	if err := config.RestoreOriginalNetworkConfig(); err != nil {
+		return nil, err
+	}
+	if err := config.SaveOriginalNetworkConfig(); err != nil {
+		return nil, err
+	}
+
 	conf := &yipSchema.YipConfig{
 		Name: "Network Configuration",
 		Stages: map[string][]yipSchema.Stage{
