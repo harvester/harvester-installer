@@ -98,7 +98,7 @@ func logoPanel(g *gocui.Gui) error {
 		}
 		v.Frame = false
 		fmt.Fprintf(v, logo)
-		versionStr := "version: " + version.Version
+		versionStr := "version: " + version.HarvesterVersion
 		logoLength := 74
 		nSpace := logoLength - len(versionStr)
 		fmt.Fprintf(v, "\n%*s", nSpace, "")

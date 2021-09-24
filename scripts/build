@@ -5,13 +5,28 @@ TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 SCRIPTS_DIR="${TOP_DIR}/scripts"
 PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
 
-source ${SCRIPTS_DIR}/version-rke2
-
 cd ${TOP_DIR}
+
+# Pull harvester source and determine harvester version
+harvester_path=../harvester
+if [ ! -d ${harvester_path} ];then
+    echo "No existed harvester source. Pulling..."
+    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
+fi
+
+source ${SCRIPTS_DIR}/version-harvester $harvester_path
+source ${SCRIPTS_DIR}/version-rke2
+source ${SCRIPTS_DIR}/version
+
+echo "Harvester version: ${HARVESTER_VERSION}"
+echo "Installer version: ${VERSION}"
 
 mkdir -p bin
 
-LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$RKE2_VERSION $LINKFLAGS"
+LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$RKE2_VERSION
+           -X github.com/harvester/harvester-installer/pkg/version.Version=$VERSION
+           -X github.com/harvester/harvester-installer/pkg/version.HarvesterVersion=$HARVESTER_VERSION
+           $LINKFLAGS"
 
 if [ "$(uname)" = "Linux" ]; then
     OTHER_LINKFLAGS="-extldflags -static -s"
