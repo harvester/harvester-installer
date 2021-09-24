@@ -11,8 +11,6 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
-	"github.com/vishvananda/netlink"
-	"golang.org/x/sys/unix"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/harvester/harvester-installer/pkg/config"
@@ -964,22 +962,6 @@ func addNetworkPanel(c *Console) error {
 	return nil
 }
 
-func getNICState(name string) int {
-	link, err := netlink.LinkByName(name)
-	if err != nil {
-		return NICStateNotFound
-	}
-	up := link.Attrs().RawFlags&unix.IFF_UP != 0
-	lowerUp := link.Attrs().RawFlags&unix.IFF_LOWER_UP != 0
-	if !up {
-		return NICStateDown
-	}
-	if !lowerUp {
-		return NICStateLowerDown
-	}
-	return NICStateUP
-}
-
 func getBondModeOptions() ([]widgets.Option, error) {
 	return []widgets.Option{
 		{
@@ -1015,21 +997,11 @@ func getBondModeOptions() ([]widgets.Option, error) {
 
 func getNetworkInterfaceOptions() ([]widgets.Option, error) {
 	var options = []widgets.Option{}
-	ifaces, err := net.Interfaces()
+	ifaces, err := getNetworkInterfaces()
 	if err != nil {
 		return nil, err
 	}
 	for _, i := range ifaces {
-		if i.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-		link, err := netlink.LinkByName(i.Name)
-		if err != nil {
-			return nil, err
-		}
-		if link.Type() != "device" {
-			continue
-		}
 		addrs, err := i.Addrs()
 		if err != nil {
 			return nil, err
