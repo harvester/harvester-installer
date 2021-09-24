@@ -1,5 +1,6 @@
 package version
 
 var (
-	Version = "dev"
+	Version          = "dev"
+	HarvesterVersion = "dev" // Will be replaced by ldflags
 )

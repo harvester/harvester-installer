@@ -68,6 +68,7 @@ get_url()
 # Prepare Harvester chart
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
+    echo "No existed harvester source. Pulling into /tmp/harvester"
     git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git /tmp/harvester
     harvester_path=/tmp/harvester
 fi

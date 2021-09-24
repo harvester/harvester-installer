@@ -1,0 +1,3 @@
+#!/bin/bash
+
+HARVESTER_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $VERSION)
