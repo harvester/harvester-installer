@@ -34,7 +34,7 @@ const (
 	ntpServersPanel       = "ntpServersPanel"
 
 	networkTitle          = "Configure network connection"
-	askBondModeLabel      = "Bond mode"
+	askBondModeLabel      = "Bond Mode"
 	askInterfaceLabel     = "Management Bond"
 	askNetworkMethodLabel = "IPv4 Method"
 	hostNameLabel         = "HostName"
