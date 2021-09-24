@@ -64,11 +64,11 @@ github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
-# github.com/tredoe/osutil v1.1.8
+# github.com/tredoe/osutil v1.3.6
 ## explicit
-github.com/tredoe/osutil/userutil/crypt
-github.com/tredoe/osutil/userutil/crypt/common
-github.com/tredoe/osutil/userutil/crypt/sha512_crypt
+github.com/tredoe/osutil/user/crypt
+github.com/tredoe/osutil/user/crypt/common
+github.com/tredoe/osutil/user/crypt/sha512_crypt
 # github.com/twpayne/go-vfs v1.5.0
 github.com/twpayne/go-vfs
 # github.com/u-root/uio v0.0.0-20210528114334-82958018845c
@@ -109,6 +109,9 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
+# gopkg.in/ini.v1 v1.63.2
+## explicit
+gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit
 gopkg.in/yaml.v2
