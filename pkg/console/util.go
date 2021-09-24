@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -117,7 +116,7 @@ func validateNTPServers(ntpServerList []string) error {
 
 		// send time request
 		if err := binary.Write(conn, binary.BigEndian, req); err != nil {
-			log.Fatalf("failed to send request: %v", err)
+			return err
 		}
 
 		// block to receive server response
