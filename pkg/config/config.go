@@ -36,7 +36,7 @@ type Network struct {
 	SubnetMask     string             `json:"subnetMask,omitempty"`
 	Gateway        string             `json:"gateway,omitempty"`
 	DNSNameservers []string           `json:"dnsNameservers,omitempty"`
-	DefaultRoute   bool               `json:"-"`
+	DefaultRoute   bool               `json:"defaultRoute,omitempty"`
 	BondOption     BondOption         `json:"bondOption,omitempty"`
 }
 
