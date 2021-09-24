@@ -4,3 +4,4 @@
 /dist
 *.swp
 .idea
+/package/harvester-os/iso/boot/grub2/harvester.cfg
