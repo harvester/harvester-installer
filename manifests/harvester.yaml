@@ -1,7 +1,31 @@
+---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: harvester-system
+---
+# create the cattle-monitoring-system namespace and SA upfront, so that kubevirt monitoring-operator integration can find it
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cattle-monitoring-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    meta.helm.sh/release-name: rancher-monitoring
+    meta.helm.sh/release-namespace: cattle-monitoring-system
+  labels:
+    app: rancher-monitoring-operator
+    app.kubernetes.io/component: prometheus-operator
+    app.kubernetes.io/instance: rancher-monitoring
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: rancher-monitoring-prometheus-operator
+    heritage: Helm
+    release: rancher-monitoring
+  name: rancher-monitoring-operator
+  namespace: cattle-monitoring-system
 ---
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
@@ -13,6 +37,10 @@ spec:
   chart: https://localhost:9345/static/charts/$HARVESTER_CHART_TARBALL
   targetNamespace: harvester-system
   valuesContent: |-
+    kubevirt:
+      spec:
+        monitorAccount: rancher-monitoring-operator
+        monitorNamespace: cattle-monitoring-system
     containers:
       apiserver:
         image:

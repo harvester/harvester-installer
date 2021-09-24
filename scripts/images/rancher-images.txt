@@ -7,3 +7,15 @@ docker.io/rancher/rancher-webhook:v0.2.0
 docker.io/rancher/shell:v0.1.10
 docker.io/rancher/system-agent:v0.1.0-suc
 docker.io/rancher/system-upgrade-controller:v0.7.5
+docker.io/rancher/mirrored-directxman12-k8s-prometheus-adapter:v0.8.4
+docker.io/rancher/mirrored-prometheus-node-exporter:v1.1.2
+docker.io/rancher/mirrored-prometheus-operator-prometheus-config-reloader:v0.48.0
+docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.48.0
+docker.io/rancher/mirrored-prometheus-prometheus:v2.27.1
+docker.io/rancher/mirrored-kiwigrid-k8s-sidecar:1.12.2
+docker.io/rancher/mirrored-library-busybox:1.31.1
+docker.io/rancher/mirrored-grafana-grafana:7.5.8
+docker.io/rancher/mirrored-library-nginx:1.21.1-alpine
+docker.io/rancher/mirrored-kube-state-metrics-kube-state-metrics:v2.0.0
+docker.io/rancher/shell:v0.1.8
+docker.io/rancher/mirrored-jettech-kube-webhook-certgen:v1.5.2

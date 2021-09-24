@@ -1,0 +1,10 @@
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: rancher-monitoring-crd
+  namespace: kube-system
+spec:
+  bootstrap: true
+  chart: https://localhost:9345/static/charts/$MONITORING_CRD_CHART_TARBALL
+  targetNamespace: cattle-monitoring-system

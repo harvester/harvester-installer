@@ -1,0 +1,40 @@
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: rancher-monitoring
+  namespace: kube-system
+spec:
+  bootstrap: true
+  chart: https://localhost:9345/static/charts/$MONITORING_CHART_TARBALL
+  targetNamespace: cattle-monitoring-system
+  valuesContent: |-
+    alertmanager:
+      enabled: false
+    grafana:
+      persistence:
+        enabled: true
+        size: "10"
+        storageClassName: longhorn
+        type: pvc
+        accessModes:
+        - ReadWriteOnce
+    prometheus:
+      prometheusSpec:
+        evaluationInterval: 1m
+        resources:
+          requests:
+            cpu: 500m
+        retention: 5d
+        retentionSize: 50GiB
+        scrapeInterval: 1m
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+              - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 50Gi
+              storageClassName: longhorn
+              volumeMode: Filesystem
