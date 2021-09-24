@@ -790,6 +790,13 @@ func addNetworkPanel(c *Console) error {
 	setLocation(askInterfaceV.Panel, 3)
 	c.AddElement(askInterfacePanel, askInterfaceV)
 
+	// askBondModeV
+	askBondModeV.PreShow = func() error {
+		if mgmtNetwork.BondOption.Mode == "" {
+			askBondModeV.Value = config.BondModeBalanceTLB
+		}
+		return nil
+	}
 	askBondModeVConfirm := func(g *gocui.Gui, v *gocui.View) error {
 		mode, err := askBondModeV.GetData()
 		mgmtNetwork.BondOption.Mode = mode
