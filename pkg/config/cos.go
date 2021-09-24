@@ -288,11 +288,8 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, ru
 
 	if mgmtNetwork, ok := networks[MgmtInterfaceName]; !ok {
 		return errors.New("no management network defined")
-	} else {
-		mgmtNetwork.DefaultRoute = true
-		if len(mgmtNetwork.Interfaces) == 0 {
-			return errors.New("no slave defined for management network bond")
-		}
+	} else if len(mgmtNetwork.Interfaces) == 0 {
+		return errors.New("no slave defined for management network bond")
 	}
 
 	for name, network := range networks {
@@ -366,6 +363,11 @@ func updateNIC(stage *yipSchema.Stage, name string, network *Network) error {
 }
 
 func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
+	// Set default route for management bond
+	if name == MgmtInterfaceName {
+		network.DefaultRoute = true
+	}
+
 	ifcfg, err := render("wicked-ifcfg-bond-master", network)
 	if err != nil {
 		return err
