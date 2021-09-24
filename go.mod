@@ -13,11 +13,12 @@ require (
 	github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
-	github.com/tredoe/osutil v1.1.8
+	github.com/tredoe/osutil v1.3.6
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	gopkg.in/ini.v1 v1.63.2
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/apimachinery v0.18.8
 )
