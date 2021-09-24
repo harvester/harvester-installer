@@ -1499,12 +1499,12 @@ func addNTPServersPanel(c *Console) error {
 			go func(g *gocui.Gui) {
 				if err = validateNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("validate ntp servers: %v", err)
-					gotoSpinnerErrorPage(g, spinner, "Failed to reach NTP servers. Press Enter to continue or change the input to revalidate.")
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to reach NTP servers: %v. Press Enter to continue or change the input to revalidate.", err))
 					return
 				}
 				if err = enableNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("enable ntp servers: %v", err)
-					gotoSpinnerErrorPage(g, spinner, "Failed to enalbe NTP servers. Press Enter to continue.")
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to enalbe NTP servers: %v. Press Enter to continue.", err))
 					return
 				}
 				spinner.Stop(false, "")
