@@ -15,6 +15,7 @@ CHARTS_DIR="${BUNDLE_DIR}/harvester/static/charts"
 MANIFESTS_DIR="${BUNDLE_DIR}/harvester/manifests"
 IMAGES_DIR="${BUNDLE_DIR}/harvester/images"
 RANCHERD_IMAGES_DIR="${BUNDLE_DIR}/rancherd/images"
+MONITORING_VERSION=100.0.0+up16.6.0
 
 mkdir -p ${CHARTS_DIR} ${MANIFESTS_DIR}
 mkdir -p ${IMAGES_DIR}
@@ -86,6 +87,17 @@ if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
  cp -rf /bundle/* ${BUNDLE_DIR}/
  exit 0
 fi
+
+# Prepare monitoring chart
+helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
+helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
+
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null
+
+sed -i "s/\$MONITORING_CRD_CHART_TARBALL/rancher-monitoring-crd-${MONITORING_VERSION}.tgz/" ${MANIFESTS_DIR}/monitoring-crd.yaml
+sed -i "s/\$MONITORING_CHART_TARBALL/rancher-monitoring-${MONITORING_VERSION}.tgz/" ${MANIFESTS_DIR}/monitoring.yaml
 
 # Offline images
 
