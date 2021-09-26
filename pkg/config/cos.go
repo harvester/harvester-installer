@@ -196,6 +196,12 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if err != nil {
 		return err
 	}
+	if _, err := os.Stat("/dev/kvm"); err == nil {
+		if err != nil {
+			return err
+		}
+		rke2AgentConfig += " - harvesterhci.io/kubevirt=true"
+	}
 	stage.Files = append(stage.Files,
 		yipSchema.File{
 			Path:        "/etc/rancher/rke2/config.yaml.d/90-harvester-agent.yaml",
