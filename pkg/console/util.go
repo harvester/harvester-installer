@@ -101,7 +101,7 @@ func validateNTPServers(ntpServerList []string) error {
 		if err != nil {
 			return err
 		}
-		if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		if err := conn.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
 			return err
 		}
 
