@@ -1,9 +1,8 @@
 package console
 
 import (
-	"fmt"
+	"encoding/json"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/exec"
 
@@ -63,43 +62,34 @@ func applyNetworks(networks map[string]config.Network) ([]byte, error) {
 }
 
 func upAllLinks() error {
-	ifaces, err := getNetworkInterfaces()
+	nics, err := getNICs()
 	if err != nil {
 		return err
 	}
-	for _, i := range ifaces {
-		if getNICState(i.Name) != NICStateUP {
-			cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ip link set %s up", i.Name))
-			cmd.Env = os.Environ()
-			_, err := cmd.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("cannot bring NIC %s up: %s", i.Name, err.Error())
-			}
+
+	for _, nic := range nics {
+		if err := netlink.LinkSetUp(nic); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func getNetworkInterfaces() ([]net.Interface, error) {
-	var interfaces = []net.Interface{}
-	ifaces, err := net.Interfaces()
+func getNICs() ([]netlink.Link, error) {
+	var nics []netlink.Link
+
+	links, err := netlink.LinkList()
 	if err != nil {
 		return nil, err
 	}
-	for _, i := range ifaces {
-		if i.Flags&net.FlagLoopback != 0 {
-			continue
+
+	for _, l := range links {
+		if l.Type() == "device" && l.Attrs().EncapType != "loopback" {
+			nics = append(nics, l)
 		}
-		link, err := netlink.LinkByName(i.Name)
-		if err != nil {
-			return nil, err
-		}
-		if link.Type() != "device" {
-			continue
-		}
-		interfaces = append(interfaces, i)
 	}
-	return interfaces, nil
+
+	return nics, nil
 }
 
 func getNICState(name string) int {
@@ -116,4 +106,30 @@ func getNICState(name string) int {
 		return NICStateLowerDown
 	}
 	return NICStateUP
+}
+
+type networkHardwareInfo struct {
+	Name        string `json:"logicalname"`
+	Vendor      string `json:"vendor"`
+	Product     string `json:"product"`
+	Description string `json:"description"`
+}
+
+func listNetworkHardware() (map[string]networkHardwareInfo, error) {
+	out, err := exec.Command("/bin/sh", "-c", "lshw -c network -json").CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[string]networkHardwareInfo)
+	var networkHardwareList []networkHardwareInfo
+	if err := json.Unmarshal(out, &networkHardwareList); err != nil {
+		return nil, err
+	}
+
+	for _, networkHardware := range networkHardwareList {
+		m[networkHardware.Name] = networkHardware
+	}
+
+	return m, nil
 }

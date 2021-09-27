@@ -982,29 +982,25 @@ func getBondModeOptions() ([]widgets.Option, error) {
 
 func getNetworkInterfaceOptions() ([]widgets.Option, error) {
 	var options = []widgets.Option{}
-	ifaces, err := getNetworkInterfaces()
+	nics, err := getNICs()
 	if err != nil {
 		return nil, err
 	}
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			return nil, err
-		}
-		var ips []string
-		for _, addr := range addrs {
-			if ipnet, ok := addr.(*net.IPNet); ok {
-				if ipnet.IP.To4() != nil {
-					ips = append(ips, ipnet.String())
-				}
-			}
+
+	hw, err := listNetworkHardware()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, nic := range nics {
+		name := nic.Attrs().Name
+		hwInfo := hw[name].Vendor + " " + hw[name].Product
+		if hwInfo == " " {
+			hwInfo = hw[name].Description
 		}
 		option := widgets.Option{
-			Value: i.Name,
-			Text:  i.Name,
-		}
-		if len(ips) > 0 {
-			option.Text = fmt.Sprintf("%s (%s)", i.Name, strings.Join(ips, ","))
+			Value: name,
+			Text:  fmt.Sprintf("%s(%s): %s", name, nic.Attrs().OperState.String(), hwInfo),
 		}
 		options = append(options, option)
 	}
