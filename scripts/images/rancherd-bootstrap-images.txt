@@ -1,2 +1,2 @@
-docker.io/ibuildthecloud/system-agent-installer-rancher:dev
+docker.io/rancher/system-agent-installer-rancher:v2.6.1-rc5
 docker.io/rancher/system-agent-installer-rke2:$RKE2_VERSION
