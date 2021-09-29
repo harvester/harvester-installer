@@ -89,13 +89,6 @@ func checkStaticRequiredString(field, value string) error {
 	return nil
 }
 
-func checkStaticRequiredSlice(field string, value []string) error {
-	if len(value) == 0 {
-		return fmt.Errorf("must specify %s in static method", field)
-	}
-	return nil
-}
-
 func checkDomain(domain string) error {
 	if errs := validation.IsDNS1123Subdomain(domain); len(errs) > 0 {
 		return fmt.Errorf("%s is not a valid domain", domain)
@@ -170,12 +163,6 @@ func checkNetworks(networks map[string]config.Network) error {
 				return err
 			}
 			if err := checkIP(network.Gateway); err != nil {
-				return err
-			}
-			if err := checkStaticRequiredSlice("dns servers", network.DNSNameservers); err != nil {
-				return err
-			}
-			if err := checkIPList(network.DNSNameservers); err != nil {
 				return err
 			}
 		default:

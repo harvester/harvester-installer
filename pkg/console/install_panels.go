@@ -675,7 +675,6 @@ func addNetworkPanel(c *Console) error {
 				mgmtNetwork.IP = ""
 				mgmtNetwork.SubnetMask = ""
 				mgmtNetwork.Gateway = ""
-				mgmtNetwork.DNSNameservers = nil
 				c.config.OS.DNSNameservers = nil
 			}
 		}
@@ -929,7 +928,6 @@ func addNetworkPanel(c *Console) error {
 			return err.Error(), nil
 		}
 		userInputData.DNSServers = dnsServers
-		mgmtNetwork.DNSNameservers = dnsServerList
 		c.config.OS.DNSNameservers = dnsServerList
 		return "", nil
 	}
