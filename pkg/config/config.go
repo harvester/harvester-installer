@@ -30,14 +30,13 @@ const (
 )
 
 type Network struct {
-	Interfaces     []NetworkInterface `json:"interfaces,omitempty"`
-	Method         string             `json:"method,omitempty"`
-	IP             string             `json:"ip,omitempty"`
-	SubnetMask     string             `json:"subnetMask,omitempty"`
-	Gateway        string             `json:"gateway,omitempty"`
-	DNSNameservers []string           `json:"dnsNameservers,omitempty"`
-	DefaultRoute   bool               `json:"defaultRoute,omitempty"`
-	BondOption     BondOption         `json:"bondOption,omitempty"`
+	Interfaces   []NetworkInterface `json:"interfaces,omitempty"`
+	Method       string             `json:"method,omitempty"`
+	IP           string             `json:"ip,omitempty"`
+	SubnetMask   string             `json:"subnetMask,omitempty"`
+	Gateway      string             `json:"gateway,omitempty"`
+	DefaultRoute bool               `json:"defaultRoute,omitempty"`
+	BondOption   BondOption         `json:"bondOption,omitempty"`
 }
 
 type HTTPBasicAuth struct {
