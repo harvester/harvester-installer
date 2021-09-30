@@ -56,6 +56,7 @@ const (
 	proxyNote              = "Note: In the form of \"http://[[user][:pass]@]host[:port]/\"."
 	sshKeyNote             = "For example: https://github.com/<username>.keys"
 	ntpServersNote         = "Note: You can use comma to add more NTP servers."
+	dnsServersNote         = "Note: You can use comma to add more DNS servers."
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"
 )
