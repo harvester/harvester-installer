@@ -160,6 +160,23 @@ func enableNTPServers(ntpServerList []string) error {
 	return nil
 }
 
+func updateDNSServersAndReloadNetConfig(dnsServerList []string) error {
+	dnsServers := strings.Join(dnsServerList, " ")
+	output, err := exec.Command("sed", "-i", fmt.Sprintf(`s/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS="%s"/`, dnsServers), "/etc/sysconfig/network/config").CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(output))
+		return err
+	}
+
+	output, err = exec.Command("netconfig", "update").CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(output))
+		return err
+	}
+
+	return nil
+}
+
 func retryOnError(retryNum, retryInterval int64, process func() error) error {
 	for {
 		if err := process(); err != nil {

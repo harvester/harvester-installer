@@ -40,6 +40,7 @@ var (
 	once          sync.Once
 	userInputData = UserInputData{
 		NTPServers: "0.suse.pool.ntp.org",
+		DNSServers: "1.1.1.1",
 	}
 	mgmtNetwork = config.Network{
 		DefaultRoute: true,
@@ -93,6 +94,7 @@ func setPanels(c *Console) error {
 		addDiskPanel,
 		addNetworkPanel,
 		addVIPPanel,
+		addDNSServersPanel,
 		addNTPServersPanel,
 		addServerURLPanel,
 		addTokenPanel,
@@ -405,7 +407,7 @@ func addPasswordPanels(c *Console) error {
 				return err
 			}
 			c.config.Password = encrypted
-			return showNext(c, ntpServersPanel)
+			return showNext(c, dnsServersPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			passwordV.Close()
@@ -553,7 +555,7 @@ func showNetworkPage(c *Console) error {
 	if mgmtNetwork.Method != config.NetworkMethodStatic {
 		return showNext(c, askInterfacePanel, askBondModePanel, askNetworkMethodPanel, hostNamePanel)
 	}
-	return showNext(c, askInterfacePanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, dnsServersPanel, hostNamePanel)
+	return showNext(c, askInterfacePanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, hostNamePanel)
 }
 
 func addNetworkPanel(c *Console) error {
@@ -605,11 +607,6 @@ func addNetworkPanel(c *Console) error {
 		return err
 	}
 
-	dnsServersV, err := widgets.NewInput(c.Gui, dnsServersPanel, dnsServersLabel, false)
-	if err != nil {
-		return err
-	}
-
 	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
 
 	updateValidatorMessage := func(msg string) error {
@@ -644,7 +641,6 @@ func addNetworkPanel(c *Console) error {
 			askNetworkMethodPanel,
 			addressPanel,
 			gatewayPanel,
-			dnsServersPanel,
 			networkValidatorPanel)
 	}
 
@@ -671,11 +667,9 @@ func addNetworkPanel(c *Console) error {
 			} else {
 				logrus.Infof("DHCP test passed. Got IP: %s", addr)
 				userInputData.Address = ""
-				userInputData.DNSServers = ""
 				mgmtNetwork.IP = ""
 				mgmtNetwork.SubnetMask = ""
 				mgmtNetwork.Gateway = ""
-				c.config.OS.DNSNameservers = nil
 			}
 		}
 		return "", nil
@@ -805,7 +799,7 @@ func addNetworkPanel(c *Console) error {
 		if mgmtNetwork.Method != config.NetworkMethodStatic {
 			return showNext(c, askNetworkMethodPanel)
 		}
-		return showNext(c, dnsServersPanel, gatewayPanel, addressPanel, askNetworkMethodPanel)
+		return showNext(c, gatewayPanel, addressPanel, askNetworkMethodPanel)
 	}
 	askBondModeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askInterfacePanel}),
@@ -824,10 +818,10 @@ func addNetworkPanel(c *Console) error {
 		}
 		mgmtNetwork.Method = selected
 		if selected == config.NetworkMethodStatic {
-			return showNext(c, dnsServersPanel, gatewayPanel, addressPanel)
+			return showNext(c, gatewayPanel, addressPanel)
 		}
 
-		c.CloseElements(dnsServersPanel, gatewayPanel, addressPanel)
+		c.CloseElements(gatewayPanel, addressPanel)
 		return gotoNextPage(askNetworkMethodPanel)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -896,7 +890,17 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.Gateway = gateway
 		return "", nil
 	}
-	gatewayVConfirm := gotoNextPanel(c, []string{dnsServersPanel}, validateGateway)
+	gatewayVConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		msg, err := validateGateway()
+		if err != nil {
+			return err
+		}
+		if msg != "" {
+			return updateValidatorMessage(msg)
+		}
+
+		return gotoNextPage(gatewayPanel)
+	}
 	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: gotoNextPanel(c, []string{addressPanel}, func() (string, error) {
 			mgmtNetwork.Gateway, err = gatewayV.GetData()
@@ -908,50 +912,6 @@ func addNetworkPanel(c *Console) error {
 	}
 	setLocation(gatewayV.Panel, 3)
 	c.AddElement(gatewayPanel, gatewayV)
-
-	// dnsServersV
-	dnsServersV.PreShow = func() error {
-		c.Gui.Cursor = true
-		dnsServersV.Value = userInputData.DNSServers
-		return nil
-	}
-	validateDNSServers := func() (string, error) {
-		dnsServers, err := dnsServersV.GetData()
-		if err != nil {
-			return "", err
-		}
-		if err = checkStaticRequiredString("dns servers", dnsServers); err != nil {
-			return err.Error(), nil
-		}
-		dnsServerList := strings.Split(dnsServers, ",")
-		if err = checkIPList(dnsServerList); err != nil {
-			return err.Error(), nil
-		}
-		userInputData.DNSServers = dnsServers
-		c.config.OS.DNSNameservers = dnsServerList
-		return "", nil
-	}
-	dnsServersVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		msg, err := validateDNSServers()
-		if err != nil {
-			return err
-		}
-		if msg != "" {
-			return updateValidatorMessage(msg)
-		}
-
-		return gotoNextPage(dnsServersPanel)
-	}
-	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, []string{gatewayPanel}, func() (string, error) {
-			userInputData.DNSServers, err = dnsServersV.GetData()
-			return "", err
-		}),
-		gocui.KeyEnter: dnsServersVConfirm,
-		gocui.KeyEsc:   gotoPrevPage,
-	}
-	setLocation(dnsServersV.Panel, 3)
-	c.AddElement(dnsServersPanel, dnsServersV)
 
 	// networkValidatorV
 	networkValidatorV.FgColor = gocui.ColorRed
@@ -1483,7 +1443,7 @@ func addNTPServersPanel(c *Console) error {
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		c.config.OS.NTPServers = []string{}
 		closeThisPage()
-		return showNext(c, passwordConfirmPanel, passwordPanel)
+		return showNext(c, dnsServersPanel)
 	}
 	gotoNextPage := func() error {
 		closeThisPage()
@@ -1557,6 +1517,107 @@ func addNTPServersPanel(c *Console) error {
 		return asyncTaskV.Close()
 	}
 	c.AddElement(ntpServersPanel, ntpServersV)
+
+	return nil
+}
+
+func addDNSServersPanel(c *Console) error {
+	dnsServersV, err := widgets.NewInput(c.Gui, dnsServersLabel, dnsServersLabel, false)
+	if err != nil {
+		return err
+	}
+
+	dnsServersV.PreShow = func() error {
+		c.Gui.Cursor = true
+		dnsServersV.Value = userInputData.DNSServers
+		if err = c.setContentByName(titlePanel, "Optional: Configure DNS Servers"); err != nil {
+			return err
+		}
+		return c.setContentByName(notePanel, dnsServersNote)
+	}
+
+	closeThisPage := func() error {
+		c.CloseElement(notePanel)
+		return dnsServersV.Close()
+	}
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+		closeThisPage()
+		return showNext(c, passwordConfirmPanel, passwordPanel)
+	}
+	gotoNextPage := func() error {
+		closeThisPage()
+		return showNext(c, ntpServersPanel)
+	}
+	gotoSpinnerErrorPage := func(g *gocui.Gui, spinner *Spinner, msg string) {
+		spinner.Stop(true, msg)
+		g.Update(func(g *gocui.Gui) error {
+			return showNext(c, dnsServersPanel)
+		})
+	}
+
+	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			// init asyncTaskV
+			asyncTaskV, err := c.GetElement(spinnerPanel)
+			if err != nil {
+				return err
+			}
+			asyncTaskV.Close()
+
+			// get dns servers
+			dnsServers, err := dnsServersV.GetData()
+			if err != nil {
+				return err
+			}
+			userInputData.DNSServers = dnsServers
+
+			// focus on task panel to prevent input
+			asyncTaskV.Show()
+
+			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Setup DNS Servers: %q...", dnsServers))
+			spinner.Start()
+
+			go func(g *gocui.Gui) {
+				// check input syntax
+				if err := checkStaticRequiredString("dns servers", dnsServers); err != nil {
+					gotoSpinnerErrorPage(g, spinner, err.Error())
+					return
+				}
+
+				dnsServerList := strings.Split(dnsServers, ",")
+				if err = checkIPList(dnsServerList); err != nil {
+					gotoSpinnerErrorPage(g, spinner, err.Error())
+					return
+				}
+
+				// setup dns
+				if err = updateDNSServersAndReloadNetConfig(dnsServerList); err != nil {
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to update DNS servers: %v.", err))
+					return
+				}
+
+				c.config.OS.DNSNameservers = dnsServerList
+				spinner.Stop(false, "")
+				g.Update(func(g *gocui.Gui) error {
+					return gotoNextPage()
+				})
+			}(c.Gui)
+			return nil
+		},
+		gocui.KeyEsc: gotoPrevPage,
+	}
+
+	dnsServersV.PostClose = func() error {
+		if err := c.setContentByName(notePanel, ""); err != nil {
+			return err
+		}
+		asyncTaskV, err := c.GetElement(spinnerPanel)
+		if err != nil {
+			return err
+		}
+		return asyncTaskV.Close()
+	}
+	c.AddElement(dnsServersPanel, dnsServersV)
 
 	return nil
 }
