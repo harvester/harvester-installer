@@ -7,6 +7,7 @@ const (
 
 	NetworkMethodDHCP   = "dhcp"
 	NetworkMethodStatic = "static"
+	NetworkMethodNone   = "none"
 
 	MgmtInterfaceName = "harvester-mgmt"
 
