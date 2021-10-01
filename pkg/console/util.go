@@ -168,7 +168,7 @@ func updateDNSServersAndReloadNetConfig(dnsServerList []string) error {
 		return err
 	}
 
-	output, err = exec.Command("netconfig", "update").CombinedOutput()
+	output, err = exec.Command("netconfig", "update", "-m", "dns").CombinedOutput()
 	if err != nil {
 		logrus.Error(err, string(output))
 		return err
