@@ -31,6 +31,9 @@ var (
 	// RKE2Version is replaced by ldflags
 	RKE2Version = ""
 
+	// RancherVersion replaced by ldflags
+	RancherVersion = ""
+
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
 )
@@ -144,6 +147,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if config.RuntimeVersion == "" {
 		config.RuntimeVersion = RKE2Version
+	}
+	if config.RancherVersion == "" {
+		config.RancherVersion = RancherVersion
 	}
 
 	rancherdConfig, err := render("rancherd-config.yaml", config)

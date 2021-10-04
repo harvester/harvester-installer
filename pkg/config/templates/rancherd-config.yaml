@@ -6,5 +6,6 @@ role: cluster-init
 {{- end }}
 token: '{{ .Token }}'
 kubernetesVersion: {{ .RuntimeVersion }}
+rancherVersion: {{ .RancherVersion }}
 labels:
  - harvesterhci.io/managed=true
