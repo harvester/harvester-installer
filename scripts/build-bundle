@@ -160,7 +160,7 @@ curl ${longhorn_image_url}>>${image_list_file}
 
 # format image list
 awk -F ':' '{if($2==""){print $1":latest"}else{print $0}}' "${image_list_file}" | \
-awk -F '/' '{if(NF==3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=1){print "docker.io/library/"$0}}' >"${image_list_file}.tmp"
+awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=1){print "docker.io/library/"$0}}' >"${image_list_file}.tmp"
 
 # clean image list
 sort -u "${image_list_file}.tmp" | \
