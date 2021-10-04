@@ -19,8 +19,11 @@ docker build --pull \
 	-t ${HARVESTER_OS_IMAGE} .
 
 PROJECT_PREFIX="harvester"
-if [ -n "$GIT_TAG" ]; then
+if [ -n "$GIT_TAG" ];
+then
   PROJECT_PREFIX+="-${GIT_TAG}"
+else
+  PROJECT_PREFIX+="-master"
 fi
 
 # Copy kernel, initrd out for PXE boot
@@ -37,11 +40,13 @@ ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
 [ -d iso ] && yq e ".overlay.isoimage = \"$(pwd)/iso\"" iso.yaml -i
 echo "set harvester_version=${VERSION}" > iso/boot/grub2/harvester.cfg
 luet-makeiso iso.yaml --image "${HARVESTER_OS_IMAGE}" --output ${ARTIFACTS_DIR}/${ISO_PREFIX}
-
-# remove leading directory components of the ISO name
-CHECKSUM_FILE=${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
-CHECKSUM=$(cat $CHECKSUM_FILE | awk '{print $1}')
-echo "$CHECKSUM ${ISO_PREFIX}.iso" > $CHECKSUM_FILE
+rm ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
 
 # Extract the squashfs image for PXE boot
 xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract /rootfs.squashfs ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs
+
+# Write checksum
+cd ${ARTIFACTS_DIR}
+CHECKSUM_FILE=${ISO_PREFIX}.sha256
+sha256sum ${PROJECT_PREFIX}* > $CHECKSUM_FILE
+
