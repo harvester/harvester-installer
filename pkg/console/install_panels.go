@@ -1241,6 +1241,16 @@ func addInstallPanel(c *Console) error {
 				c.config.TTY = getFirstConsoleTTY()
 			}
 
+			requireGPT, err := isForceGPTRequired(c.config.Install.Device)
+			if err != nil {
+				logrus.Errorf("failed to determine forcing GPT is required: %s. Not forcing GPT.", err)
+				requireGPT = false
+			}
+			c.config.Install.ForceGPT = requireGPT
+			if c.config.Install.ForceGPT {
+				logrus.Infof("forcing GPT partition scheme")
+			}
+
 			// case insensitive for network method and vip mode
 			for key, network := range c.config.Networks {
 				network.Method = strings.ToLower(network.Method)

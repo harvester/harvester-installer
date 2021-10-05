@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -175,6 +176,28 @@ func updateDNSServersAndReloadNetConfig(dnsServerList []string) error {
 	}
 
 	return nil
+}
+
+func isForceGPTRequired(blockDevPath string) (bool, error) {
+	// For storage greater than MBR limit (2TiB), GPT is required.
+	// MBR partition table uses 32-bit values to describe the starting offset and length of a
+	// partition. Due to this size limit, MBR allows a maximum disk size of
+	// (2^32 - 1) = 4,294,967,295 sectors, which is 2,199,023,255,040 bytes (512 bytes per sector)
+
+	output, err := exec.Command("/bin/sh", "-c", fmt.Sprintf(`lsblk %s -n -b -d -r -o SIZE`, blockDevPath)).CombinedOutput()
+	if err != nil {
+		return false, err
+	}
+	sizeStr := strings.TrimSpace(string(output))
+	sizeByte, err := strconv.ParseInt(sizeStr, 10, 64)
+	if err != nil {
+		return false, err
+	}
+
+	if sizeByte > 2199023255040 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func retryOnError(retryNum, retryInterval int64, process func() error) error {
