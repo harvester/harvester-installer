@@ -606,10 +606,26 @@ func addNetworkPanel(c *Console) error {
 		return err
 	}
 
+	bondNoteV := widgets.NewPanel(c.Gui, bondNotePanel)
+
 	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
+
+	showBondNote := func() error {
+		if err := networkValidatorV.Close(); err != nil {
+			return err
+		}
+		if err := bondNoteV.Close(); err != nil {
+			return err
+		}
+		bondNoteV.Focus = false
+		return c.setContentByName(bondNotePanel, bondNote)
+	}
 
 	updateValidatorMessage := func(msg string) error {
 		if err := networkValidatorV.Close(); err != nil {
+			return err
+		}
+		if err := bondNoteV.Close(); err != nil {
 			return err
 		}
 		networkValidatorV.Focus = false
@@ -628,6 +644,9 @@ func addNetworkPanel(c *Console) error {
 					return updateValidatorMessage(msg)
 				}
 			}
+			if err := showBondNote(); err != nil {
+				return err
+			}
 			return showNext(c, name...)
 		}
 	}
@@ -640,7 +659,9 @@ func addNetworkPanel(c *Console) error {
 			askNetworkMethodPanel,
 			addressPanel,
 			gatewayPanel,
-			networkValidatorPanel)
+			networkValidatorPanel,
+			bondNotePanel,
+		)
 	}
 
 	setupNetwork := func() ([]byte, error) {
@@ -751,27 +772,27 @@ func addNetworkPanel(c *Console) error {
 	c.AddElement(hostNamePanel, hostNameV)
 
 	// askInterfaceV
-	interfaceVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		c.CloseElement(networkValidatorPanel)
+	validateInterface := func() (string, error) {
 		ifaces := askInterfaceV.GetMultiData()
 		if len(ifaces) == 0 {
-			return updateValidatorMessage("Must select at least once interface")
+			return "Must select at least once interface", nil
 		}
 		interfaces := make([]config.NetworkInterface, 0, len(ifaces))
 		for _, iface := range ifaces {
 			switch nicState := getNICState(iface); nicState {
 			case NICStateNotFound:
-				return updateValidatorMessage(fmt.Sprintf("NIC %s not found", iface))
+				return fmt.Sprintf("NIC %s not found", iface), nil
 			case NICStateDown:
-				return updateValidatorMessage(fmt.Sprintf("NIC %s is down", iface))
+				return fmt.Sprintf("NIC %s is down", iface), nil
 			case NICStateLowerDown:
-				return updateValidatorMessage(fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", iface))
+				return fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", iface), nil
 			}
 			interfaces = append(interfaces, config.NetworkInterface{Name: iface})
 		}
 		mgmtNetwork.Interfaces = interfaces
-		return showNext(c, askBondModePanel)
+		return "", nil
 	}
+	interfaceVConfirm := gotoNextPanel(c, []string{askBondModePanel}, validateInterface)
 	askInterfaceV.SetMulti(true)
 	askInterfaceV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoNextPanel(c, []string{hostNamePanel}),
@@ -793,6 +814,9 @@ func addNetworkPanel(c *Console) error {
 		mode, err := askBondModeV.GetData()
 		mgmtNetwork.BondOption.Mode = mode
 		if err != nil {
+			return err
+		}
+		if err := showBondNote(); err != nil {
 			return err
 		}
 		if mgmtNetwork.Method != config.NetworkMethodStatic {
@@ -911,6 +935,11 @@ func addNetworkPanel(c *Console) error {
 	}
 	setLocation(gatewayV.Panel, 3)
 	c.AddElement(gatewayPanel, gatewayV)
+
+	// bondNoteV
+	bondNoteV.Wrap = true
+	setLocation(bondNoteV, 0)
+	c.AddElement(bondNotePanel, bondNoteV)
 
 	// networkValidatorV
 	networkValidatorV.FgColor = gocui.ColorRed

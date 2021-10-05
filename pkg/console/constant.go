@@ -13,6 +13,7 @@ const (
 	proxyPanel            = "proxy"
 	askInterfacePanel     = "askInterface"
 	askBondModePanel      = "askBondMode"
+	bondNotePanel         = "bondNote"
 	askNetworkMethodPanel = "askNetworkMethod"
 	hostNamePanel         = "hostname"
 	addressPanel          = "address"
@@ -57,6 +58,7 @@ const (
 	sshKeyNote             = "For example: https://github.com/<username>.keys"
 	ntpServersNote         = "Note: You can use comma to add more NTP servers."
 	dnsServersNote         = "Note: You can use comma to add more DNS servers."
+	bondNote               = "Note: Bond Mode can be ignored for a single NIC."
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"
 )
