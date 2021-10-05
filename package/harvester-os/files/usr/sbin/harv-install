@@ -196,6 +196,24 @@ do_preload()
     done
 }
 
+get_crashkernel_params()
+{
+    local low=$(kdumptool calibrate | sed -n 's/^Low:\s\(.*\)/\1/p')
+    local high=$(kdumptool calibrate | sed -n 's/^High:\s\(.*\)/\1/p')
+
+    if [ -z "$low" ] || [ -z "$high" ]; then
+      return
+    fi
+
+    # https://doc.opensuse.org/documentation/leap/tuning/html/book-tuning/cha-tuning-kexec.html#sec-tuning-kexec-crashkernel
+    # Let's assume maximum 100 luns for now.
+    local size_low=$low
+    local size_high
+    let size_high=($high + 100/2)
+
+    echo "crashkernel=${size_high}M,high crashkernel=${size_low}M,low"
+}
+
 update_grub_settings()
 {
     if [ -z "${COS_INSTALL_TTY}" ]; then
@@ -206,6 +224,12 @@ update_grub_settings()
 
     if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
         sed -i "s/console_params=\"console=tty1\"/console_params=\"console=${TTY} console=tty1\"/g" ${TARGET}/etc/cos/bootargs.cfg
+    fi
+
+    # calculate recommended crashkernel allocation size
+    CRASH_KERNEL_PARAMS=$(get_crashkernel_params || true)
+    if [ -n "$CRASH_KERNEL_PARAMS" ]; then
+        sed -i "s/^set crash_kernel_params=.*/crash_kernel_params=\"${CRASH_KERNEL_PARAMS}\"/" ${TARGET}/etc/cos/bootargs.cfg
     fi
 }
 
