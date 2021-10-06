@@ -40,7 +40,6 @@ var (
 	once          sync.Once
 	userInputData = UserInputData{
 		NTPServers: "0.suse.pool.ntp.org",
-		DNSServers: "1.1.1.1",
 	}
 	mgmtNetwork = config.Network{
 		DefaultRoute: true,
@@ -1569,6 +1568,7 @@ func addDNSServersPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
+			dnsServers = strings.TrimSpace(dnsServers)
 			userInputData.DNSServers = dnsServers
 
 			// focus on task panel to prevent input
@@ -1578,25 +1578,22 @@ func addDNSServersPanel(c *Console) error {
 			spinner.Start()
 
 			go func(g *gocui.Gui) {
-				// check input syntax
-				if err := checkStaticRequiredString("dns servers", dnsServers); err != nil {
-					gotoSpinnerErrorPage(g, spinner, err.Error())
-					return
-				}
+				if dnsServers != "" {
+					// check input syntax
+					dnsServerList := strings.Split(dnsServers, ",")
+					if err = checkIPList(dnsServerList); err != nil {
+						gotoSpinnerErrorPage(g, spinner, err.Error())
+						return
+					}
 
-				dnsServerList := strings.Split(dnsServers, ",")
-				if err = checkIPList(dnsServerList); err != nil {
-					gotoSpinnerErrorPage(g, spinner, err.Error())
-					return
-				}
+					// setup dns
+					if err = updateDNSServersAndReloadNetConfig(dnsServerList); err != nil {
+						gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to update DNS servers: %v.", err))
+						return
+					}
 
-				// setup dns
-				if err = updateDNSServersAndReloadNetConfig(dnsServerList); err != nil {
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to update DNS servers: %v.", err))
-					return
+					c.config.OS.DNSNameservers = dnsServerList
 				}
-
-				c.config.OS.DNSNameservers = dnsServerList
 				spinner.Stop(false, "")
 				g.Update(func(g *gocui.Gui) error {
 					return gotoNextPage()
