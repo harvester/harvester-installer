@@ -15,10 +15,6 @@ type NetworkInterface struct {
 	HwAddr string `json:"hwAddr,omitempty"`
 }
 
-type BondOption struct {
-	Mode string `json:"mode,omitempty"`
-}
-
 const (
 	BondModeBalanceRR    = "balance-rr"
 	BondModeActiveBackup = "active-backup"
@@ -36,7 +32,7 @@ type Network struct {
 	SubnetMask   string             `json:"subnetMask,omitempty"`
 	Gateway      string             `json:"gateway,omitempty"`
 	DefaultRoute bool               `json:"defaultRoute,omitempty"`
-	BondOption   BondOption         `json:"bondOption,omitempty"`
+	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
 }
 
 type HTTPBasicAuth struct {
@@ -148,4 +144,17 @@ func (c *HarvesterConfig) String() string {
 		return err.Error()
 	}
 	return fmt.Sprintf("%+v", *s)
+}
+
+func (n Network) AddDefaultBondOptions() Network {
+	// Create a BondOptions with default values for the Network.
+	// You normally don't need to use this method, it's here to bypass some limitations while
+	// updating the "Network" object in "Install.Networks" map.
+	// See https://stackoverflow.com/q/32751537
+	n.BondOptions = map[string]string{
+		"mode":   BondModeBalanceTLB,
+		"miimon": "100",
+	}
+
+	return n
 }
