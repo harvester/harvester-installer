@@ -36,7 +36,7 @@ const (
 
 	networkTitle          = "Configure network connection"
 	askBondModeLabel      = "Bond Mode"
-	askInterfaceLabel     = "Management Bond"
+	askInterfaceLabel     = "Management NIC"
 	askNetworkMethodLabel = "IPv4 Method"
 	hostNameLabel         = "HostName"
 	addressLabel          = "IPv4 Address"
@@ -58,7 +58,7 @@ const (
 	sshKeyNote             = "For example: https://github.com/<username>.keys"
 	ntpServersNote         = "Note: You can use comma to add more NTP servers."
 	dnsServersNote         = "Note: You can use comma to add more DNS servers."
-	bondNote               = "Note: Bond Mode can be ignored for a single NIC."
+	bondNote               = "Note: Select one or more NICs for the Management NIC.\nUse the default value for the Bond Mode if only one NIC is selected."
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"
 )
