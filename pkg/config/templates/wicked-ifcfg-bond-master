@@ -8,10 +8,7 @@ NETMASK={{ .SubnetMask }}
 {{ range $i, $interface := .Interfaces -}}
 BONDING_SLAVE_{{ $i }}='{{ $interface.Name }}'
 {{ end }}
-{{  with .BondOption -}}
-{{- $bondMode := or .Mode "balance-tlb" -}}
-BONDING_MODULE_OPTS='mode={{ $bondMode }} miimon=100'
-{{- end }}
+BONDING_MODULE_OPTS='{{ range $key, $value := .BondOptions }}{{ $key }}={{ $value }} {{ end }}'
 {{ $defaultRoute := "no" -}}
 {{- if .DefaultRoute -}}
   {{- $defaultRoute = "yes" -}}

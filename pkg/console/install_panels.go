@@ -802,14 +802,17 @@ func addNetworkPanel(c *Console) error {
 
 	// askBondModeV
 	askBondModeV.PreShow = func() error {
-		if mgmtNetwork.BondOption.Mode == "" {
+		if mgmtNetwork.BondOptions == nil {
 			askBondModeV.Value = config.BondModeBalanceTLB
 		}
 		return nil
 	}
 	askBondModeVConfirm := func(g *gocui.Gui, v *gocui.View) error {
 		mode, err := askBondModeV.GetData()
-		mgmtNetwork.BondOption.Mode = mode
+		mgmtNetwork.BondOptions = map[string]string{
+			"mode":   mode,
+			"miimon": "100",
+		}
 		if err != nil {
 			return err
 		}
@@ -1247,6 +1250,19 @@ func addInstallPanel(c *Console) error {
 				}
 				logrus.Info("Local config (merged): ", c.config)
 			}
+
+			// Adding default NIC bonding options for every network config if missing
+			// TODO (John): Consider moving this to config.updateBond function to only add bond
+			// options to Bond NICs.
+			for netName, network := range c.config.Install.Networks {
+				if network.BondOptions == nil {
+					msg := fmt.Sprintf("Adding default NIC bonding options for \"%s\"", netName)
+					logrus.Info(msg)
+					printToPanel(c.Gui, msg, installPanel)
+					c.config.Install.Networks[netName] = network.AddDefaultBondOptions()
+				}
+			}
+
 			if c.config.Hostname == "" {
 				c.config.Hostname = generateHostName()
 			}
