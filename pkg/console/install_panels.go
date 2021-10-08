@@ -987,20 +987,11 @@ func getNetworkInterfaceOptions() ([]widgets.Option, error) {
 		return nil, err
 	}
 
-	hw, err := listNetworkHardware()
-	if err != nil {
-		return nil, err
-	}
-
 	for _, nic := range nics {
 		name := nic.Attrs().Name
-		hwInfo := hw[name].Vendor + " " + hw[name].Product
-		if hwInfo == " " {
-			hwInfo = hw[name].Description
-		}
 		option := widgets.Option{
 			Value: name,
-			Text:  fmt.Sprintf("%s(%s): %s", name, nic.Attrs().OperState.String(), hwInfo),
+			Text:  fmt.Sprintf("%s(%s, %s)", name, nic.Attrs().HardwareAddr.String(), nic.Attrs().OperState.String()),
 		}
 		options = append(options, option)
 	}
