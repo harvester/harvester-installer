@@ -318,7 +318,7 @@ func addServerURLPanel(c *Console) error {
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			g.Cursor = false
 			serverURLV.Close()
-			return showNetworkPage(c)
+			return showNext(c, dnsServersPanel)
 		},
 	}
 	serverURLV.PostClose = func() error {
@@ -406,7 +406,7 @@ func addPasswordPanels(c *Console) error {
 				return err
 			}
 			c.config.Password = encrypted
-			return showNext(c, dnsServersPanel)
+			return showNext(c, ntpServersPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			passwordV.Close()
@@ -696,10 +696,7 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	getNextPagePanel := func() []string {
-		if c.config.Install.Mode == config.ModeCreate {
-			return []string{vipTextPanel, vipPanel, askVipMethodPanel}
-		}
-		return []string{serverURLPanel}
+		return []string{dnsServersPanel}
 	}
 
 	gotoNextPage := func(fromPanel string) error {
@@ -1359,7 +1356,7 @@ func addVIPPanel(c *Console) error {
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
-		return showNetworkPage(c)
+		return showNext(c, dnsServersPanel)
 	}
 	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
@@ -1481,7 +1478,7 @@ func addNTPServersPanel(c *Console) error {
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		c.config.OS.NTPServers = []string{}
 		closeThisPage()
-		return showNext(c, dnsServersPanel)
+		return showNext(c, passwordConfirmPanel, passwordPanel)
 	}
 	gotoNextPage := func() error {
 		closeThisPage()
@@ -1560,7 +1557,7 @@ func addNTPServersPanel(c *Console) error {
 }
 
 func addDNSServersPanel(c *Console) error {
-	dnsServersV, err := widgets.NewInput(c.Gui, dnsServersLabel, dnsServersLabel, false)
+	dnsServersV, err := widgets.NewInput(c.Gui, dnsServersPanel, dnsServersLabel, false)
 	if err != nil {
 		return err
 	}
@@ -1580,11 +1577,14 @@ func addDNSServersPanel(c *Console) error {
 	}
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
-		return showNext(c, passwordConfirmPanel, passwordPanel)
+		return showNetworkPage(c)
 	}
 	gotoNextPage := func() error {
 		closeThisPage()
-		return showNext(c, ntpServersPanel)
+		if c.config.Install.Mode == config.ModeCreate {
+			return showNext(c, vipTextPanel, vipPanel, askVipMethodPanel)
+		}
+		return showNext(c, serverURLPanel)
 	}
 	gotoSpinnerErrorPage := func(g *gocui.Gui, spinner *Spinner, msg string) {
 		spinner.Stop(true, msg)
