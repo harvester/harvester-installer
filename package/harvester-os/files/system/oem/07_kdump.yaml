@@ -3,6 +3,10 @@ stages:
   initramfs:
     - name: "enable kdump"
       if: 'grep -q root=LABEL=COS_ACTIVE /proc/cmdline && [ -n "$(blkid -L COS_ACTIVE)" ]'
-      systemctl:
-        enable:
-          - kdump
+      commands:
+        - |
+          if grep -q "crashkernel=" /proc/cmdline; then
+            systemctl enable kdump
+          else
+            systemctl disable kdump
+          fi
