@@ -149,7 +149,7 @@ done
 cat <<EOF >> ${image_list_file}
 busybox:1.32.0
 alpine:3
-kubevirt/virtio-container-disk
+registry.suse.com/harvester-beta/vmdp:latest
 rancher/support-bundle-kit:v0.0.3
 EOF
 
