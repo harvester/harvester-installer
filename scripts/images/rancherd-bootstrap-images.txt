@@ -1,2 +1,2 @@
-docker.io/rancher/system-agent-installer-rancher:v2.6.1-harvester1
+docker.io/rancher/system-agent-installer-rancher:v2.6.1-harvester2
 docker.io/rancher/system-agent-installer-rke2:$RKE2_VERSION
