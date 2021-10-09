@@ -2,7 +2,7 @@ docker.io/rancher/fleet-agent:v0.3.7
 docker.io/rancher/fleet:v0.3.7
 docker.io/rancher/gitjob:v0.1.21
 docker.io/rancher/kubectl:v1.20.2
-docker.io/rancher/rancher:v2.6.1-harvester1
+docker.io/rancher/rancher:v2.6.1-harvester2
 docker.io/rancher/rancher-webhook:v0.2.1
 docker.io/rancher/shell:v0.1.10
 docker.io/rancher/shell:v0.1.8
