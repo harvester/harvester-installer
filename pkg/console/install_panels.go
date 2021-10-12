@@ -1251,18 +1251,6 @@ func addInstallPanel(c *Console) error {
 				logrus.Info("Local config (merged): ", c.config)
 			}
 
-			// Adding default NIC bonding options for every network config if missing
-			// TODO (John): Consider moving this to config.updateBond function to only add bond
-			// options to Bond NICs.
-			for netName, network := range c.config.Install.Networks {
-				if network.BondOptions == nil {
-					msg := fmt.Sprintf("Adding default NIC bonding options for \"%s\"", netName)
-					logrus.Info(msg)
-					printToPanel(c.Gui, msg, installPanel)
-					c.config.Install.Networks[netName] = network.AddDefaultBondOptions()
-				}
-			}
-
 			if c.config.Hostname == "" {
 				c.config.Hostname = generateHostName()
 			}
