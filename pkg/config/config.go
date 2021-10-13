@@ -145,16 +145,3 @@ func (c *HarvesterConfig) String() string {
 	}
 	return fmt.Sprintf("%+v", *s)
 }
-
-func (n Network) AddDefaultBondOptions() Network {
-	// Create a BondOptions with default values for the Network.
-	// You normally don't need to use this method, it's here to bypass some limitations while
-	// updating the "Network" object in "Install.Networks" map.
-	// See https://stackoverflow.com/q/32751537
-	n.BondOptions = map[string]string{
-		"mode":   BondModeBalanceTLB,
-		"miimon": "100",
-	}
-
-	return n
-}
