@@ -369,7 +369,7 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 	// Adding default NIC bonding options if no options are provided (usually happened under PXE
 	// installation). Missing them would make bonding interfaces unusable.
 	if network.BondOptions == nil {
-		logrus.Info(fmt.Sprintf("Adding default NIC bonding options for \"%s\"", name))
+		logrus.Infof("Adding default NIC bonding options for \"%s\"", name)
 		network.BondOptions = map[string]string{
 			"mode":   BondModeBalanceTLB,
 			"miimon": "100",
