@@ -11,3 +11,14 @@ rancher:
   - docker.io/rancher/fleet-agent
   - docker.io/rancher/system-upgrade-controller
   - docker.io/rancher/kubectl
+  - docker.io/rancher/mirrored-directxman12-k8s-prometheus-adapter
+  - docker.io/rancher/mirrored-prometheus-node-exporter
+  - docker.io/rancher/mirrored-prometheus-operator-prometheus-config-reloader
+  - docker.io/rancher/mirrored-prometheus-operator-prometheus-operator
+  - docker.io/rancher/mirrored-prometheus-prometheus
+  - docker.io/rancher/mirrored-kiwigrid-k8s-sidecar
+  - docker.io/rancher/mirrored-library-busybox
+  - docker.io/rancher/mirrored-grafana-grafana
+  - docker.io/rancher/mirrored-library-nginx
+  - docker.io/rancher/mirrored-kube-state-metrics-kube-state-metrics
+  - docker.io/rancher/mirrored-jettech-kube-webhook-certgen
