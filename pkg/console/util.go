@@ -85,6 +85,7 @@ func validatePingServerURL(url string) error {
 
 func validateNTPServers(ntpServerList []string) error {
 	for _, ntpServer := range ntpServerList {
+		var err error
 		host, port, err := net.SplitHostPort(ntpServer)
 		if err != nil {
 			if addrErr, ok := err.(*net.AddrError); ok && addrErr.Err == "missing port in address" {
@@ -96,36 +97,61 @@ func validateNTPServers(ntpServerList []string) error {
 				return err
 			}
 		}
-		// ntp servers use udp protocol
-		// RFC: https://datatracker.ietf.org/doc/html/rfc4330
-		conn, err := net.Dial("udp", fmt.Sprintf("%s:%s", host, port))
+
+		ips, err := net.LookupIP(host)
 		if err != nil {
 			return err
 		}
-		if err := conn.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
-			return err
+
+		isSuccess := false
+		ipStrings := make([]string, 0, len(ips))
+		for _, ip := range ips {
+			ipString := ip.String()
+			ipStrings = append(ipStrings, ipString)
+			logrus.Infof("try to validate NTP server %s", ipString)
+			// ntp servers use udp protocol
+			// RFC: https://datatracker.ietf.org/doc/html/rfc4330
+			var conn net.Conn
+			address := net.JoinHostPort(ipString, port)
+			conn, err = net.Dial("udp", address)
+			if err != nil {
+				logrus.Errorf("fail to dial %s, err: %v", address, err)
+				continue
+			}
+			defer conn.Close()
+			if err = conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+				logrus.Errorf("fail to set deadline for connection")
+			}
+
+			// RFC: https://datatracker.ietf.org/doc/html/rfc4330#section-4
+			// NTP Packet is 48 bytes and we set the first byte for request.
+			// 00 100 011 (or 0x2B)
+			// |  |   +-- client mode (3)
+			// |  + ----- version (4)
+			// + -------- leap year indicator, 0 no warning
+			req := make([]byte, 48)
+			req[0] = 0x2B
+
+			// send time request
+			if err = binary.Write(conn, binary.BigEndian, req); err != nil {
+				logrus.Errorf("fail to send NTP request")
+				continue
+			}
+
+			// block to receive server response
+			rsp := make([]byte, 48)
+			if err = binary.Read(conn, binary.BigEndian, &rsp); err != nil {
+				logrus.Errorf("fail to receive NTP response")
+				continue
+			}
+			isSuccess = true
+			break
 		}
 
-		// RFC: https://datatracker.ietf.org/doc/html/rfc4330#section-4
-		// NTP Packet is 48 bytes and we set the first byte for request.
-		// 00 100 011 (or 0x2B)
-		// |  |   +-- client mode (3)
-		// |  + ----- version (4)
-		// + -------- leap year indicator, 0 no warning
-		req := make([]byte, 48)
-		req[0] = 0x2B
-
-		// send time request
-		if err := binary.Write(conn, binary.BigEndian, req); err != nil {
-			return err
+		if !isSuccess {
+			logrus.Errorf("fail to validate NTP servers %v", ipStrings)
+			return fmt.Errorf("fail to validate NTP servers: %v, err: %w", ipStrings, err)
 		}
-
-		// block to receive server response
-		rsp := make([]byte, 48)
-		if err := binary.Read(conn, binary.BigEndian, &rsp); err != nil {
-			return err
-		}
-		conn.Close()
 	}
 
 	return nil

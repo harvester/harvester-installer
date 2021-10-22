@@ -20,13 +20,14 @@ import (
 )
 
 type UserInputData struct {
-	ServerURL       string
-	SSHKeyURL       string
-	Password        string
-	PasswordConfirm string
-	Address         string
-	DNSServers      string
-	NTPServers      string
+	ServerURL            string
+	SSHKeyURL            string
+	Password             string
+	PasswordConfirm      string
+	Address              string
+	DNSServers           string
+	NTPServers           string
+	HasCheckedNTPServers bool
 }
 
 const (
@@ -1467,11 +1468,12 @@ func addNTPServersPanel(c *Console) error {
 		return ntpServersV.Close()
 	}
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
-		c.config.OS.NTPServers = []string{}
+		userInputData.HasCheckedNTPServers = false
 		closeThisPage()
 		return showNext(c, passwordConfirmPanel, passwordPanel)
 	}
 	gotoNextPage := func() error {
+		userInputData.HasCheckedNTPServers = false
 		closeThisPage()
 		return showNext(c, proxyPanel)
 	}
@@ -1484,27 +1486,27 @@ func addNTPServersPanel(c *Console) error {
 
 	ntpServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			// get ntp servers input
+			ntpServers, err := ntpServersV.GetData()
+			if err != nil {
+				return err
+			}
+
+			// Go to next page when user give an empty input or
+			// when input servers can't be reached and users don't want to change it, we continue the process.
+			if ntpServers == "" ||
+				(userInputData.NTPServers == ntpServers && userInputData.HasCheckedNTPServers == true) {
+				return gotoNextPage()
+			}
+			// reset HasCheckedNTPServers if users change input
+			userInputData.HasCheckedNTPServers = false
+
 			// init asyncTaskV
 			asyncTaskV, err := c.GetElement(spinnerPanel)
 			if err != nil {
 				return err
 			}
 			asyncTaskV.Close()
-
-			// get ntp servers
-			ntpServers, err := ntpServersV.GetData()
-			if err != nil {
-				return err
-			}
-
-			// When input servers can't be reached and users don't want to change it, we continue the process.
-			if strings.Join(c.config.OS.NTPServers, ",") == ntpServers {
-				return gotoNextPage()
-			}
-
-			userInputData.NTPServers = ntpServers
-			ntpServerList := strings.Split(ntpServers, ",")
-			c.config.OS.NTPServers = ntpServerList
 
 			// focus on task panel to prevent input
 			asyncTaskV.Show()
@@ -1513,6 +1515,16 @@ func addNTPServersPanel(c *Console) error {
 			spinner.Start()
 
 			go func(g *gocui.Gui) {
+				if strings.TrimSpace(ntpServers) != ntpServers {
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("There is space in input."))
+					return
+				}
+
+				userInputData.HasCheckedNTPServers = true
+				userInputData.NTPServers = ntpServers
+				ntpServerList := strings.Split(ntpServers, ",")
+				c.config.OS.NTPServers = ntpServerList
+
 				if err = validateNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("validate ntp servers: %v", err)
 					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to reach NTP servers: %v. Press Enter to continue or change the input to revalidate.", err))
@@ -1523,6 +1535,7 @@ func addNTPServersPanel(c *Console) error {
 					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to enalbe NTP servers: %v. Press Enter to continue.", err))
 					return
 				}
+
 				spinner.Stop(false, "")
 				g.Update(func(g *gocui.Gui) error {
 					return gotoNextPage()
