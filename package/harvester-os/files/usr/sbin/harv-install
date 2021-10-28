@@ -142,6 +142,7 @@ preload_rke2_images()
       # stop containerd
       pkill rke2
       rm /rke2.log
+      rm /etc/rancher/rke2/rke2.yaml
 
       rm -rf /var/lib/rancher/rke2/server
       rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
@@ -237,7 +238,7 @@ save_config()
 {
     if [ -e "$HARVESTER_CONFIG" ]; then
         cp $HARVESTER_CONFIG ${TARGET}/oem/harvester.config
-    fi 
+    fi
 }
 
 trap cleanup exit
