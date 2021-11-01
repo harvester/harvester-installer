@@ -14,3 +14,7 @@ spec:
         mode: "{{ .VipMode }}"
         ip: "{{ .Vip }}"
         hwAddress: "{{ .VipHwAddr }}"
+      installerProvidedSettings:
+      {{- range $key, $value := .SystemSettings }}
+        {{ $key }}: {{ $value | printf "%q" -}}
+      {{ end }}

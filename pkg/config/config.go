@@ -106,7 +106,8 @@ type HarvesterConfig struct {
 
 	OS             `json:"os,omitempty"`
 	Install        `json:"install,omitempty"`
-	RuntimeVersion string `json:"runtimeVersion,omitempty"`
+	RuntimeVersion string            `json:"runtimeVersion,omitempty"`
+	SystemSettings map[string]string `json:"systemSetting,omitempty"`
 }
 
 func NewHarvesterConfig() *HarvesterConfig {
