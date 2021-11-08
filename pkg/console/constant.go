@@ -4,6 +4,8 @@ const (
 	titlePanel            = "title"
 	debugPanel            = "debug"
 	diskPanel             = "disk"
+	askForceMBRPanel      = "askForceMBR"
+	forceMBRNotePanel     = "forceMBRNote"
 	askCreatePanel        = "askCreate"
 	serverURLPanel        = "serverUrl"
 	passwordPanel         = "osPassword"
@@ -20,6 +22,7 @@ const (
 	gatewayPanel          = "gateway"
 	dnsServersPanel       = "dnsServers"
 	networkValidatorPanel = "networkValidator"
+	diskValidatorPanel    = "diskValidator"
 	cloudInitPanel        = "cloudInit"
 	validatorPanel        = "validator"
 	notePanel             = "note"
@@ -59,6 +62,7 @@ const (
 	ntpServersNote         = "Note: You can use comma to add more NTP servers."
 	dnsServersNote         = "Note: You can use comma to add more DNS servers."
 	bondNote               = "Note: Select one or more NICs for the Management NIC.\nUse the default value for the Bond Mode if only one NIC is selected."
+	forceMBRNote           = "Note: Harvester uses GPT by default, but you can force MBR on BIOS systems."
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"
 )

@@ -206,6 +206,22 @@ get_crashkernel_params()
     echo "crashkernel=${size_high}M,high crashkernel=${size_low}M,low"
 }
 
+add_debug_grub_entry()
+{
+    cat > "${STATEDIR}/grubmenu" << "EOF"
+menuentry "${display_name} (debug)" --id debug {
+  search.fs_label COS_STATE root
+  set img=/cOS/active.img
+  set label=COS_ACTIVE
+  loopback loop0 /$img
+  set root=($root)
+  source (loop0)/etc/cos/bootargs.cfg
+  linux (loop0)$kernel $kernelcmd ${extra_cmdline} ${extra_passive_cmdline} ${crash_kernel_params}
+  initrd (loop0)$initramfs
+}
+EOF
+}
+
 update_grub_settings()
 {
     if [ -z "${COS_INSTALL_TTY}" ]; then
@@ -223,6 +239,8 @@ update_grub_settings()
     if [ -n "$CRASH_KERNEL_PARAMS" ]; then
         sed -i "s/^set crash_kernel_params=.*/crash_kernel_params=\"${CRASH_KERNEL_PARAMS}\"/" ${TARGET}/etc/cos/bootargs.cfg
     fi
+
+    add_debug_grub_entry
 }
 
 save_config()

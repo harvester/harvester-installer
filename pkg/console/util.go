@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/harvester/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 const (
@@ -33,6 +34,7 @@ const (
 	defaultHTTPTimeout    = 15 * time.Second
 	harvesterNodePort     = "30443"
 	automaticCmdline      = "harvester.automatic"
+	minDiskSizeGiB        = 140
 )
 
 func newProxyClient() http.Client {
@@ -204,12 +206,11 @@ func updateDNSServersAndReloadNetConfig(dnsServerList []string) error {
 	return nil
 }
 
-func isForceGPTRequired(blockDevPath string) (bool, error) {
-	// For storage greater than MBR limit (2TiB), GPT is required.
+func diskExceedsMBRLimit(blockDevPath string) (bool, error) {
+	// Test if the storage is larger than MBR limit (2TiB).
 	// MBR partition table uses 32-bit values to describe the starting offset and length of a
 	// partition. Due to this size limit, MBR allows a maximum disk size of
 	// (2^32 - 1) = 4,294,967,295 sectors, which is 2,199,023,255,040 bytes (512 bytes per sector)
-
 	output, err := exec.Command("/bin/sh", "-c", fmt.Sprintf(`lsblk %s -n -b -d -r -o SIZE`, blockDevPath)).CombinedOutput()
 	if err != nil {
 		return false, err
@@ -389,6 +390,15 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 
 	env := append(os.Environ(), ev...)
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
+	if !hvstConfig.ForceMBR {
+		cosPartLayout, err := createPartitionLayout(hvstConfig.Install.Device)
+		if err != nil {
+			return err
+		}
+		defer os.Remove(cosPartLayout)
+		env = append(env, fmt.Sprintf("COS_PARTITION_LAYOUT=%s", cosPartLayout))
+	}
+
 	if err := execute(g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
 		return err
@@ -498,4 +508,99 @@ func retryRemoteConfig(configURL string, g *gocui.Gui) (*config.HarvesterConfig,
 // harvesterInstalled check existing harvester installation by partition label
 func harvesterInstalled() (bool, error) {
 	return false, nil
+}
+
+func validateDiskSize(devPath string) error {
+	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
+	if err != nil {
+		return err
+	}
+	if diskSizeBytes>>30 < minDiskSizeGiB {
+		return fmt.Errorf("Disk size too small. Minimum %dGB is required", minDiskSizeGiB)
+	}
+
+	return nil
+}
+
+func createPartitionLayout(devPath string) (string, error) {
+	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
+	if err != nil {
+		return "", err
+	}
+
+	cosPersistentSizeGiB, err := calcCosPersistentPartSize(diskSizeBytes >> 30)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO(john): Use the yip/schema to define the partition layout. This requires the newer yip
+	// version because we need "Path" field of "Device" struct.
+	yipConfig := map[string]interface{}{
+		"stages": map[string][]interface{}{
+			"partitioning": {
+				map[string]interface{}{
+					"name": "Part layout",
+					"layout": map[string]interface{}{
+						"device": map[string]string{
+							"path": devPath,
+						},
+						"add_partitions": []yipSchema.Partition{
+							{
+								FSLabel:    "COS_OEM",
+								PLabel:     "oem",
+								Size:       50,
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "COS_STATE",
+								PLabel:     "state",
+								Size:       15360,
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "COS_RECOVERY",
+								PLabel:     "recovery",
+								Size:       8192,
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "COS_PERSISTENT",
+								PLabel:     "persistent",
+								Size:       uint(cosPersistentSizeGiB << 10),
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "HARV_LH_DEFAULT",
+								PLabel:     "longhorn",
+								Size:       0,
+								FileSystem: "ext4",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return saveTemp(yipConfig, "part-layout")
+}
+
+func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
+	if diskSizeGiB < minDiskSizeGiB {
+		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, minDiskSizeGiB)
+	}
+
+	partSizeGiB := 50 + ((diskSizeGiB-100)/100)*10
+	if partSizeGiB > 100 {
+		partSizeGiB = 100
+	}
+
+	return partSizeGiB, nil
+}
+
+func systemIsBIOS() bool {
+	if _, err := os.Stat("/sys/firmware/efi"); os.IsNotExist(err) {
+		return true
+	}
+	return false
 }

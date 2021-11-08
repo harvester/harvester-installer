@@ -213,3 +213,75 @@ func startMockNTPServers(quit chan interface{}) ([]string, error) {
 	}
 	return ntpServers, nil
 }
+
+func TestCalcCosPersistentPartSize(t *testing.T) {
+	testCases := []struct {
+		name        string
+		input       uint64
+		output      uint64
+		expectError bool
+	}{
+		{
+			name:        "Disk too small",
+			input:       50,
+			output:      0,
+			expectError: true,
+		},
+		{
+			name:        "Disk just enough",
+			input:       minDiskSizeGiB,
+			output:      50,
+			expectError: false,
+		},
+		{
+			name:        "200GiB",
+			input:       200,
+			output:      60,
+			expectError: false,
+		},
+		{
+			name:        "300GiB",
+			input:       300,
+			output:      70,
+			expectError: false,
+		},
+		{
+			name:        "400GiB",
+			input:       400,
+			output:      80,
+			expectError: false,
+		},
+		{
+			name:        "500GiB",
+			input:       500,
+			output:      90,
+			expectError: false,
+		},
+		{
+			name:        "600GiB",
+			input:       600,
+			output:      100,
+			expectError: false,
+		},
+		{
+			name:        "Greater than 600GiB should still get 100",
+			input:       700,
+			output:      100,
+			expectError: false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			sizeGiB, err := calcCosPersistentPartSize(testCase.input)
+			if testCase.expectError {
+				assert.NotNil(t, err)
+			} else {
+				if err != nil {
+					t.Log(err)
+				}
+				assert.Equal(t, sizeGiB, testCase.output)
+			}
+		})
+	}
+}

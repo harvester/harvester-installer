@@ -101,6 +101,9 @@ type OS struct {
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
+
+	// ForceMBR is not a cOS installation flag so it's not in "Install" struct
+	ForceMBR bool `json:"forceMbr,omitempty"`
 }
 
 type HarvesterConfig struct {
