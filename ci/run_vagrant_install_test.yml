@@ -1,0 +1,103 @@
+---
+- name: Run Vagrant Harvester Installation Test
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    REPO: "{{ harvester_installer_repo_name | default('harvester/harvester-installer') }}"
+
+  tasks:
+    - name: Make sure WORKSPACE is defined
+      fail:
+        msg: "Variable WORKSPACE is not defined."
+      when: WORKSPACE is not defined
+
+    - name: Check for harvester-installer
+      stat:
+        path: "{{ WORKSPACE }}/harvester-installer"
+      register: harvester_installer_dir_check_result
+
+    - name: Make sure harvester-installer directory exist
+      fail:
+        msg: "{{ WORKSPACE }}/harvester-installer not found"
+      when: not harvester_installer_dir_check_result.stat.exists
+
+    - name: Build harvester-installer artifacts
+      shell: >
+        make
+      args:
+        chdir: "{{ WORKSPACE }}/harvester-installer"
+      retries: 5
+      delay: 20
+      register: shell_result
+      until: shell_result.rc == 0
+
+    - name: Cleanup ipxe-examples dir
+      file:
+        path: "{{ WORKSPACE }}/ipxe-examples"
+        state: absent
+
+    - name: Clone ipxe-examples repo
+      git:
+        repo: https://github.com/harvester/ipxe-examples.git
+        dest: "{{ WORKSPACE }}/ipxe-examples"
+
+    - name: Check to see if "/usr/share/qemu/OVMF.fd" exist
+      stat:
+        path: /usr/share/qemu/OVMF.fd
+      register: file_ovmf_fd_check_result
+
+    - name: Remove OVMF.fd line if needed
+      lineinfile:
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/Vagrantfile"
+        regexp: '.*\/OVMF\.fd.*'
+        state: absent
+      when: not file_ovmf_fd_check_result.stat.exists
+
+    - name: Set harvester_iso_url
+      replace:
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        regexp: "^harvester_iso_url:.*"
+        replace: "harvester_iso_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-amd64.iso"
+
+    - name: Set harvester_kernel_url
+      replace:
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        regexp: "^harvester_kernel_url:.*"
+        replace: "harvester_kernel_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-vmlinuz-amd64"
+
+    - name: Set harvester_ramdisk_url
+      replace:
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        regexp: "^harvester_ramdisk_url:.*"
+        replace: "harvester_ramdisk_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-initrd-amd64"
+
+    - name: Set harvester_rootfs_url
+      replace:
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        regexp: "^harvester_rootfs_url:.*"
+        replace: "harvester_rootfs_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-rootfs-amd64.squashfs"
+
+    - name: Run setup Harvester
+      shell: >
+        ./setup_harvester.sh
+      register: setup_harvester_result
+      args:
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+      ignore_errors: yes
+
+    - name: Print Harvester installation output
+      debug:
+        msg: "{{ setup_harvester_result.stdout_lines }}"
+
+    - name: Cleanup Harvester Vagrant VMs
+      shell: >
+        vagrant destroy -f
+      args:
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+
+    - name: Check result
+      fail:
+        msg: "ERROR: {{ setup_harvester_result.stderr }}"
+      when: setup_harvester_result.failed
