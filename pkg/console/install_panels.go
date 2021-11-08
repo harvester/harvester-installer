@@ -155,31 +155,143 @@ func addFooterPanel(c *Console) error {
 	return nil
 }
 
+func showDiskPage(c *Console) error {
+	if systemIsBIOS() {
+		return showNext(c, askForceMBRPanel, diskPanel)
+	}
+	return showNext(c, diskPanel)
+}
+
 func addDiskPanel(c *Console) error {
+	maxX, maxY := c.Gui.Size()
+	lastY := maxY / 8
+	setLocation := func(p *widgets.Panel, height int) {
+		var (
+			x0 = maxX / 8
+			y0 = lastY
+			x1 = maxX / 8 * 7
+			y1 int
+		)
+		if height == 0 {
+			y1 = maxY / 8 * 7
+		} else {
+			y1 = y0 + height
+		}
+		lastY += height
+		p.SetLocation(x0, y0, x1, y1)
+	}
+
+	closeThisPage := func() {
+		c.CloseElements(diskPanel, askForceMBRPanel, diskValidatorPanel, forceMBRNotePanel)
+	}
+	diskOpts, err := getDiskOptions()
+	if err != nil {
+		return err
+	}
+
 	diskV, err := widgets.NewSelect(c.Gui, diskPanel, "", getDiskOptions)
 	if err != nil {
 		return err
 	}
+	diskV.PreShow = func() error {
+		diskV.Value = c.config.Install.Device
+		return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
+	}
+	setLocation(diskV.Panel, len(diskOpts)+2)
+	c.AddElement(diskPanel, diskV)
+
+	askForceMBRV, err := widgets.NewDropDown(c.Gui, askForceMBRPanel, "Force using MBR", func() ([]widgets.Option, error) {
+		return []widgets.Option{{Value: "no", Text: "No"}, {Value: "yes", Text: "Yes"}}, nil
+	})
+	if err != nil {
+		return err
+	}
+	c.config.ForceMBR = true
+	askForceMBRV.PreShow = func() error {
+		c.Cursor = true
+		if c.config.ForceMBR {
+			askForceMBRV.SetData("yes")
+		} else {
+			askForceMBRV.SetData("no")
+		}
+		return nil
+	}
+	setLocation(askForceMBRV.Panel, 3)
+	c.AddElement(askForceMBRPanel, askForceMBRV)
+
+	forceMBRNoteV := widgets.NewPanel(c.Gui, forceMBRNotePanel)
+	forceMBRNoteV.Wrap = true
+	setLocation(forceMBRNoteV, 3)
+	c.AddElement(forceMBRNotePanel, forceMBRNoteV)
+
+	diskValidatorV := widgets.NewPanel(c.Gui, diskValidatorPanel)
+	diskValidatorV.FgColor = gocui.ColorRed
+	diskValidatorV.Wrap = true
+	setLocation(diskValidatorV, 3)
+	c.AddElement(diskValidatorPanel, diskValidatorV)
+
+	updateValidatorMessage := func(msg string) error {
+		diskValidatorV.Focus = false
+		return c.setContentByName(diskValidatorPanel, msg)
+	}
+
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+		closeThisPage()
+		return showNext(c, askCreatePanel)
+	}
+	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+		forceMBR, err := askForceMBRV.GetData()
+		if err != nil {
+			return err
+		}
+		if forceMBR == "yes" {
+			diskTooLargeForMBR, err := diskExceedsMBRLimit(c.config.Device)
+			if err != nil {
+				return err
+			}
+			if diskTooLargeForMBR {
+				updateValidatorMessage("Disk too large for MBR")
+				return nil
+			}
+		}
+		c.config.ForceMBR = (forceMBR == "yes")
+		closeThisPage()
+		return showNetworkPage(c)
+	}
+
 	diskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
 			device, err := diskV.GetData()
 			if err != nil {
 				return err
 			}
+			if err := validateDiskSize(device); err != nil {
+				return updateValidatorMessage(err.Error())
+			}
+
 			c.config.Install.Device = device
-			diskV.Close()
-			return showNetworkPage(c)
+
+			if systemIsBIOS() {
+				c.setContentByName(forceMBRNotePanel, forceMBRNote)
+				return showNext(c, askForceMBRPanel)
+			}
+			return gotoNextPage(g, v)
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			diskV.Close()
-			return showNext(c, askCreatePanel)
+		gocui.KeyEsc:       gotoPrevPage,
+		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error { return updateValidatorMessage("") },
+		gocui.KeyArrowUp:   func(g *gocui.Gui, v *gocui.View) error { return updateValidatorMessage("") },
+	}
+
+	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: gotoNextPage,
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			//XXX Must close diskPanel first or gocui would crash
+			c.CloseElement(diskPanel)
+			return showNext(c, diskPanel)
 		},
+		gocui.KeyArrowDown: gotoNextPage,
+		gocui.KeyEsc:       gotoPrevPage,
 	}
-	diskV.PreShow = func() error {
-		diskV.Value = c.config.Install.Device
-		return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
-	}
-	c.AddElement(diskPanel, diskV)
 	return nil
 }
 
@@ -250,7 +362,7 @@ func addAskCreatePanel(c *Console) error {
 			} else if selected == config.ModeUpgrade {
 				return showNext(c, confirmUpgradePanel)
 			}
-			return showNext(c, diskPanel)
+			return showDiskPage(c)
 		},
 	}
 	c.AddElement(askCreatePanel, askCreateV)
@@ -735,7 +847,7 @@ func addNetworkPanel(c *Console) error {
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
-		return showNext(c, diskPanel)
+		return showDiskPage(c)
 	}
 
 	// hostNameV
@@ -1259,15 +1371,8 @@ func addInstallPanel(c *Console) error {
 				c.config.TTY = getFirstConsoleTTY()
 			}
 
-			requireGPT, err := isForceGPTRequired(c.config.Install.Device)
-			if err != nil {
-				logrus.Errorf("failed to determine forcing GPT is required: %s. Not forcing GPT.", err)
-				requireGPT = false
-			}
-			c.config.Install.ForceGPT = requireGPT
-			if c.config.Install.ForceGPT {
-				logrus.Infof("forcing GPT partition scheme")
-			}
+			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
+			c.config.ForceGPT = !c.config.ForceMBR
 
 			// case insensitive for network method and vip mode
 			for key, network := range c.config.Networks {

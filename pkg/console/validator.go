@@ -29,7 +29,10 @@ var (
 	ErrMsgInterfaceIsLoop              = "interface is a loopback interface"
 	ErrMsgDeviceNotSpecified           = "no device specified"
 	ErrMsgDeviceNotFound               = "device not found"
+	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", minDiskSizeGiB)
 	ErrMsgNoCredentials                = "no SSH authorized keys or passwords are set"
+	ErrMsgForceMBROnLargeDisk          = "disk size too large for MBR partitioning table"
+	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
 
 	ErrMsgNetworkMethodUnknown = "unknown network method"
 )
@@ -93,12 +96,23 @@ func checkDevice(device string) error {
 	if err != nil {
 		return err
 	}
+
+	deviceFound := false
 	for _, option := range options {
 		if targetDevice == option.Value {
-			return nil
+			deviceFound = true
+			break
 		}
 	}
-	return prettyError(ErrMsgDeviceNotFound, device)
+	if !deviceFound {
+		return prettyError(ErrMsgDeviceNotFound, device)
+	}
+
+	if err := validateDiskSize(device); err != nil {
+		return prettyError(ErrMsgDeviceTooSmall, device)
+	}
+
+	return nil
 }
 
 func checkStaticRequiredString(field, value string) error {
@@ -211,6 +225,22 @@ func checkVip(vip, vipHwAddr, vipMode string) error {
 	return nil
 }
 
+func checkForceMBR(device string) error {
+	diskTooLargeForMBR, err := diskExceedsMBRLimit(device)
+	if err != nil {
+		return err
+	}
+	if diskTooLargeForMBR {
+		return prettyError(ErrMsgForceMBROnLargeDisk, device)
+	}
+
+	if !systemIsBIOS() {
+		return prettyError(ErrMsgForceMBROnUEFI, "UEFI")
+	}
+
+	return nil
+}
+
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	// check hostname
 	// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
@@ -221,6 +251,12 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 
 	if err := checkDevice(cfg.Install.Device); err != nil {
 		return err
+	}
+
+	if cfg.ForceMBR {
+		if err := checkForceMBR(cfg.Install.Device); err != nil {
+			return err
+		}
 	}
 
 	if err := checkNetworks(cfg.Install.Networks); err != nil {

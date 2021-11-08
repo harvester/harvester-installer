@@ -12,6 +12,7 @@ import (
 
 	yipSchema "github.com/mudler/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -41,6 +42,12 @@ var (
 func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	cfg, err := config.DeepCopy()
 	if err != nil {
+		return nil, err
+	}
+
+	// Overwrite rootfs layout
+	rootfs := yipSchema.Stage{}
+	if err := overwriteRootfsStage(config, &rootfs); err != nil {
 		return nil, err
 	}
 
@@ -122,11 +129,25 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
 		Stages: map[string][]yipSchema.Stage{
+			"rootfs":    {rootfs},
 			"initramfs": {initramfs},
 		},
 	}
 
 	return cosConfig, nil
+}
+
+func overwriteRootfsStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+	content, err := render("cos-rootfs.yaml", config)
+	if err != nil {
+		return err
+	}
+
+	if err := yaml.Unmarshal([]byte(content), stage); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {

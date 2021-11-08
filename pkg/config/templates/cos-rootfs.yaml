@@ -1,0 +1,28 @@
+# yip stage to overwrite rootfs layout
+if: '[ ! -f "/run/cos/recovery_mode" ]'
+name: "Rootfs layout overwrite"
+environment_file: /run/cos/cos-layout.env
+environment:
+  VOLUMES: "LABEL=COS_OEM:/oem LABEL=COS_PERSISTENT:/usr/local{{ if not .ForceMBR }} LABEL=HARV_LH_DEFAULT:/var/lib/longhorn{{ end }}"
+  OVERLAY: "tmpfs:25%"
+  RW_PATHS: "/var /etc /srv /boot"
+  PERSISTENT_STATE_PATHS: >-
+    /etc/systemd
+    /etc/rancher
+    /etc/ssh
+    /etc/iscsi
+    /etc/cni
+    /home
+    /opt
+    /root
+    /usr/libexec
+    /var/log
+    /var/lib/rancher
+    /var/lib/kubelet
+    /var/lib/wicked
+    /var/lib/cni
+    /var/crash
+    {{- if .ForceMBR }}
+    /var/lib/longhorn
+    {{- end }}
+  PERSISTENT_STATE_BIND: "true"

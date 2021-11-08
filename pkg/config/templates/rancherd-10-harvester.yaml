@@ -72,6 +72,7 @@ bootstrapResources:
           pullPolicy: "IfNotPresent"
         labelFilter:
           - "COS_*"
+          - "HARV_*"
       rancherEmbedded: true
       webhook:
         image:
