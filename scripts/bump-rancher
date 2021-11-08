@@ -10,6 +10,14 @@ SCRIPTS_DIR="${TOP_DIR}/scripts"
 
 source ${SCRIPTS_DIR}/lib/image
 
+sed_inline()
+{
+  if [ "$(uname)" = "Darwin" ]; then
+    sed -i '' $1 $2
+  else
+   sed -i $1 $2
+  fi
+}
 
 # update image list
 save_image_list rancher $RANCHER_IMAGES_URL $SCRIPTS_DIR/images/rancher-images.txt
@@ -26,7 +34,7 @@ if [ -n "$DUP_RANCHER_IMAGES" ]; then
 fi
 
 # rancherd bootstrap images
-sed -i "s,.*system-agent-installer-rancher:.*,docker.io/rancher/system-agent-installer-rancher:${RANCHER_VERSION}," ${SCRIPTS_DIR}/images/rancherd-bootstrap-images.txt
+sed_inline "s,.*system-agent-installer-rancher:.*,docker.io/rancher/system-agent-installer-rancher:${RANCHER_VERSION}," ${SCRIPTS_DIR}/images/rancherd-bootstrap-images.txt
 
 # update bootstrap version
 RANCHER_IMAGE_TAG=$RANCHER_VERSION \
