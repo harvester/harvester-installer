@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	cosLoginUser       = "rancher"
-	manifestsDirectory = "/var/lib/rancher/rke2/server/manifests/"
-	canalConfig        = "rke2-canal-config.yaml"
-	harvesterConfig    = "harvester-config.yaml"
-	ntpdService        = "systemd-timesyncd"
+	cosLoginUser            = "rancher"
+	manifestsDirectory      = "/var/lib/rancher/rke2/server/manifests/"
+	canalConfig             = "rke2-canal-config.yaml"
+	harvesterConfig         = "harvester-config.yaml"
+	harvesterSystemSettings = "harvester-settings.yaml"
+	ntpdService             = "systemd-timesyncd"
 
 	networkConfigDirectory = "/etc/sysconfig/network/"
 	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
@@ -130,10 +131,34 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		}
 	}
 
+	// Add Setting CR preconfigs
+	fsStages := make([]yipSchema.Stage, 0)
+
+	if len(config.SystemSettings) != 0 {
+		settingCrs, err := render(harvesterSystemSettings, config)
+		if err != nil {
+			return nil, err
+		}
+
+		maniPath := fmt.Sprintf("/var/lib/rancher/rke2/server/manifests/%s", harvesterSystemSettings)
+		fsStages = append(fsStages, yipSchema.Stage{
+			Files: []yipSchema.File{
+				{
+					Path:        maniPath,
+					Content:     settingCrs,
+					Permissions: 0600,
+					Owner:       0,
+					Group:       0,
+				},
+			},
+		})
+	}
+
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
 		Stages: map[string][]yipSchema.Stage{
 			"initramfs": {initramfs},
+			"fs":        fsStages,
 		},
 	}
 

@@ -1,0 +1,9 @@
+{{- range $name, $value := .SystemSettings }}
+---
+apiVersion: harvesterhci.io/v1beta1
+kind: Setting
+metadata:
+  annotations:
+    harvesterhci.io/preconfigValue: {{ printf "%q" $value }}
+  name: {{ printf "%q" $name }}
+{{ end }}
