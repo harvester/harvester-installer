@@ -59,6 +59,11 @@ get_iso()
         get_url ${COS_INSTALL_ISO_URL} ${TEMP_FILE}
         ISO_DEVICE=$(losetup --show -f $TEMP_FILE)
         mount -o ro ${ISO_DEVICE} ${ISOMNT}
+    else
+        if [ -n "$COS_INSTALL_AUTOMATIC" ]; then
+            echo "Failed to read iso_url, it must be set in automatic install mode"
+            return 1
+        fi
     fi
 }
 
