@@ -1,6 +1,6 @@
-docker.io/rancher/fleet-agent:v0.3.7
-docker.io/rancher/fleet:v0.3.7
-docker.io/rancher/gitjob:v0.1.21
+docker.io/rancher/fleet-agent:v0.3.8-rc1
+docker.io/rancher/fleet:v0.3.8-rc1
+docker.io/rancher/gitjob:v0.1.22
 docker.io/rancher/kubectl:v1.20.2
 docker.io/rancher/mirrored-directxman12-k8s-prometheus-adapter:v0.8.4
 docker.io/rancher/mirrored-grafana-grafana:6.7.4
@@ -16,8 +16,8 @@ docker.io/rancher/mirrored-prometheus-operator-prometheus-config-reloader:v0.48.
 docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.48.0
 docker.io/rancher/mirrored-prometheus-prometheus:v2.27.1
 docker.io/rancher/rancher-webhook:v0.2.1
-docker.io/rancher/rancher:v2.6.2
-docker.io/rancher/shell:v0.1.10
+docker.io/rancher/rancher:v2.6-638b29a687f3818e7de676a573ec9b9156f193a9-head
+docker.io/rancher/shell:v0.1.13
 docker.io/rancher/shell:v0.1.8
-docker.io/rancher/system-agent:v0.1.0-suc
-docker.io/rancher/system-upgrade-controller:v0.7.5
+docker.io/rancher/system-agent:v0.1.1-rc4-suc
+docker.io/rancher/system-upgrade-controller:v0.8.0
