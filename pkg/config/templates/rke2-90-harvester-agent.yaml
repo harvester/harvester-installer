@@ -1,2 +1,6 @@
-node-label+:
- - harvesterhci.io/managed=true
+{{- with $args :=  .GetKubeletArgs }}
+kubelet-arg:
+{{- range $arg := $args }}
+- {{ printf "%q" $arg }}
+{{- end }}
+{{- end }}
