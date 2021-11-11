@@ -215,6 +215,10 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		}
 	}
 
+	if _, err := cfg.GetKubeletArgs(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

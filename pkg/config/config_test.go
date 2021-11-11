@@ -21,3 +21,55 @@ func TestHarvesterConfig_sanitized(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assert.Equal(t, expected, s)
 }
+
+func TestHarvesterConfig_GetKubeletLabelsArg(t *testing.T) {
+
+	testCases := []struct {
+		name      string
+		input     map[string]string
+		output    []string
+		expectErr bool
+	}{
+		{
+			name:   "Successfully creates node-labels argument",
+			input:  map[string]string{"labelKey1": "value1"},
+			output: []string{"node-labels=labelKey1=value1"},
+		},
+		{
+			name:   "Returns nothing if no Labels is given",
+			input:  map[string]string{},
+			output: []string{},
+		},
+		{
+			name:      "Error for invalid label name",
+			input:     map[string]string{"???invalidName": "value"},
+			output:    []string{},
+			expectErr: true,
+		},
+		{
+			name:      "Error for invalid label value",
+			input:     map[string]string{"example.io/somelabel": "???value###NAH"},
+			output:    []string{},
+			expectErr: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			c := NewHarvesterConfig()
+			c.Labels = testCase.input
+
+			result, err := c.GetKubeletArgs()
+
+			if testCase.expectErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t,
+					testCase.output,
+					result,
+				)
+			}
+		})
+	}
+}

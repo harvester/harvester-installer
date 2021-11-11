@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/imdario/mergo"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 const (
@@ -98,6 +100,7 @@ type OS struct {
 	Wifi           []Wifi            `json:"wifi,omitempty"`
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
+	Labels         map[string]string `json:"labels,omitempty"`
 }
 
 type HarvesterConfig struct {
@@ -144,4 +147,29 @@ func (c *HarvesterConfig) String() string {
 		return err.Error()
 	}
 	return fmt.Sprintf("%+v", *s)
+}
+
+func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
+	// node-labels=key1=val1,key2=val2
+	labelStrs := make([]string, 0, len(c.Labels))
+	for labelName, labelValue := range c.Labels {
+		if errs := validation.IsQualifiedName(labelName); len(errs) > 0 {
+			errJoined := strings.Join(errs, ", ")
+			return nil, fmt.Errorf("Invalid label name '%s': %s", labelName, errJoined)
+		}
+
+		if errs := validation.IsValidLabelValue(labelValue); len(errs) > 0 {
+			errJoined := strings.Join(errs, ", ")
+			return nil, fmt.Errorf("Invalid label value '%s': %s", labelValue, errJoined)
+		}
+		labelStrs = append(labelStrs, fmt.Sprintf("%s=%s", labelName, labelValue))
+	}
+
+	if len(labelStrs) > 0 {
+		return []string{
+			fmt.Sprintf("node-labels=%s", strings.Join(labelStrs, ",")),
+		}, nil
+	}
+
+	return []string{}, nil
 }
