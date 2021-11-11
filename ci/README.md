@@ -20,7 +20,7 @@ Jenkins
 The harvester-installer CI job is running on [Jenkins], which is accessible by
 either clicking on the `Details` link next to the `Vagrant installation testing`
 check job from the pull request, or explicitly via
-`https://136.144.56.229/job/harvester-vagrant-installation-test/<pull request number>/`.
+`https://ci.harvesterhci.io/job/harvester-vagrant-installation-test/<pull request number>/`.
 Though anonymouse access is disabled, developers can login as
 `harvester/harvester030` to view the job result.
 
@@ -40,9 +40,11 @@ sepcified.
 **WARNING:** the playbook will clone the `harvester/ipxe-examples` repository
 under the `WORKSPACE` directory. If you already have `harvester/ipxe-examples'
 checked out, make sure to move it out of the way so it won't get overwritten.
+Also, make sure your host satisfy the minimal requirements specified in
+https://github.com/harvester/ipxe-examples/tree/main/vagrant-pxe-harvester#prerequisites
+You can install the latest version of [Ansible] via [Python PIP].
 
-Also, make sure [Ansible] is installed locally. You can install the latest
-version of [Ansible] via [Python PIP]. To run the job locally:
+To run the job locally:
 
 1. Checkout the pull request branch.
 2. `ansible-playbook -e WORKSPACE=<harvester-installer parent dir> -e PR_ID=<pull request ID> run_vagrant_install_test.yml`
