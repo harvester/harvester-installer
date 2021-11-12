@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	cosLoginUser       = "rancher"
-	manifestsDirectory = "/var/lib/rancher/rke2/server/manifests/"
-	canalConfig        = "rke2-canal-config.yaml"
-	harvesterConfig    = "harvester-config.yaml"
-	ntpdService        = "systemd-timesyncd"
+	cosLoginUser         = "rancher"
+	manifestsDirectory   = "/var/lib/rancher/rke2/server/manifests/"
+	canalConfig          = "rke2-canal-config.yaml"
+	harvesterConfig      = "harvester-config.yaml"
+	ntpdService          = "systemd-timesyncd"
+	rancherdBootstrapDir = "/etc/rancher/rancherd/config.yaml.d/"
 
 	networkConfigDirectory = "/etc/sysconfig/network/"
 	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
@@ -27,8 +28,10 @@ const (
 )
 
 var (
-	// RKE2Version is replaced by ldflags
-	RKE2Version = ""
+	// Following variables are replaced by ldflags
+	RKE2Version            = ""
+	HarvesterChartVersion  = ""
+	MonitoringChartVersion = ""
 
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
@@ -114,20 +117,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			Owner:       0,
 			Group:       0,
 		})
-
-		if cfg.Install.Vip != "" {
-			harvesterHelmChartConfig, err := render(harvesterConfig, config)
-			if err != nil {
-				return nil, err
-			}
-			initramfs.Files = append(initramfs.Files, yipSchema.File{
-				Path:        manifestsDirectory + harvesterConfig,
-				Content:     harvesterHelmChartConfig,
-				Permissions: 0600,
-				Owner:       0,
-				Group:       0,
-			})
-		}
 	}
 
 	cosConfig := &yipSchema.YipConfig{
@@ -144,25 +133,25 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if config.RuntimeVersion == "" {
 		config.RuntimeVersion = RKE2Version
 	}
-
-	rancherdConfig, err := render("rancherd-config.yaml", config)
-	if err != nil {
-		return err
+	if config.HarvesterChartVersion == "" {
+		config.HarvesterChartVersion = HarvesterChartVersion
+	}
+	if config.MonitoringChartVersion == "" {
+		config.MonitoringChartVersion = MonitoringChartVersion
 	}
 
 	stage.Directories = append(stage.Directories,
 		yipSchema.Directory{
-			Path:        "/etc/rancher/rancherd",
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		}, yipSchema.Directory{
 			Path:        "/etc/rancher/rke2/config.yaml.d",
 			Permissions: 0600,
 			Owner:       0,
 			Group:       0,
 		})
 
+	rancherdConfig, err := render("rancherd-config.yaml", config)
+	if err != nil {
+		return err
+	}
 	stage.Files = append(stage.Files,
 		yipSchema.File{
 			Path:        RancherdConfigFile,
@@ -172,6 +161,33 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 			Group:       0,
 		},
 	)
+
+	if config.Install.Mode == "create" {
+		stage.Directories = append(stage.Directories,
+			yipSchema.Directory{
+				Path:        rancherdBootstrapDir,
+				Permissions: 0600,
+				Owner:       0,
+				Group:       0,
+			},
+		)
+
+		bootstrapResources, err := genBootstrapResources(config)
+		if err != nil {
+			return err
+		}
+		for fileName, fileContent := range bootstrapResources {
+			stage.Files = append(stage.Files,
+				yipSchema.File{
+					Path:        filepath.Join(rancherdBootstrapDir, fileName),
+					Content:     fileContent,
+					Permissions: 0600,
+					Owner:       0,
+					Group:       0,
+				},
+			)
+		}
+	}
 
 	// RKE2 settings that can't be configured in rancherd
 	rke2ServerConfig, err := render("rke2-90-harvester-server.yaml", config)
@@ -445,4 +461,32 @@ func getAddStaticDNSServersCmd(servers []string) string {
 
 func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {
 	return ToEnv("COS_INSTALL_", c.Install)
+}
+
+// Returns Rancherd bootstrap resources
+// map: fileName -> fileContent
+func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
+	bootstrapConfs := make(map[string]string, 4)
+
+	for _, templateName := range []string{
+		"10-harvester.yaml",
+		"11-monitoring-crd.yaml",
+		"13-monitoring.yaml",
+	} {
+		rendered, err := render("rancherd-"+templateName, config)
+		if err != nil {
+			return nil, err
+		}
+
+		bootstrapConfs[templateName] = rendered
+	}
+	// It's not a template but I still put it here for consistency
+	templateName := "12-monitoring-dashboard.yaml"
+	templBytes, err := templFS.ReadFile(filepath.Join(templateFolder, "rancherd-"+templateName))
+	if err != nil {
+		return nil, err
+	}
+	bootstrapConfs[templateName] = string(templBytes)
+
+	return bootstrapConfs, nil
 }

@@ -1,3 +1,4 @@
 #!/bin/bash
 
 HARVESTER_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $VERSION)
+HARVESTER_CHART_VERSION=$(cd $1; yq e .version ./deploy/charts/harvester/Chart.yaml --exit-status)
