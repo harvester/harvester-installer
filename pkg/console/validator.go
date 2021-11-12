@@ -16,6 +16,7 @@ var (
 	ErrMsgModeJoinServerURLNotSpecified = fmt.Sprintf("ServerURL can't empty in %s mode", config.ModeJoin)
 	ErrMsgModeUnknown                   = "unknown mode"
 	ErrMsgTokenNotSpecified             = "token not specified"
+	ErrMsgISOURLNotSpecified            = "iso_url is required in automatic installation"
 
 	ErrMsgMgmtInterfaceNotSpecified    = "no management interface specified"
 	ErrMsgMgmtInterfaceInvalidMethod   = "management network must configure with either static or DHCP method"
@@ -232,6 +233,10 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 		}
 	default:
 		return prettyError(ErrMsgModeUnknown, mode)
+	}
+
+	if cfg.Install.Automatic && cfg.Install.ISOURL == "" {
+		return errors.New(ErrMsgISOURLNotSpecified)
 	}
 
 	if cfg.Token == "" {
