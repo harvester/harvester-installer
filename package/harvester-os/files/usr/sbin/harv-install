@@ -157,14 +157,6 @@ EOF
     umount ${TARGET}/${RKE2_IMAGES_DIR}
 }
 
-preload_rke2_manifests_and_static()
-{
-    RKE2_SERVER_DIR="/var/lib/rancher/rke2/server"
-    mkdir -p $TARGET/$RKE2_SERVER_DIR
-    cp -r ${ISOMNT}/bundle/harvester/manifests $TARGET/$RKE2_SERVER_DIR || true
-    cp -r ${ISOMNT}/bundle/harvester/static $TARGET/$RKE2_SERVER_DIR || true
-}
-
 preload_rancherd_images()
 {
     preload=$(ls ${ISOMNT}/bundle/rancherd/images/*.tar.zst 2>/dev/null || true)
@@ -190,7 +182,6 @@ do_preload()
 
     preload_rancherd_images
     preload_rke2_images
-    preload_rke2_manifests_and_static
 
     for i in ${BIND_MOUNTS[@]}; do
         umount $TARGET/$i

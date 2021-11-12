@@ -1,0 +1,89 @@
+bootstrapResources:
+# create the cattle-monitoring-system namespace and SA upfront, so that kubevirt monitoring-operator integration can find it
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: cattle-monitoring-system
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    annotations:
+      meta.helm.sh/release-name: mcc-rancher-monitoring
+      meta.helm.sh/release-namespace: cattle-monitoring-system
+    labels:
+      app: rancher-monitoring-operator
+      app.kubernetes.io/component: prometheus-operator
+      app.kubernetes.io/instance: mcc-rancher-monitoring
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: rancher-monitoring-prometheus-operator
+      heritage: Helm
+      release: rancher-monitoring
+    name: rancher-monitoring-operator
+    namespace: cattle-monitoring-system
+- apiVersion: management.cattle.io/v3
+  kind: ManagedChart
+  metadata:
+    name: harvester
+    namespace: fleet-local
+  spec:
+    chart: harvester
+    version: {{ .HarvesterChartVersion }}
+    defaultNamespace: harvester-system
+    repoName: harvester-charts
+    targets:
+    - clusterName: local
+      clusterSelector:
+        matchExpressions:
+        - key: provisioning.cattle.io/unmanaged-system-agent
+          operator: DoesNotExist
+    values:
+      {{- if .Vip }}
+      service:
+        vip:
+          enabled: true
+          mode: "{{ .VipMode }}"
+          ip: "{{ .Vip }}"
+          hwAddress: "{{ .VipHwAddr }}"
+      {{- end }}
+      kubevirt:
+        spec:
+          monitorAccount: rancher-monitoring-operator
+          monitorNamespace: cattle-monitoring-system
+      containers:
+        apiserver:
+          image:
+            imagePullPolicy: "IfNotPresent"
+          hciMode: true
+      multus:
+        enabled: false
+      longhorn:
+        enabled: true
+        defaultSettings:
+          taintToleration: "kubevirt.io/drain:NoSchedule"
+      harvester-network-controller:
+        enabled: true
+        vipEnabled: true
+        image:
+          pullPolicy: "IfNotPresent"
+      harvester-node-disk-manager:
+        enabled: true
+        image:
+          pullPolicy: "IfNotPresent"
+        labelFilter:
+          - "COS_*"
+        autoProvisionFilter:
+          - "/dev/installer/default"
+      rancherEmbedded: true
+      webhook:
+        image:
+          imagePullPolicy: "IfNotPresent"
+      harvester-load-balancer:
+        enabled: true
+      kube-vip:
+        enabled: true
+        {{- if .Vip }}
+        config:
+          vip_interface: harvester-mgmt
+        {{- end }}
+      kube-vip-cloud-provider:
+        enabled: true
