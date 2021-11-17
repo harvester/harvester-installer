@@ -8,12 +8,12 @@ bootstrapResources:
   kind: ServiceAccount
   metadata:
     annotations:
-      meta.helm.sh/release-name: mcc-rancher-monitoring
+      meta.helm.sh/release-name: rancher-monitoring
       meta.helm.sh/release-namespace: cattle-monitoring-system
     labels:
       app: rancher-monitoring-operator
       app.kubernetes.io/component: prometheus-operator
-      app.kubernetes.io/instance: mcc-rancher-monitoring
+      app.kubernetes.io/instance: rancher-monitoring
       app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/name: rancher-monitoring-prometheus-operator
       heritage: Helm
@@ -27,6 +27,7 @@ bootstrapResources:
     namespace: fleet-local
   spec:
     chart: harvester
+    releaseName: harvester
     version: {{ .HarvesterChartVersion }}
     defaultNamespace: harvester-system
     repoName: harvester-charts

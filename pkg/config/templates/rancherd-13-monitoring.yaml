@@ -6,6 +6,7 @@ bootstrapResources:
     namespace: fleet-local
   spec:
     chart: rancher-monitoring
+    releaseName: rancher-monitoring
     version: {{ .MonitoringChartVersion }}
     defaultNamespace: cattle-monitoring-system
     repoName: harvester-charts
@@ -45,20 +46,3 @@ bootstrapResources:
                     storage: 50Gi
                 storageClassName: longhorn
                 volumeMode: Filesystem
-# ManagedChart's resources will have a prefix "mcc-" added to their name when they are installed.
-# This would break monitoring dashboard because GUI expects a service named
-# "rancher-monitoring-grafana" to provide Grafana service, not "mcc-rancher-monitoring-grafana".
-# To fix this issue, we need to add a service with correct name and points to Grafana Pods.
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: rancher-monitoring-grafana
-    namespace: cattle-monitoring-system
-  spec:
-    selector:
-      app.kubernetes.io/instance: mcc-rancher-monitoring
-      app.kubernetes.io/name: grafana
-    ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080

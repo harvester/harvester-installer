@@ -6,6 +6,7 @@ bootstrapResources:
     namespace: fleet-local
   spec:
     chart: rancher-monitoring-crd
+    releaseName: rancher-monitoring-crd
     version: {{ .MonitoringChartVersion }}
     defaultNamespace: cattle-monitoring-system
     repoName: harvester-charts
