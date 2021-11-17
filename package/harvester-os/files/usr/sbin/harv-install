@@ -246,8 +246,14 @@ trap cleanup exit
 # For PXE Boot
 get_iso
 
+# Follow the symbolic link to the real device
+install_device="$COS_INSTALL_DEVICE"
+if [ -L "$COS_INSTALL_DEVICE" ]; then
+  install_device=$(readlink -f "$COS_INSTALL_DEVICE")
+fi
+
 # Run cOS installer but do not let it fetch ISO and shutdown
-COS_INSTALL_ISO_URL="" INTERACTIVE=yes cos-installer
+COS_INSTALL_ISO_URL="" INTERACTIVE=yes COS_INSTALL_DEVICE="$install_device" cos-installer
 
 # Preload images
 do_detect

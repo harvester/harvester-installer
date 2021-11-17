@@ -2,7 +2,10 @@ package console
 
 import (
 	"fmt"
+	"io/fs"
 	"net"
+	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -71,12 +74,27 @@ func checkDevice(device string) error {
 	if device == "" {
 		return errors.New(ErrMsgDeviceNotSpecified)
 	}
+
+	fileInfo, err := os.Lstat(device)
+	if err != nil {
+		return err
+	}
+
+	targetDevice := device
+	// Support using path like `/dev/disks/by-id/xxx`
+	if fileInfo.Mode()&fs.ModeSymlink != 0 {
+		targetDevice, err = filepath.EvalSymlinks(device)
+		if err != nil {
+			return err
+		}
+	}
+
 	options, err := getDiskOptions()
 	if err != nil {
 		return err
 	}
 	for _, option := range options {
-		if device == option.Value {
+		if targetDevice == option.Value {
 			return nil
 		}
 	}
