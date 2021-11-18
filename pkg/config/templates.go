@@ -25,7 +25,3 @@ func render(template string, context interface{}) (string, error) {
 	}
 	return util.RenderTemplate(string(templBytes), context)
 }
-
-func Render(template string, context interface{}) (string, error) {
-	return render(template, context)
-}
