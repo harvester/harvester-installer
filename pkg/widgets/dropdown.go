@@ -60,6 +60,9 @@ func (d *DropDown) Show() error {
 		}
 	}
 	offset := 20
+	if d.Content == "" {
+		offset = 0
+	}
 	if len(d.Content) > offset {
 		offset = len(d.Content) + 1
 	}

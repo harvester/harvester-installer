@@ -157,7 +157,12 @@ func addFooterPanel(c *Console) error {
 
 func showDiskPage(c *Console) error {
 	if systemIsBIOS() {
-		return showNext(c, askForceMBRPanel, diskPanel)
+		return showNext(c,
+			forceMBRNotePanel,
+			askForceMBRPanel,
+			askForceMBRTitlePanel,
+			diskPanel,
+		)
 	}
 	return showNext(c, diskPanel)
 }
@@ -181,32 +186,38 @@ func addDiskPanel(c *Console) error {
 		p.SetLocation(x0, y0, x1, y1)
 	}
 
-	closeThisPage := func() {
-		c.CloseElements(diskPanel, askForceMBRPanel, diskValidatorPanel, forceMBRNotePanel)
-	}
 	diskOpts, err := getDiskOptions()
 	if err != nil {
 		return err
 	}
 
+	// Select device panel
 	diskV, err := widgets.NewSelect(c.Gui, diskPanel, "", getDiskOptions)
 	if err != nil {
 		return err
 	}
 	diskV.PreShow = func() error {
 		diskV.Value = c.config.Install.Device
+		if systemIsBIOS() {
+			c.setContentByName(askForceMBRTitlePanel, "Use MBR partitioning scheme")
+		}
 		return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
 	}
 	setLocation(diskV.Panel, len(diskOpts)+2)
 	c.AddElement(diskPanel, diskV)
 
-	askForceMBRV, err := widgets.NewDropDown(c.Gui, askForceMBRPanel, "Force using MBR", func() ([]widgets.Option, error) {
+	// Asking force MBR title
+	askForceMBRTitleV := widgets.NewPanel(c.Gui, askForceMBRTitlePanel)
+	setLocation(askForceMBRTitleV, 2)
+	c.AddElement(askForceMBRTitlePanel, askForceMBRTitleV)
+
+	// Asking force MBR DropDown
+	askForceMBRV, err := widgets.NewDropDown(c.Gui, askForceMBRPanel, "", func() ([]widgets.Option, error) {
 		return []widgets.Option{{Value: "no", Text: "No"}, {Value: "yes", Text: "Yes"}}, nil
 	})
 	if err != nil {
 		return err
 	}
-
 	askForceMBRV.PreShow = func() error {
 		c.Cursor = true
 		if c.config.ForceMBR {
@@ -219,22 +230,33 @@ func addDiskPanel(c *Console) error {
 	setLocation(askForceMBRV.Panel, 3)
 	c.AddElement(askForceMBRPanel, askForceMBRV)
 
+	// Note panel for ForceMBR
 	forceMBRNoteV := widgets.NewPanel(c.Gui, forceMBRNotePanel)
 	forceMBRNoteV.Wrap = true
 	setLocation(forceMBRNoteV, 3)
 	c.AddElement(forceMBRNotePanel, forceMBRNoteV)
 
+	// Panel for showing validator message
 	diskValidatorV := widgets.NewPanel(c.Gui, diskValidatorPanel)
 	diskValidatorV.FgColor = gocui.ColorRed
 	diskValidatorV.Wrap = true
-	setLocation(diskValidatorV, 3)
-	c.AddElement(diskValidatorPanel, diskValidatorV)
-
 	updateValidatorMessage := func(msg string) error {
 		diskValidatorV.Focus = false
 		return c.setContentByName(diskValidatorPanel, msg)
 	}
+	setLocation(diskValidatorV, 3)
+	c.AddElement(diskValidatorPanel, diskValidatorV)
 
+	// Helper functions
+	closeThisPage := func() {
+		c.CloseElements(
+			diskPanel,
+			askForceMBRPanel,
+			diskValidatorPanel,
+			forceMBRNotePanel,
+			askForceMBRTitlePanel,
+		)
+	}
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
 		return showNext(c, askCreatePanel)
@@ -250,8 +272,7 @@ func addDiskPanel(c *Console) error {
 				return err
 			}
 			if diskTooLargeForMBR {
-				updateValidatorMessage("Disk too large for MBR")
-				return nil
+				return updateValidatorMessage("Disk too large for MBR. Must be less than 2TiB")
 			}
 		}
 		c.config.ForceMBR = (forceMBR == "yes")
@@ -259,6 +280,7 @@ func addDiskPanel(c *Console) error {
 		return showNetworkPage(c)
 	}
 
+	// Keybindings
 	diskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
 			device, err := diskV.GetData()
