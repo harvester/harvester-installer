@@ -472,6 +472,7 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		"10-harvester.yaml",
 		"11-monitoring-crd.yaml",
 		"13-monitoring.yaml",
+		"20-harvester-settings.yaml",
 	} {
 		rendered, err := render("rancherd-"+templateName, config)
 		if err != nil {
