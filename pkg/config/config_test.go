@@ -4,7 +4,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
+
+type SettingManifestMock struct {
+	APIVersion string
+	Kind       string
+	Metadata   map[string]interface{}
+	Value      string
+}
+
+func (s *SettingManifestMock) assertValueEqual(t *testing.T, expected string) {
+	assert.Equal(t, expected, s.Value)
+}
+
+func (s *SettingManifestMock) assertNameEqual(t *testing.T, expected string) {
+	val := s.Metadata["name"]
+	assert.Equal(t, expected, val)
+}
 
 func TestHarvesterConfig_sanitized(t *testing.T) {
 	c := NewHarvesterConfig()
@@ -72,4 +89,104 @@ func TestHarvesterConfig_GetKubeletLabelsArg(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHarvesterSystemSettingsRendering(t *testing.T) {
+	testCases := []struct {
+		name         string
+		settingName  string
+		settingValue string
+	}{
+		{
+			name:         "Test string",
+			settingName:  "some-harvester-setting",
+			settingValue: "hello, this is setting value",
+		},
+		{
+			name:         "Test boolean encoded as string",
+			settingName:  "bool-setting",
+			settingValue: "true",
+		},
+		{
+			name:         "Test integer encoded as string",
+			settingName:  "int-setting",
+			settingValue: "123",
+		},
+		{
+			name:         "Test float encoded as string",
+			settingName:  "int-setting",
+			settingValue: "123.456",
+		},
+		{
+			name:         "Test JSON encoded value encoded as string",
+			settingName:  "json-encoded-setting",
+			settingValue: `{"jsonKey": "jsonValue"}`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		// Renders the config into YAML manifest, then decode the YAML manifest and verify the content
+		conf := HarvesterConfig{
+			SystemSettings: map[string]string{testCase.settingName: testCase.settingValue},
+		}
+		content, err := render("rancherd-20-harvester-settings.yaml", conf)
+		assert.Nil(t, err)
+
+		loadedConf := map[string][]SettingManifestMock{}
+
+		err = yaml.Unmarshal([]byte(content), &loadedConf)
+		assert.Nil(t, err)
+
+		// Take the first one
+		loadedConf["bootstrapResources"][0].assertNameEqual(t, testCase.settingName)
+		loadedConf["bootstrapResources"][0].assertValueEqual(t, testCase.settingValue)
+	}
+}
+
+func TestHarvesterSystemSettingsRendering_MultipleSettings(t *testing.T) {
+	// Iterating map is orderless so we need this special test case to test multiple settings
+	conf := HarvesterConfig{
+		SystemSettings: map[string]string{
+			"foo":   "bar",
+			"hello": "world",
+		},
+	}
+	content, err := render("rancherd-20-harvester-settings.yaml", conf)
+	assert.Nil(t, err)
+
+	loadedConf := map[string][]SettingManifestMock{}
+	err = yaml.Unmarshal([]byte(content), &loadedConf)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 2, len(loadedConf["bootstrapResources"]))
+	for _, setting := range loadedConf["bootstrapResources"] {
+		switch setting.Value {
+		case "bar":
+			setting.assertNameEqual(t, "foo")
+		case "world":
+			setting.assertNameEqual(t, "hello")
+		default:
+			t.Logf("Unexpected setting value: %s", setting.Value)
+			t.Fail()
+		}
+	}
+}
+
+func TestHarvesterSystemSettingsRendering_AsEmptyArrayIfNoSetting(t *testing.T) {
+	// If no SystemSettings config, "bootstrapResources" must be rendered as an empty array.
+	// If it got rendered as null, it removes every predefined bootstrapResoruces!
+	conf := HarvesterConfig{}
+
+	content, err := render("rancherd-20-harvester-settings.yaml", conf)
+	assert.Nil(t, err)
+
+	loadedConf := map[string][]SettingManifestMock{}
+
+	err = yaml.Unmarshal([]byte(content), &loadedConf)
+	assert.Nil(t, err)
+
+	bootstrapResources, ok := loadedConf["bootstrapResources"]
+	assert.True(t, ok)
+	assert.NotNil(t, bootstrapResources)
+	assert.Equal(t, 0, len(bootstrapResources))
 }

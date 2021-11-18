@@ -72,8 +72,6 @@ bootstrapResources:
           pullPolicy: "IfNotPresent"
         labelFilter:
           - "COS_*"
-        autoProvisionFilter:
-          - "/dev/installer/default"
       rancherEmbedded: true
       webhook:
         image:
