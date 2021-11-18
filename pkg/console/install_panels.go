@@ -206,7 +206,7 @@ func addDiskPanel(c *Console) error {
 	if err != nil {
 		return err
 	}
-	c.config.ForceMBR = true
+
 	askForceMBRV.PreShow = func() error {
 		c.Cursor = true
 		if c.config.ForceMBR {
