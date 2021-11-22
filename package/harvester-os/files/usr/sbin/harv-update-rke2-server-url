@@ -1,0 +1,34 @@
+#!/bin/bash -ex
+
+HARVESTER_CONFIG_FILE=/oem/harvester.config
+RKE2_VIP_CONFIG_FILE=/etc/rancher/rke2/config.yaml.d/90-harvester-vip.yaml
+
+
+update_agent_conf()
+{
+  export SERVER_URL="$(yq -e e .serverurl /oem/harvester.config | sed -E 's,^https://(.*):8443,https://\1:9345,')"
+
+  if [ -z "$SERVER_URL" ]; then
+    echo "[Error] fail to get server URL with VIP."
+    exit 1
+  fi
+
+  if [ -e $RKE2_VIP_CONFIG_FILE ]; then
+    yq -e e '.server = strenv(SERVER_URL)' $RKE2_VIP_CONFIG_FILE -i
+  else
+    yq -n e '.server = strenv(SERVER_URL)' > $RKE2_VIP_CONFIG_FILE
+  fi
+}
+
+case $1 in
+  server)
+    rm -f $RKE2_VIP_CONFIG_FILE
+    ;;
+  agent)
+    update_agent_conf
+    ;;
+  *)
+    echo "[Error] role must in server or agent."
+    exit 1
+    ;;
+esac
