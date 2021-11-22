@@ -71,6 +71,7 @@ type Install struct {
 	Debug     bool   `json:"debug,omitempty"`
 	TTY       string `json:"tty,omitempty"`
 	ForceGPT  bool   `json:"forceGpt,omitempty"`
+	ForceMBR  bool   `json:"forceMbr,omitempty"` // ForceMBR is not a cOS installer flag
 
 	Webhooks []Webhook `json:"webhooks,omitempty"`
 }
@@ -101,9 +102,6 @@ type OS struct {
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
-
-	// ForceMBR is not a cOS installation flag so it's not in "Install" struct
-	ForceMBR bool `json:"forceMbr,omitempty"`
 }
 
 type HarvesterConfig struct {
