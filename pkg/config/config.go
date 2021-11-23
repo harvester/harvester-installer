@@ -33,7 +33,7 @@ type Network struct {
 	IP           string             `json:"ip,omitempty"`
 	SubnetMask   string             `json:"subnetMask,omitempty"`
 	Gateway      string             `json:"gateway,omitempty"`
-	DefaultRoute bool               `json:"defaultRoute,omitempty"`
+	DefaultRoute bool               `json:"-"`
 	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
 }
 

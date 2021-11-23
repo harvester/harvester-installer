@@ -328,22 +328,6 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, ru
 		return errors.New("no slave defined for management network bond")
 	}
 
-	// Check if we have the only one default route.
-	// If not, set mgmtNetwork as the default route.
-	defaultRoute := ""
-	for name, network := range networks {
-		if network.DefaultRoute {
-			if defaultRoute != "" {
-				return fmt.Errorf("multi default route found: %s and %s", defaultRoute, name)
-			}
-			defaultRoute = name
-		}
-	}
-	if defaultRoute == "" {
-		mgmtNetwork.DefaultRoute = true
-		networks[MgmtInterfaceName] = mgmtNetwork
-	}
-
 	for name, network := range networks {
 		switch network.Method {
 		case NetworkMethodDHCP, NetworkMethodStatic, NetworkMethodNone:
@@ -411,6 +395,11 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 			"mode":   BondModeBalanceTLB,
 			"miimon": "100",
 		}
+	}
+
+	// Set default route for management bond
+	if name == MgmtInterfaceName {
+		network.DefaultRoute = true
 	}
 
 	ifcfg, err := render("wicked-ifcfg-bond-master", network)
