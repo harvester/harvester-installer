@@ -190,3 +190,41 @@ func TestHarvesterSystemSettingsRendering_AsEmptyArrayIfNoSetting(t *testing.T) 
 	assert.NotNil(t, bootstrapResources)
 	assert.Equal(t, 0, len(bootstrapResources))
 }
+
+func TestHarvesterTokenRendering(t *testing.T) {
+	// Test the Token value is escaped correctly
+	testCases := []struct {
+		name  string
+		token string
+	}{
+		{
+			name:  "Test OWASP password special characters",
+			token: " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
+		},
+		{
+			name:  "Test mixed characters",
+			token: "Hello, I opened a new bar! It's called \"FOOBAR\". \\YES/",
+		},
+	}
+
+	for _, testCase := range testCases {
+		// Renders the config into YAML manifest, then decode the YAML manifest and verify the content
+		conf := HarvesterConfig{
+			Token: testCase.token,
+			// RuntimeVersion: "DoesNotMatter",
+		}
+		content, err := render("rancherd-config.yaml", conf)
+		assert.Nil(t, err)
+		t.Log("Rendered content:")
+		t.Log(content)
+
+		loadedConf := map[string]interface{}{}
+		t.Log("Loaded Config:")
+		t.Log(loadedConf)
+
+		err = yaml.Unmarshal([]byte(content), &loadedConf)
+		assert.Nil(t, err)
+
+		assert.Equal(t, loadedConf["token"].(string), testCase.token)
+	}
+}

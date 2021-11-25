@@ -162,3 +162,38 @@ func TestValidateConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckToken(t *testing.T) {
+	testCases := []struct {
+		name       string
+		tokenValue string
+		expectErr  bool
+	}{
+		{
+			name:       "Some regular string",
+			tokenValue: "AlphanumericValue12345",
+			expectErr:  false,
+		},
+		{
+			name:       "Some special characters",
+			tokenValue: "Hello, @Harvester, you're \"awesome\"! [md](url)",
+			expectErr:  false,
+		},
+		{
+			name:       "Non-ASCII characters are invalid",
+			tokenValue: "Äöé",
+			expectErr:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkToken(tc.tokenValue)
+			if tc.expectErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}

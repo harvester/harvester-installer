@@ -664,6 +664,9 @@ func addTokenPanel(c *Console) error {
 			if token == "" {
 				return c.setContentByName(validatorPanel, "Cluster token is required")
 			}
+			if err := checkToken(token); err != nil {
+				return c.setContentByName(validatorPanel, err.Error())
+			}
 			c.config.Token = token
 			closeThisPage()
 			return showNext(c, passwordConfirmPanel, passwordPanel)
