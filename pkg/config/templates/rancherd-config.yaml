@@ -4,7 +4,7 @@ role: agent
 {{- else -}}
 role: cluster-init
 {{- end }}
-token: '{{ .Token }}'
+token: {{ printf "%q" .Token }}
 kubernetesVersion: {{ .RuntimeVersion }}
 labels:
  - harvesterhci.io/managed=true

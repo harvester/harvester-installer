@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/harvester/harvester-installer/pkg/config"
 )
+
+const validTokenChars = "[a-zA-Z0-9 !\"#$%&'()*+,-./:;<=>?@^_`{|}~[\\]\\\\]"
 
 var (
 	ErrMsgModeCreateContainsServerURL   = fmt.Sprintf("ServerURL need to be empty in %s mode", config.ModeCreate)
@@ -247,6 +250,18 @@ func checkForceMBR(device string) error {
 	return nil
 }
 
+func checkToken(token string) error {
+	pattern := regexp.MustCompile("^" + validTokenChars + "+$")
+	if !pattern.MatchString(token) {
+		return errors.Errorf(
+			"Invalid token. Must be alphanumeric and OWASP special password characters. Regexp: %v",
+			pattern,
+		)
+	}
+
+	return nil
+}
+
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	// check hostname
 	// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
@@ -276,6 +291,10 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	}
 
 	if _, err := cfg.GetKubeletArgs(); err != nil {
+		return err
+	}
+
+	if err := checkToken(cfg.Token); err != nil {
 		return err
 	}
 
