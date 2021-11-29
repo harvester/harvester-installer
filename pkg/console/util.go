@@ -403,7 +403,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 			return err
 		}
 		defer os.Remove(cosPartLayout)
-		env = append(env, fmt.Sprintf("COS_PARTITION_LAYOUT=%s", cosPartLayout))
+		env = append(env, fmt.Sprintf("_COS_PARTITION_LAYOUT=%s", cosPartLayout))
 	}
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [ "$COS_INSTALL_POWER_OFF" = true ] || grep -q 'cos.install.power_off=true' /proc/cmdline; then
+if [ "$_COS_INSTALL_POWER_OFF" = true ] || grep -q 'cos.install.power_off=true' /proc/cmdline; then
     poweroff -f
 else
     echo " * Rebooting system in 5 seconds (CTRL+C to cancel)"
