@@ -19,7 +19,7 @@ cleanup2()
     sync
     umount_target || true
     umount ${STATEDIR}
-    [ -n "COS_INSTALL_ISO_URL" ] && umount ${ISOMNT} || true
+    [ -n "_COS_INSTALL_ISO_URL" ] && umount ${ISOMNT} || true
 }
 
 cleanup()
@@ -53,10 +53,10 @@ get_url()
 
 get_iso()
 {
-    if [ -n "$COS_INSTALL_ISO_URL" ]; then
+    if [ -n "$_COS_INSTALL_ISO_URL" ]; then
         ISOMNT=$(mktemp -d -p /tmp cos.XXXXXXXX.isomnt)
         TEMP_FILE=$(mktemp -p /tmp cos.XXXXXXXX.iso)
-        get_url ${COS_INSTALL_ISO_URL} ${TEMP_FILE}
+        get_url ${_COS_INSTALL_ISO_URL} ${TEMP_FILE}
         ISO_DEVICE=$(losetup --show -f $TEMP_FILE)
         mount -o ro ${ISO_DEVICE} ${ISOMNT}
     fi
@@ -229,10 +229,10 @@ EOF
 
 update_grub_settings()
 {
-    if [ -z "${COS_INSTALL_TTY}" ]; then
+    if [ -z "${_COS_INSTALL_TTY}" ]; then
         TTY=$(tty | sed 's!/dev/!!')
     else
-        TTY=$COS_INSTALL_TTY
+        TTY=$_COS_INSTALL_TTY
     fi
 
     if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
@@ -269,13 +269,13 @@ trap cleanup exit
 get_iso
 
 # Follow the symbolic link to the real device
-install_device="$COS_INSTALL_DEVICE"
-if [ -L "$COS_INSTALL_DEVICE" ]; then
-  install_device=$(readlink -f "$COS_INSTALL_DEVICE")
+install_device="$_COS_INSTALL_DEVICE"
+if [ -L "$_COS_INSTALL_DEVICE" ]; then
+  install_device=$(readlink -f "$_COS_INSTALL_DEVICE")
 fi
 
 # Run cOS installer but do not let it fetch ISO and shutdown
-COS_INSTALL_ISO_URL="" INTERACTIVE=yes COS_INSTALL_DEVICE="$install_device" cos-installer
+_COS_BOOTING_FROM_LIVE="true" _COS_INSTALL_ISO_URL="" INTERACTIVE=yes _COS_INSTALL_DEVICE="$install_device" cos install
 
 # Preload images
 do_detect
