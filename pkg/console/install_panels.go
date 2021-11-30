@@ -28,6 +28,7 @@ type UserInputData struct {
 	DNSServers           string
 	NTPServers           string
 	HasCheckedNTPServers bool
+	HasWarnedDiskSize    bool
 }
 
 const (
@@ -168,24 +169,7 @@ func showDiskPage(c *Console) error {
 }
 
 func addDiskPanel(c *Console) error {
-	maxX, maxY := c.Gui.Size()
-	lastY := maxY / 8
-	setLocation := func(p *widgets.Panel, height int) {
-		var (
-			x0 = maxX / 8
-			y0 = lastY
-			x1 = maxX / 8 * 7
-			y1 int
-		)
-		if height == 0 {
-			y1 = maxY / 8 * 7
-		} else {
-			y1 = y0 + height
-		}
-		lastY += height
-		p.SetLocation(x0, y0, x1, y1)
-	}
-
+	setLocation := createVerticalLocator(c)
 	diskOpts, err := getDiskOptions()
 	if err != nil {
 		return err
@@ -249,6 +233,7 @@ func addDiskPanel(c *Console) error {
 
 	// Helper functions
 	closeThisPage := func() {
+		userInputData.HasWarnedDiskSize = false
 		c.CloseElements(
 			diskPanel,
 			askForceMBRPanel,
@@ -291,6 +276,11 @@ func addDiskPanel(c *Console) error {
 				return updateValidatorMessage(err.Error())
 			}
 
+			if err := validateDiskSizeSoft(device); err != nil && !userInputData.HasWarnedDiskSize {
+				userInputData.HasWarnedDiskSize = true
+				return updateValidatorMessage(fmt.Sprintf("%s. Press Enter to continue.", err.Error()))
+			}
+
 			c.config.Install.Device = device
 
 			if systemIsBIOS() {
@@ -299,9 +289,15 @@ func addDiskPanel(c *Console) error {
 			}
 			return gotoNextPage(g, v)
 		},
-		gocui.KeyEsc:       gotoPrevPage,
-		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error { return updateValidatorMessage("") },
-		gocui.KeyArrowUp:   func(g *gocui.Gui, v *gocui.View) error { return updateValidatorMessage("") },
+		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error {
+			userInputData.HasWarnedDiskSize = false
+			return updateValidatorMessage("")
+		},
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			userInputData.HasWarnedDiskSize = false
+			return updateValidatorMessage("")
+		},
+		gocui.KeyEsc: gotoPrevPage,
 	}
 
 	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -693,23 +689,7 @@ func showNetworkPage(c *Console) error {
 }
 
 func addNetworkPanel(c *Console) error {
-	maxX, maxY := c.Gui.Size()
-	lastY := maxY / 8
-	setLocation := func(p *widgets.Panel, height int) {
-		var (
-			x0 = maxX / 8
-			y0 = lastY
-			x1 = maxX / 8 * 7
-			y1 int
-		)
-		if height == 0 {
-			y1 = maxY / 8 * 7
-		} else {
-			y1 = y0 + height
-		}
-		lastY += height
-		p.SetLocation(x0, y0, x1, y1)
-	}
+	setLocation := createVerticalLocator(c)
 
 	hostNameV, err := widgets.NewInput(c.Gui, hostNamePanel, hostNameLabel, false)
 	if err != nil {
@@ -1395,6 +1375,14 @@ func addInstallPanel(c *Console) error {
 
 			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
 			c.config.ForceGPT = !c.config.ForceMBR
+
+			// If Forcing MBR, VM data (Longhorn) partition will NOT be created
+			if c.config.ForceMBR {
+				msg := "Use MBR partitioning scheme, will not create VM Data partition"
+				printToPanel(c.Gui, msg, installPanel)
+				logrus.Info(msg)
+				c.config.NoDataPartition = true
+			}
 
 			// case insensitive for network method and vip mode
 			for key, network := range c.config.Networks {
