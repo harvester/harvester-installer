@@ -9,7 +9,7 @@ mkdir -p ${ARTIFACTS_DIR}
 
 source ${SCRIPTS_DIR}/version
 
-BASE_OS_IMAGE="rancher/harvester-os:dev-head"
+BASE_OS_IMAGE="rancher/harvester-os:20211130"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
