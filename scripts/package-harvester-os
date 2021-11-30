@@ -8,14 +8,30 @@ PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
 mkdir -p ${ARTIFACTS_DIR}
 
 source ${SCRIPTS_DIR}/version
+source ${SCRIPTS_DIR}/version-rke2
+source ${SCRIPTS_DIR}/version-rancher
+source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
+source ${SCRIPTS_DIR}/version-monitoring
 
 BASE_OS_IMAGE="rancher/harvester-os:20211130"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
+
+PRETTY_NAME="Harvester ${VERSION}"
+
+cat > harvester-release.yaml <<EOF
+harvester: ${HARVESTER_VERSION}
+harvesterChart: ${HARVESTER_CHART_VERSION}
+os: ${PRETTY_NAME}
+kubernetes: ${RKE2_VERSION}
+rancher: ${RANCHER_VERSION}
+monitoringChart: ${MONITORING_VERSION}
+EOF
+
 docker build --pull \
 	--build-arg BASE_OS_IMAGE="${BASE_OS_IMAGE}" \
-	--build-arg HARVESTER_INSTALLER_VERSION="${VERSION}" \
+	--build-arg HARVESTER_PRETTY_NAME="${PRETTY_NAME}" \
 	-t ${HARVESTER_OS_IMAGE} .
 
 PROJECT_PREFIX="harvester"
@@ -37,7 +53,8 @@ docker rm $(<os-img-container) && rm -f os-img-container
 
 # build ISO
 ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
-[ -d iso ] && yq e ".overlay.isoimage = \"$(pwd)/iso\"" iso.yaml -i
+cp harvester-release.yaml iso
+yq e ".overlay.isoimage = \"$(pwd)/iso\"" iso.yaml -i
 echo "set harvester_version=${VERSION}" > iso/boot/grub2/harvester.cfg
 luet-makeiso iso.yaml --image "${HARVESTER_OS_IMAGE}" --output ${ARTIFACTS_DIR}/${ISO_PREFIX}
 rm ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
