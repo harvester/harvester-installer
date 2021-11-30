@@ -6,8 +6,9 @@ RUN curl -sfL https://github.com/rancher/wharfie/releases/latest/download/wharfi
 COPY files/ /
 RUN chmod 0600 /system/oem/*
 
-RUN rm -f /system/oem/05_network.yaml
+COPY harvester-release.yaml /etc/
 
-ARG HARVESTER_INSTALLER_VERSION
+ARG HARVESTER_PRETTY_NAME
+RUN sed -i "s/^PRETTY_NAME.*/PRETTY_NAME=\"$HARVESTER_PRETTY_NAME\"/g" /etc/os-release && \
+    echo GRUB_ENTRY_NAME="\"$HARVESTER_PRETTY_NAME\"" >> /etc/os-release
 
-RUN echo GRUB_ENTRY_NAME="\"Harvester $HARVESTER_INSTALLER_VERSION\"" >> /etc/os-release
