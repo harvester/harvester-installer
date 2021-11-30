@@ -27,6 +27,7 @@ import (
 
 	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/widgets"
 )
 
 const (
@@ -34,7 +35,10 @@ const (
 	defaultHTTPTimeout    = 15 * time.Second
 	harvesterNodePort     = "30443"
 	automaticCmdline      = "harvester.automatic"
-	minDiskSizeGiB        = 140
+	softMinDiskSizeGiB    = 140
+	hardMinDiskSizeGiB    = 60
+	minCosPartSizeGiB     = 25
+	normalCosPartSizeGiB  = 50
 )
 
 func newProxyClient() http.Client {
@@ -390,7 +394,8 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 
 	env := append(os.Environ(), ev...)
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
-	if !hvstConfig.ForceMBR {
+	if !hvstConfig.NoDataPartition {
+		// Add custom partition layout for cOS to create VM Data partition for us
 		cosPartLayout, err := createPartitionLayout(hvstConfig.Install.Device)
 		if err != nil {
 			return err
@@ -515,8 +520,20 @@ func validateDiskSize(devPath string) error {
 	if err != nil {
 		return err
 	}
-	if diskSizeBytes>>30 < minDiskSizeGiB {
-		return fmt.Errorf("Disk size too small. Minimum %dGB is required", minDiskSizeGiB)
+	if diskSizeBytes>>30 < hardMinDiskSizeGiB {
+		return fmt.Errorf("Disk size too small. Minimum %dGB is required", hardMinDiskSizeGiB)
+	}
+
+	return nil
+}
+
+func validateDiskSizeSoft(devPath string) error {
+	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
+	if err != nil {
+		return err
+	}
+	if diskSizeBytes>>30 < softMinDiskSizeGiB {
+		return fmt.Errorf("Disk size smaller than recommended size %dGB", softMinDiskSizeGiB)
 	}
 
 	return nil
@@ -586,16 +603,20 @@ func createPartitionLayout(devPath string) (string, error) {
 }
 
 func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
-	if diskSizeGiB < minDiskSizeGiB {
-		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, minDiskSizeGiB)
+	switch {
+	case diskSizeGiB < hardMinDiskSizeGiB:
+		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, hardMinDiskSizeGiB)
+	case diskSizeGiB < softMinDiskSizeGiB:
+		var d float64 = minCosPartSizeGiB / float64(softMinDiskSizeGiB-hardMinDiskSizeGiB)
+		partSizeGiB := minCosPartSizeGiB + float64(diskSizeGiB-hardMinDiskSizeGiB)*d
+		return uint64(partSizeGiB), nil
+	default:
+		partSizeGiB := normalCosPartSizeGiB + ((diskSizeGiB-100)/100)*10
+		if partSizeGiB > 100 {
+			partSizeGiB = 100
+		}
+		return partSizeGiB, nil
 	}
-
-	partSizeGiB := 50 + ((diskSizeGiB-100)/100)*10
-	if partSizeGiB > 100 {
-		partSizeGiB = 100
-	}
-
-	return partSizeGiB, nil
 }
 
 func systemIsBIOS() bool {
@@ -603,4 +624,24 @@ func systemIsBIOS() bool {
 		return true
 	}
 	return false
+}
+
+func createVerticalLocator(c *Console) func(p *widgets.Panel, height int) {
+	maxX, maxY := c.Gui.Size()
+	lastY := maxY / 8
+	return func(p *widgets.Panel, height int) {
+		var (
+			x0 = maxX / 8
+			y0 = lastY
+			x1 = maxX / 8 * 7
+			y1 int
+		)
+		if height == 0 {
+			y1 = maxY / 8 * 7
+		} else {
+			y1 = y0 + height
+		}
+		lastY += height
+		p.SetLocation(x0, y0, x1, y1)
+	}
 }

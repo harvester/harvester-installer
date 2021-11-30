@@ -29,7 +29,7 @@ var (
 	ErrMsgInterfaceIsLoop              = "interface is a loopback interface"
 	ErrMsgDeviceNotSpecified           = "no device specified"
 	ErrMsgDeviceNotFound               = "device not found"
-	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", minDiskSizeGiB)
+	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", hardMinDiskSizeGiB)
 	ErrMsgNoCredentials                = "no SSH authorized keys or passwords are set"
 	ErrMsgForceMBROnLargeDisk          = "disk size too large for MBR partitioning table"
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"

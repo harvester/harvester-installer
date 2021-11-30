@@ -72,7 +72,10 @@ type Install struct {
 	Debug     bool   `json:"debug,omitempty"`
 	TTY       string `json:"tty,omitempty"`
 	ForceGPT  bool   `json:"forceGpt,omitempty"`
-	ForceMBR  bool   `json:"forceMbr,omitempty"` // ForceMBR is not a cOS installer flag
+
+	// Following options are not cOS installer flag
+	ForceMBR        bool `json:"forceMbr,omitempty"`
+	NoDataPartition bool `json:"noDataPartition,omitempty"`
 
 	Webhooks []Webhook `json:"webhooks,omitempty"`
 }
