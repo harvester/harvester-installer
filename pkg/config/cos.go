@@ -341,6 +341,9 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, ru
 		} else {
 			err = updateNIC(stage, name, &network)
 		}
+		if network.VlanID != 0 {
+			err = updateVLAN(stage, name, &network)
+		}
 		if err != nil {
 			return err
 		}
@@ -361,7 +364,7 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, ru
 	}
 
 	if run {
-		stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload all"))
+		stage.Commands = append(stage.Commands, "wicked ifreload all")
 
 		// in case wicked config is not changed and netconfig is not called
 		stage.Commands = append(stage.Commands, "netconfig update")
@@ -431,6 +434,29 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 		})
 	}
 
+	return nil
+}
+
+func updateVLAN(stage *yipSchema.Stage, name string, network *Network) error {
+	n := struct {
+		Name string
+		Network
+	}{
+		Name:    name,
+		Network: *network,
+	}
+	ifcfg, err := render("wicked-ifcfg-vlan", n)
+	if err != nil {
+		return err
+	}
+
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-vlan%d", network.VlanID),
+		Content:     ifcfg,
+		Permissions: 0600,
+		Owner:       0,
+		Group:       0,
+	})
 	return nil
 }
 
