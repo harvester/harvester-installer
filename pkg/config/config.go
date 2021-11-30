@@ -35,6 +35,7 @@ type Network struct {
 	Gateway      string             `json:"gateway,omitempty"`
 	DefaultRoute bool               `json:"-"`
 	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
+	VlanID       int                `json:"vlanId,omitempty"`
 }
 
 type HTTPBasicAuth struct {

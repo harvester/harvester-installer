@@ -1,0 +1,13 @@
+STARTMODE='onboot'
+BOOTPROTO='{{ .Method }}'
+ETHERDEVICE='{{ .Name }}'
+{{ if and (eq .Method "static") (ne .VlanID 0) -}}
+IPADDR={{ .IP }}
+NETMASK={{ .SubnetMask }}
+{{- end }}
+VLAN_ID='{{ .VlanID }}'
+{{ $defaultRoute := "no" -}}
+{{- if .DefaultRoute -}}
+  {{- $defaultRoute = "yes" -}}
+{{- end }}
+DHCLIENT_SET_DEFAULT_ROUTE='{{ $defaultRoute }}'

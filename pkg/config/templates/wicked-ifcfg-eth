@@ -1,6 +1,6 @@
 STARTMODE='onboot'
 BOOTPROTO='{{ .Method }}'
-{{ if eq .Method "static" -}}
+{{ if and (eq .Method "static") (eq .VlanID 0) -}}
 IPADDR={{ .IP }}
 NETMASK={{ .SubnetMask }}
 {{- end }}
