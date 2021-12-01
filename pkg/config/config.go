@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/imdario/mergo"
@@ -180,4 +181,36 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	}
 
 	return []string{}, nil
+}
+
+// FindNetworkInterfaceName uses MAC address to lookup interface name
+func (n *NetworkInterface) FindNetworkInterfaceName() error {
+	if n.Name != "" {
+		return nil
+	}
+
+	if n.Name == "" && n.HwAddr != "" {
+		hwAddr, err := net.ParseMAC(n.HwAddr)
+		if err != nil {
+			return  err
+		}
+
+		interfaces, err := net.Interfaces()
+		if err != nil {
+			return  err
+		}
+
+		for _, iface := range interfaces {
+			if iface.HardwareAddr.String() == hwAddr.String() {
+				n.Name = iface.Name
+				return nil
+			}
+		}
+
+		return fmt.Errorf("no interface matching hardware address %s found", n.HwAddr)
+	}
+
+	// Default, there is no Name or HwAddress, do nothing. Let validation capture it
+	return nil
+
 }
