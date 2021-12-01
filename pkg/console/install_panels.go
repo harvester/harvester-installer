@@ -1393,6 +1393,23 @@ func addInstallPanel(c *Console) error {
 				c.config.TTY = getFirstConsoleTTY()
 			}
 
+			// lookup MAC Address to populate device names where needed
+			for key, network := range c.config.Networks {
+				tmpInterfaces := []config.NetworkInterface{}
+				for _, iface := range network.Interfaces {
+					if err := iface.FindNetworkInterfaceName(); err != nil {
+						logrus.Error(err)
+						printToPanel(c.Gui, err.Error(), installPanel)
+						return
+					}
+					tmpInterfaces = append(tmpInterfaces, iface)
+				}
+				network.Interfaces = tmpInterfaces
+				c.config.Networks[key] = network
+			}
+
+
+
 			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
 			c.config.ForceGPT = !c.config.ForceMBR
 
