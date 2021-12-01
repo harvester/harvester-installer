@@ -49,7 +49,13 @@ func prettyError(errMsg string, value string) error {
 	return errors.Errorf("%s: %s", errMsg, value)
 }
 
-func checkInterface(iface config.NetworkInterface) error {
+func checkInterface(iface *config.NetworkInterface) error {
+
+	err := iface.FindNetworkInterfaceName()
+	if err != nil {
+		return err
+	}
+
 	// For now we only accept interface name but not device specifier.
 	if iface.Name == "" {
 		return errors.New(ErrMsgInterfaceNotSpecified)
@@ -173,7 +179,7 @@ func checkNetworks(networks map[string]config.Network) error {
 
 	for _, network := range networks {
 		for _, iface := range network.Interfaces {
-			if err := checkInterface(iface); err != nil {
+			if err := checkInterface(&iface); err != nil {
 				return err
 			}
 		}
