@@ -1364,7 +1364,23 @@ func addInstallPanel(c *Console) error {
 					return
 				}
 				logrus.Info("Local config (merged): ", c.config)
+
+				if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
+					printToPanel(c.Gui, "Configuring network...", installPanel)
+					if _, err := applyNetworks(c.config.Networks); err != nil {
+						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
+						return
+					}
+					vip, err := getVipThroughDHCP(config.MgmtInterfaceName)
+					if err != nil {
+						printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
+						return
+					}
+					c.config.Vip = vip.ipv4Addr
+					c.config.VipHwAddr = vip.hwAddr
+				}
 			}
+			c.config.VipMode = strings.ToLower(c.config.VipMode)
 
 			if c.config.Hostname == "" {
 				c.config.Hostname = generateHostName()
@@ -1389,7 +1405,6 @@ func addInstallPanel(c *Console) error {
 				network.Method = strings.ToLower(network.Method)
 				c.config.Networks[key] = network
 			}
-			c.config.VipMode = strings.ToLower(c.config.VipMode)
 
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToPanel(c.Gui, err.Error(), installPanel)

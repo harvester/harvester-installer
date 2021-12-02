@@ -645,3 +645,7 @@ func createVerticalLocator(c *Console) func(p *widgets.Panel, height int) {
 		p.SetLocation(x0, y0, x1, y1)
 	}
 }
+
+func needToGetVIPFromDHCP(mode, vip, hwAddr string) bool {
+	return strings.ToLower(mode) == config.NetworkMethodDHCP && (vip == "" || hwAddr == "")
+}
