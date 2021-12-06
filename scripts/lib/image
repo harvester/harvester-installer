@@ -45,12 +45,54 @@ save_image_list()
 
 save_image()
 {
-  local image_list=$1
-  local save_dir=$2
+  local image_type=$1
+  local bundle_dir=$2
+  local image_list=$3
+  local save_dir=$4
 
   local archive_name="$(basename ${image_list%.txt}).tar"
   local archive_file="${save_dir}/${archive_name}"
   xargs -n1 -t docker image pull --quiet < $image_list
   docker image save -o $archive_file $(<${image_list})
   zstd --rm $archive_file
+
+  add_image_list_to_metadata $image_type $bundle_dir $image_list "${archive_file}.zst"
+}
+
+# Add image list to bundle metadata
+add_image_list_to_metadata() {
+  local image_type=$1
+  local bundle_dir=$2
+  local image_list=$3
+  local image_archive=$4
+
+  local metadata="$bundle_dir/metadata.yaml"
+  local rel_image_list
+  local rel_image_archive
+
+  rel_image_list="${image_list#"$bundle_dir"}"
+
+  if [ "$rel_image_list" = "$image_list" ]; then
+    echo "Image list file $image_list is not in $bundle_dir"
+    exit 1
+  fi
+
+  rel_image_archive="${image_archive#"$bundle_dir"}"
+  if [ "$rel_image_archive" = "$image_archive" ]; then
+    echo "Image archive $image_archive is not in $bundle_dir"
+    exit 1
+  fi
+
+  if [ ! -e  $metadata ]; then
+    cat > $metadata <<'EOF'
+images:
+  common: []
+  rke2: []
+  agent: []
+EOF
+  fi
+
+  IMAGE_LIST="$rel_image_list" \
+    IMAGE_ARCHIVE="$rel_image_archive" \
+    yq -e --prettyPrint e ".images.$image_type += [{\"list\": strenv(IMAGE_LIST), \"archive\": strenv(IMAGE_ARCHIVE)}]" $metadata -i
 }
