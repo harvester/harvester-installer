@@ -116,7 +116,12 @@ preload_rke2_images()
       trap "rm -rf $inst_tmp" exit
 
       # extract rke2 tarball from image
-      rke2_image=$(grep 'docker.io/rancher/system-agent-installer-rke2:' /var/lib/rancher/agent/images/rancherd-bootstrap-images.txt)
+      image_list=$(ls /var/lib/rancher/agent/images/rancherd-bootstrap-images-*.txt | head -n 1)
+      if [ -z "$image_list" ]; then
+        echo "[ERROR] Fail to get rancherd bootstrap images list."
+        exit 1
+      fi
+      rke2_image=$(grep 'docker.io/rancher/system-agent-installer-rke2:' $image_list)
       wharfie --images-dir /var/lib/rancher/agent/images/ $rke2_image $inst_tmp
 
       # extract rke2 binary

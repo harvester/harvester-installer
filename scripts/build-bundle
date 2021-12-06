@@ -9,6 +9,8 @@ PACKAGE_HARVESTER_REPO_DIR="${TOP_DIR}/package/harvester-repo"
 cd ${TOP_DIR}
 
 source ${SCRIPTS_DIR}/version
+source ${SCRIPTS_DIR}/version-rke2
+source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/lib/http
 source ${SCRIPTS_DIR}/lib/image
 
@@ -31,12 +33,6 @@ fi
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 
-if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
- cp -rf /bundle/* ${BUNDLE_DIR}/
- exit 0
-fi
-
-
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
@@ -49,44 +45,46 @@ tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
+if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
+ cp -rf /bundle/* ${BUNDLE_DIR}/
+ exit 0
+fi
+
 # Offline images
 
-source ${SCRIPTS_DIR}/version-rke2
-
 # Rancherd bootstrap images
-# FIXME(kiefer): most images are still under devlopment
-cp ${SCRIPTS_DIR}/images/rancherd-bootstrap-images.txt ${RANCHERD_IMAGES_DIR}
-RKE2_IMAGE_TAG=${RKE2_VERSION/+/-} # v1.21.3-rc6+rke2r2 -> v1.21.3-rc6-rke2r2
-sed -i "s,\$RKE2_VERSION,${RKE2_IMAGE_TAG}," ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt
-save_image ${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images.txt ${RANCHERD_IMAGES_DIR}
+image_list_file=${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images-${VERSION}.txt
+cp ${SCRIPTS_DIR}/images/rancherd-bootstrap-images.txt $image_list_file
+RKE2_VERSION_NORMALIZED=${RKE2_VERSION/+/-} # v1.21.3-rc6+rke2r2 -> v1.21.3-rc6-rke2r2
+sed -i "s,\$RKE2_VERSION,${RKE2_VERSION_NORMALIZED}," ${image_list_file}
+save_image "agent" $BUNDLE_DIR ${image_list_file} ${RANCHERD_IMAGES_DIR}
 
-# Images needed during rancherd cluster-init stage.
-cp ${SCRIPTS_DIR}/images/rancher-images.txt ${IMAGES_DIR}
-save_image ${IMAGES_DIR}/rancher-images.txt ${IMAGES_DIR}
+# Rancher images
+image_list_file=${IMAGES_DIR}/rancher-images-${RANCHER_VERSION}.txt
+cp ${SCRIPTS_DIR}/images/rancher-images.txt $image_list_file
+save_image "common" $BUNDLE_DIR $image_list_file ${IMAGES_DIR}
 
 # RKE2 images
 RKE2_IMAGES_URL="https://github.com/rancher/rke2/releases/download/${RKE2_VERSION}"
-if [ -f "${SCRIPTS_DIR}/images/rke2-images.linux-amd64.txt" ] && [ -f "${SCRIPTS_DIR}/images/rke2-images.linux-amd64.tar.zst" ]; then
-  mv "${SCRIPTS_DIR}/images/rke2-images.linux-amd64.txt" "${IMAGES_DIR}/rke2-images.linux-amd64.txt"
-  mv "${SCRIPTS_DIR}/images/rke2-images.linux-amd64.tar.zst" "${IMAGES_DIR}/rke2-images.linux-amd64.tar.zst"
-else
-  get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" "${IMAGES_DIR}/rke2-images.linux-amd64.txt"
-  get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" "${IMAGES_DIR}/rke2-images.linux-amd64.tar.zst"
-fi
+image_list_file="${IMAGES_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
+image_archive="${IMAGES_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.tar.zst"
+get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" $image_list_file
+get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" $image_archive
+add_image_list_to_metadata "rke2" $BUNDLE_DIR $image_list_file $image_archive
 
 # exclude SR-IOV images
+image_list_file="${IMAGES_DIR}/rke2-images-multus.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
 # save_image_list "rke2-images-multus" "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.txt" ${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt
-
 # Workaround for https://github.com/rancher/rke2/issues/2229
-cat > ${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt <<EOF
+cat > $image_list_file <<EOF
 docker.io/rancher/hardened-cni-plugins:v0.9.1-build20211119
 docker.io/rancher/hardened-multus-cni:v3.7.1-build20211119
 EOF
 
-save_image ${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt ${IMAGES_DIR}
+save_image "rke2" $BUNDLE_DIR $image_list_file ${IMAGES_DIR}
 
 # Harvester images: get image list from harvester chart's values file
-image_list_file='harvester-images.txt'
+image_list_file="harvester-images-${VERSION}.txt"
 values_file="${harvester_chart_path}/values.yaml"
 touch ${image_list_file}
 repositories=( $(yq eval ' explode(.) | .. | select(has("repository")) |select(has("tag")) | .repository' ${values_file}) )
@@ -122,4 +120,4 @@ sort -u "${image_list_file}.tmp" | \
 grep -Ev "local-path-provisioner|library-traefik|klipper-lb|multus" >"${image_list_file}"
 
 cp ${image_list_file} ${IMAGES_DIR}
-save_image ${IMAGES_DIR}/${image_list_file} ${IMAGES_DIR}
+save_image "common" $BUNDLE_DIR ${IMAGES_DIR}/${image_list_file} ${IMAGES_DIR}

@@ -4,6 +4,7 @@ TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 ARTIFACTS_DIR="${TOP_DIR}/dist/artifacts"
 SCRIPTS_DIR="${TOP_DIR}/scripts"
 PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
+BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 
 mkdir -p ${ARTIFACTS_DIR}
 
@@ -50,6 +51,9 @@ docker cp $(<os-img-container):/boot/${KERNEL} ${ARTIFACTS_DIR}/${PROJECT_PREFIX
 docker cp $(<os-img-container):/boot/${INITRD} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
 chmod +r ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
 docker rm $(<os-img-container) && rm -f os-img-container
+
+# Make sure files under bundle dir can be read by nginx
+find $BUNDLE_DIR -type f -exec chmod +r {} +
 
 # build ISO
 ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
