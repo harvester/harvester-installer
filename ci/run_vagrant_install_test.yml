@@ -33,6 +33,18 @@
       register: shell_result
       until: shell_result.rc == 0
 
+    - name: Check for existing environment
+      stat:
+        path: "{{ WORKSPACE }}/ipxe-examples"
+      register: check_ipxe_examples_result
+
+    - name: Cleanup vagrants
+      shell: >
+        vagrant destroy -f
+      args:
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+      when: check_ipxe_examples_result.stat.exists
+
     - name: Cleanup ipxe-examples dir
       file:
         path: "{{ WORKSPACE }}/ipxe-examples"
