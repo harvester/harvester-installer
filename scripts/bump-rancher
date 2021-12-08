@@ -45,3 +45,5 @@ RANCHER_IMAGE_TAG=$RANCHER_VERSION \
 RANCHER_IMAGE_TAG="rancher/system-agent-installer-rancher:$RANCHER_VERSION" \
   yq e -i '.rancherInstallerImage = strenv(RANCHER_IMAGE_TAG)' \
   "${TOP_DIR}/package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml"
+
+echo "RANCHER_VERSION=\"$RANCHER_VERSION\"" > $SCRIPTS_DIR/version-rancher
