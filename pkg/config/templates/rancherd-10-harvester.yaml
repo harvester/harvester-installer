@@ -28,6 +28,9 @@ bootstrapResources:
   spec:
     valuesContent: |-
       controller:
+        config:
+          proxy-body-size: "0"
+          proxy-request-buffering: "off"
         admissionWebhooks:
           port: 8444
         publishService:
