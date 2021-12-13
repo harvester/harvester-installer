@@ -68,6 +68,5 @@ xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract /rootfs.s
 
 # Write checksum
 cd ${ARTIFACTS_DIR}
-CHECKSUM_FILE=${ISO_PREFIX}.sha256
-sha256sum ${PROJECT_PREFIX}* > $CHECKSUM_FILE
-
+CHECKSUM_FILE=${ISO_PREFIX}.sha512
+sha512sum ${PROJECT_PREFIX}* > $CHECKSUM_FILE
