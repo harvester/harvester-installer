@@ -18,6 +18,15 @@ EnvironmentFile=-/etc/rancher/installer/env
 # NOTE: it doesn't work for serial console
 ExecStartPre=/usr/bin/setterm --msg off
 
+# Disable systemd messages before starting the installer
+# See https://www.freedesktop.org/software/systemd/man/systemd.html#SIGRTMIN+21
+# Send SIGRTMIN+21
+ExecStartPre=/usr/bin/kill -s 55 1
+
+# Enable systemd messager after stopping the installer
+# Send SIGRTMIN+20
+ExecStopPost=/usr/bin/kill -s 54 1
+
 # clear the original command in getty@.service
 ExecStart=
 
