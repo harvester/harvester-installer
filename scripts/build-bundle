@@ -31,7 +31,9 @@ if [ ! -d ${harvester_path} ];then
     harvester_path=/tmp/harvester
 fi
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
+harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
+helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
 
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring
