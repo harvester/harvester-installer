@@ -36,9 +36,9 @@ docker build --pull \
 	-t ${HARVESTER_OS_IMAGE} .
 
 PROJECT_PREFIX="harvester"
-if [ -n "$GIT_TAG" ];
+if [ -n "$VERSION" ];
 then
-  PROJECT_PREFIX+="-${GIT_TAG}"
+  PROJECT_PREFIX+="-${VERSION}"
 else
   PROJECT_PREFIX+="-master"
 fi
