@@ -1,9 +1,9 @@
 rancherValues:
   rancherImagePullPolicy: IfNotPresent
   rancherImage: rancher/rancher
-  rancherImageTag: v2.6.3-rc4
+  rancherImageTag: v2.6.3-harvester1
   noDefaultAdmin: false
   features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
   bootstrapPassword: admin
-rancherInstallerImage: rancher/system-agent-installer-rancher:v2.6.3-rc4
+rancherInstallerImage: rancher/system-agent-installer-rancher:v2.6.3-harvester1
