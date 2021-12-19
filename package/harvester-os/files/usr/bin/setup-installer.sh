@@ -1,40 +1,31 @@
 #!/bin/bash
-# Create a systemd drop-in unit to run installer on the first console tty. e.g.,
-# if a system is booted with `console=tty1 console=ttyS0` parameters, the 
-# script replaces the default login prompt on tty1 wth the installer.
-
+# Create a systemd drop-in unit to run installer as TTY Dashboard on a
+# "non-system-console" virtual console or user specified serial console.
 
 create_drop_in()
 {
   DROP_IN_DIRECTORY=$1
 
   echo "Create installer drop-in in ${DROP_IN_DIRECTORY}..."
-  mkdir -p ${DROP_IN_DIRECTORY} 
-  cat > "${DROP_IN_DIRECTORY}/override.conf" <<"EOF"
-[Service]
-EnvironmentFile=-/etc/rancher/installer/env
-
-# Do not show kernel messages on this TTY, it messes up the installer UI
-# NOTE: it doesn't work for serial console
-ExecStartPre=/usr/bin/setterm --msg off
-
-# clear the original command in getty@.service
-ExecStart=
-
-# override with the new command
-ExecStart=-/sbin/agetty -n -l /usr/bin/start-installer.sh %I $TERM
-EOF
-
+  mkdir -p ${DROP_IN_DIRECTORY}
+  cp /etc/tty-dashboard-override.conf "${DROP_IN_DIRECTORY}/override.conf"
 }
-
 
 # reverse the ttys to start from the last one
 for TTY in $(cat /sys/class/tty/console/active); do
   tty_num=${TTY#tty}
 
-  # tty1 ~ tty64
+  # If console is on tty1 ~ tty64, we will show Harvester TTY Dashboard on other virtual terminal
   if [[ $tty_num =~ ^[0-9]+$ ]]; then
-    create_drop_in "/run/systemd/system/getty@${TTY}.service.d"
+    unset dashboard_tty
+    if [[ $tty_num -ge 6 ]]; then
+        dashboard_tty="tty2"
+    else
+        dashboard_tty="tty$((tty_num+1))"
+    fi
+    create_drop_in "/run/systemd/system/getty@${dashboard_tty}.service.d"
+    systemctl enable "getty@${dashboard_tty}.service"
+    systemctl disable getty@tty1.service
     break
   fi
 
@@ -45,7 +36,7 @@ for TTY in $(cat /sys/class/tty/console/active); do
   if [ "x${tty_type}" = "x0" ]; then
     continue
   fi
-  
+
   create_drop_in "/run/systemd/system/serial-getty@${TTY}.service.d"
   break
 done
