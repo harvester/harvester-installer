@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 SCRIPTS_DIR="${TOP_DIR}/scripts"
@@ -53,6 +53,8 @@ if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
 fi
 
 # Offline images
+
+find $TOP_DIR
 
 # Rancherd bootstrap images
 image_list_file=${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images-${VERSION}.txt
