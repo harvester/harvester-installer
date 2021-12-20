@@ -6,7 +6,7 @@
 # test.com/rancher/rancher -> test.com/rancher/rancher
 normalize_image()
 {
-  echo $1 | awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=1){print "docker.io/library/"$0}}'
+  echo $1 | awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF==1){print "docker.io/library/"$0}}'
 }
 
 save_image_list()
