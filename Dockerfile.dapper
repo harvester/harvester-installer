@@ -1,3 +1,6 @@
+FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
+FROM quay.io/costoolkit/releases-green:luet-makeiso-toolchain-0.3.8-16 as makeiso
+
 FROM golang:1.16.5-alpine3.13
 
 ARG http_proxy=$http_proxy
@@ -27,9 +30,9 @@ RUN mkdir /usr/tmp && \
     curl ${HELM_URL} | tar xvzf - --strip-components=1 -C /usr/tmp/ && \
     mv /usr/tmp/helm /usr/bin/helm
 
-# makeiso
-RUN wget --quiet https://github.com/mudler/luet/releases/download/0.17.0/luet-0.17.0-linux-amd64 -O /usr/bin/luet && chmod +x /usr/bin/luet
-RUN wget --quiet https://github.com/mudler/luet-makeiso/releases/download/0.3.8/luet-makeiso-0.3.8-linux-amd64 -O /usr/bin/luet-makeiso && chmod +x /usr/bin/luet-makeiso
+# luet & makeiso
+COPY --from=luet /usr/bin/luet /usr/bin/luet
+COPY --from=makeiso /usr/bin/luet-makeiso /usr/bin/luet-makeiso
 
 ENV GO111MODULE off
 ENV DAPPER_ENV REPO TAG DRONE_TAG CROSS
