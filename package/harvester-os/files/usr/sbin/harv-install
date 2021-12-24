@@ -255,6 +255,14 @@ save_config()
     fi
 }
 
+save_wicked_state()
+{
+    # Save wicked state so we could keep the DHCP IP
+    local wicked_state="${TARGET}/usr/local/.state/var-lib-wicked.bind"
+    mkdir -p ${wicked_state}
+    cp -r /var/lib/wicked/. ${wicked_state}
+}
+
 trap cleanup exit
 
 # For PXE Boot
@@ -273,6 +281,7 @@ COS_INSTALL_ISO_URL="" INTERACTIVE=yes COS_INSTALL_DEVICE="$install_device" cos-
 do_detect
 do_mount
 save_config
+save_wicked_state
 do_preload
 
 update_grub_settings

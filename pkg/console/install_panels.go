@@ -789,6 +789,9 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	preGotoNextPage := func() (string, error) {
+		if err := setHostname(c.config.Hostname); err != nil {
+			return fmt.Sprintf("Failed to set hostname '%s': %s", c.config.Hostname, err), nil
+		}
 		output, err := setupNetwork()
 		if err != nil {
 			return fmt.Sprintf("Configure network failed: %s %s", string(output), err), nil
@@ -1406,8 +1409,6 @@ func addInstallPanel(c *Console) error {
 				network.Interfaces = tmpInterfaces
 				c.config.Networks[key] = network
 			}
-
-
 
 			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
 			c.config.ForceGPT = !c.config.ForceMBR
