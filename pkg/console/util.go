@@ -2,6 +2,7 @@ package console
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
@@ -322,8 +323,8 @@ func generateHostName() string {
 	return "harvester-" + rand.String(5)
 }
 
-func execute(g *gocui.Gui, env []string, cmdName string) error {
-	cmd := exec.Command(cmdName)
+func execute(ctx context.Context, g *gocui.Gui, env []string, cmdName string) error {
+	cmd := exec.CommandContext(ctx, cmdName)
 	cmd.Env = env
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -371,6 +372,7 @@ func saveTemp(obj interface{}, prefix string) (string, error) {
 }
 
 func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipSchema.YipConfig, webhooks RendererWebhooks) error {
+	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
 
 	cosConfigFile, err := saveTemp(cosConfig, "cos")
@@ -404,13 +406,26 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 		env = append(env, fmt.Sprintf("COS_PARTITION_LAYOUT=%s", cosPartLayout))
 	}
 
-	if err := execute(g, env, "/usr/sbin/harv-install"); err != nil {
+	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
-		return err
 	}
 	webhooks.Handle(EventInstallSuceeded)
 
-	if err := execute(g, env, "/usr/sbin/cos-installer-shutdown"); err != nil {
+	// Enable CTRL-C to stop system from rebooting after installation
+	cancellableCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			logrus.Info("Auto-reboot cancelled")
+			cancel()
+			return quit(g, v)
+		}); err != nil {
+
+		return err
+	}
+
+	if err := execute(cancellableCtx, g, env, "/usr/sbin/cos-installer-shutdown"); err != nil {
 		webhooks.Handle(EventInstallFailed)
 		return err
 	}
