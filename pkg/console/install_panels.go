@@ -783,15 +783,13 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	setupNetwork := func() ([]byte, error) {
-		return applyNetworks(map[string]config.Network{
-			config.MgmtInterfaceName: mgmtNetwork,
-		})
+		return applyNetworks(
+			map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
+			c.config.Hostname,
+		)
 	}
 
 	preGotoNextPage := func() (string, error) {
-		if err := setHostname(c.config.Hostname); err != nil {
-			return fmt.Sprintf("Failed to set hostname '%s': %s", c.config.Hostname, err), nil
-		}
 		output, err := setupNetwork()
 		if err != nil {
 			return fmt.Sprintf("Configure network failed: %s %s", string(output), err), nil
@@ -1373,7 +1371,7 @@ func addInstallPanel(c *Console) error {
 
 				if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
 					printToPanel(c.Gui, "Configuring network...", installPanel)
-					if _, err := applyNetworks(c.config.Networks); err != nil {
+					if _, err := applyNetworks(c.config.Networks, c.config.Hostname); err != nil {
 						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
 						return
 					}
