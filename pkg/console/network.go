@@ -2,7 +2,6 @@ package console
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,7 +15,7 @@ import (
 	"github.com/harvester/harvester-installer/pkg/config"
 )
 
-func applyNetworks(networks map[string]config.Network) ([]byte, error) {
+func applyNetworks(networks map[string]config.Network, hostname string) ([]byte, error) {
 	if err := config.RestoreOriginalNetworkConfig(); err != nil {
 		return nil, err
 	}
@@ -28,11 +27,12 @@ func applyNetworks(networks map[string]config.Network) ([]byte, error) {
 		Name: "Network Configuration",
 		Stages: map[string][]yipSchema.Stage{
 			"live": {
+				yipSchema.Stage{Hostname: hostname}, // Ensure hostname updated before configuring network
 				yipSchema.Stage{},
 			},
 		},
 	}
-	err := config.UpdateNetworkConfig(&conf.Stages["live"][0], networks, true)
+	err := config.UpdateNetworkConfig(&conf.Stages["live"][1], networks, true)
 	if err != nil {
 		return nil, err
 	}
@@ -133,16 +133,4 @@ func listNetworkHardware() (map[string]networkHardwareInfo, error) {
 	}
 
 	return m, nil
-}
-
-func setHostname(hostname string) error {
-	// NOTE: Can't use Golang's syscall.Sethostname
-	// because it sets the "trasient hostname", not "static hostname".
-	// wicked uses static hostname to make the DHCP request.
-	cmd := exec.Command("hostnamectl", "set-hostname", fmt.Sprintf("%q", hostname))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		logrus.Errorf("error running hostnamectl set-hostname: %s", string(out))
-		return err
-	}
-	return nil
 }
