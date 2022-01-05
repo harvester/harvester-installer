@@ -1718,7 +1718,7 @@ func addDNSServersPanel(c *Console) error {
 	dnsServersV.PreShow = func() error {
 		c.Gui.Cursor = true
 		dnsServersV.Value = userInputData.DNSServers
-		if err = c.setContentByName(titlePanel, "Optional: Configure DNS Servers"); err != nil {
+		if err = c.setContentByName(titlePanel, "Configure DNS Servers"); err != nil {
 			return err
 		}
 		return c.setContentByName(notePanel, dnsServersNote)
@@ -1770,6 +1770,10 @@ func addDNSServersPanel(c *Console) error {
 			spinner.Start()
 
 			go func(g *gocui.Gui) {
+				if mgmtNetwork.Method == config.NetworkMethodStatic && dnsServers == "" {
+					gotoSpinnerErrorPage(g, spinner, "DNS servers are required for static IP address")
+					return
+				}
 				if dnsServers != "" {
 					// check input syntax
 					dnsServerList := strings.Split(dnsServers, ",")

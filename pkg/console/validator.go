@@ -26,6 +26,7 @@ var (
 
 	ErrMsgMgmtInterfaceNotSpecified    = "no management interface specified"
 	ErrMsgMgmtInterfaceInvalidMethod   = "management network must configure with either static or DHCP method"
+	ErrMsgMgmtInterfaceStaticNoDNS     = "DNS servers are required for static IP address"
 	ErrMsgInterfaceNotSpecified        = "no interface specified"
 	ErrMsgInterfaceNotSpecifiedForMgmt = "no interface specified for management network"
 	ErrMsgInterfaceNotFound            = "interface not found"
@@ -163,7 +164,7 @@ func checkIPList(ipList []string) error {
 	return nil
 }
 
-func checkNetworks(networks map[string]config.Network) error {
+func checkNetworks(networks map[string]config.Network, dnsServers []string) error {
 	if len(networks) == 0 {
 		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
 	}
@@ -177,6 +178,9 @@ func checkNetworks(networks map[string]config.Network) error {
 		method := mgmtNetwork.Method
 		if method != config.NetworkMethodDHCP && method != config.NetworkMethodStatic {
 			return errors.New(ErrMsgMgmtInterfaceInvalidMethod)
+		}
+		if method == config.NetworkMethodStatic && len(dnsServers) == 0 {
+			return errors.New(ErrMsgMgmtInterfaceStaticNoDNS)
 		}
 	}
 
@@ -286,7 +290,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		}
 	}
 
-	if err := checkNetworks(cfg.Install.Networks); err != nil {
+	if err := checkNetworks(cfg.Install.Networks, cfg.OS.DNSNameservers); err != nil {
 		return err
 	}
 
