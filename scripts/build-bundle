@@ -37,7 +37,7 @@ helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
 
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring
-helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
+helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 
 # make chart sanity check
