@@ -123,16 +123,6 @@ bootstrapResources:
         enabled: true
       kube-vip:
         enabled: true
-        {{- if .Vip }}
-        config:
-          {{- $vipInterface := "harvester-mgmt" }}
-          {{- $mgmtNetwork := (index .Networks "harvester-mgmt") }}
-          {{- if ne $mgmtNetwork.VlanID 0 }}
-            {{- $vlanStr := print "vlan" $mgmtNetwork.VlanID }}
-            {{- $vipInterface = (print $vlanStr "@harvester-mgmt") }}
-          {{- end }}
-          vip_interface: {{ $vipInterface }}
-        {{- end }}
       kube-vip-cloud-provider:
         enabled: true
 - apiVersion: management.cattle.io/v3
