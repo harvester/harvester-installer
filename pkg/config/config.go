@@ -28,6 +28,13 @@ const (
 	BondModeBalanceALB   = "balance-alb"
 )
 
+const (
+	SoftMinDiskSizeGiB   = 140
+	HardMinDiskSizeGiB   = 60
+	MinCosPartSizeGiB    = 25
+	NormalCosPartSizeGiB = 50
+)
+
 type Network struct {
 	Interfaces   []NetworkInterface `json:"interfaces,omitempty"`
 	Method       string             `json:"method,omitempty"`
@@ -192,12 +199,12 @@ func (n *NetworkInterface) FindNetworkInterfaceName() error {
 	if n.Name == "" && n.HwAddr != "" {
 		hwAddr, err := net.ParseMAC(n.HwAddr)
 		if err != nil {
-			return  err
+			return err
 		}
 
 		interfaces, err := net.Interfaces()
 		if err != nil {
-			return  err
+			return err
 		}
 
 		for _, iface := range interfaces {

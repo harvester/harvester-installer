@@ -13,6 +13,8 @@ import (
 	yipSchema "github.com/mudler/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 const (
@@ -526,4 +528,83 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 	bootstrapConfs[templateName] = string(templBytes)
 
 	return bootstrapConfs, nil
+}
+
+func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
+	switch {
+	case diskSizeGiB < HardMinDiskSizeGiB:
+		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, HardMinDiskSizeGiB)
+	case diskSizeGiB < SoftMinDiskSizeGiB:
+		var d float64 = MinCosPartSizeGiB / float64(SoftMinDiskSizeGiB-HardMinDiskSizeGiB)
+		partSizeGiB := MinCosPartSizeGiB + float64(diskSizeGiB-HardMinDiskSizeGiB)*d
+		return uint64(partSizeGiB), nil
+	default:
+		partSizeGiB := NormalCosPartSizeGiB + ((diskSizeGiB-100)/100)*10
+		if partSizeGiB > 100 {
+			partSizeGiB = 100
+		}
+		return partSizeGiB, nil
+	}
+}
+
+func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) {
+	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
+	if err != nil {
+		return nil, err
+	}
+
+	cosPersistentSizeGiB, err := calcCosPersistentPartSize(diskSizeBytes >> 30)
+	if err != nil {
+		return nil, err
+	}
+
+	yipConfig := yipSchema.YipConfig{
+		Name: "Root partitioning layout",
+		Stages: map[string][]yipSchema.Stage{
+			"partitioning": {
+				yipSchema.Stage{
+					Name: "Root partitioning layout",
+					Layout: yipSchema.Layout{
+						Device: &yipSchema.Device{
+							Path: devPath,
+						},
+						Parts: []yipSchema.Partition{
+							{
+								FSLabel:    "COS_OEM",
+								PLabel:     "oem",
+								Size:       50,
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "COS_STATE",
+								PLabel:     "state",
+								Size:       15360,
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "COS_RECOVERY",
+								PLabel:     "recovery",
+								Size:       8192,
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "COS_PERSISTENT",
+								PLabel:     "persistent",
+								Size:       uint(cosPersistentSizeGiB << 10),
+								FileSystem: "ext4",
+							},
+							{
+								FSLabel:    "HARV_LH_DEFAULT",
+								PLabel:     "longhorn",
+								Size:       0,
+								FileSystem: "ext4",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return &yipConfig, nil
 }

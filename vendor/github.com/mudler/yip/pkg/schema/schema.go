@@ -23,8 +23,10 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/elotl/cloud-init/config"
+	"github.com/google/shlex"
+
 	"github.com/pkg/errors"
+	"github.com/rancher-sandbox/cloud-init/config"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/itchyny/gojq"
@@ -46,6 +48,15 @@ type File struct {
 	OwnerString  string
 }
 
+type Download struct {
+	Path         string
+	URL          string
+	Permissions  uint32
+	Owner, Group int
+	Timeout      int
+	OwnerString  string
+}
+
 type Directory struct {
 	Path         string
 	Permissions  uint32
@@ -55,6 +66,23 @@ type Directory struct {
 type DataSource struct {
 	Providers []string `yaml:"providers"`
 	Path      string   `yaml:"path"`
+}
+
+type Git struct {
+	Auth       Auth   `yaml:"auth"`
+	URL        string `yaml:"url"`
+	Path       string `yaml:"path"`
+	Branch     string `yaml:"branch"`
+	BranchOnly bool   `yaml:"branch_only"`
+}
+
+type Auth struct {
+	Username   string `yaml:"username"`
+	Password   string `yaml:"password"`
+	PrivateKey string `yaml:"private_key"`
+
+	Insecure  bool   `yaml:"insecure"`
+	PublicKey string `yaml:"public_key"`
 }
 
 type User struct {
@@ -70,6 +98,8 @@ type User struct {
 	System            bool     `yaml:"system,omitempty"`
 	NoLogInit         bool     `yaml:"no_log_init,omitempty"`
 	Shell             string   `yaml:"shell,omitempty"`
+	LockPasswd        bool     `yaml:"lock_passwd"`
+	UID               string   `yaml:"uid"`
 }
 
 func (u User) Exists() bool {
@@ -85,6 +115,7 @@ type Layout struct {
 
 type Device struct {
 	Label string `"yaml:label"`
+	Path  string `"yaml:path"`
 }
 
 type Expand struct {
@@ -101,6 +132,7 @@ type Partition struct {
 type Stage struct {
 	Commands    []string    `yaml:"commands"`
 	Files       []File      `yaml:"files"`
+	Downloads   []Download  `yaml:"downloads"`
 	Directories []Directory `yaml:"directories"`
 	If          string      `yaml:"if"`
 
@@ -124,6 +156,7 @@ type Stage struct {
 	SystemdFirstBoot map[string]string `yaml:"systemd_firstboot"`
 
 	TimeSyncd map[string]string `yaml:"timesyncd"`
+	Git       Git               `yaml:"git"`
 }
 
 type Systemctl struct {
@@ -236,7 +269,11 @@ func jq(command string, data map[string]interface{}) (map[string]interface{}, er
 	if err, ok := v.(error); ok {
 		return nil, err
 	}
-	return v.(map[string]interface{}), nil
+	if t, ok := v.(map[string]interface{}); ok {
+		return t, nil
+	}
+
+	return make(map[string]interface{}), nil
 }
 
 func dotToYAML(v map[string]interface{}) ([]byte, error) {
@@ -262,7 +299,8 @@ func dotToYAML(v map[string]interface{}) ([]byte, error) {
 func stringToMap(s string) map[string]interface{} {
 	v := map[string]interface{}{}
 
-	for _, item := range strings.Fields(s) {
+	splitted, _ := shlex.Split(s)
+	for _, item := range splitted {
 		parts := strings.SplitN(item, "=", 2)
 		value := "true"
 		if len(parts) > 1 {
