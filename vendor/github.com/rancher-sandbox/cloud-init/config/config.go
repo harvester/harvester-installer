@@ -33,6 +33,8 @@ type CloudConfig struct {
 	Hostname          string   `yaml:"hostname,omitempty"`
 	Users             []User   `yaml:"users,omitempty"`
 	RunCmd            []string `yaml:"runcmd,omitempty"`
+
+	Partitioning GrowPart `yaml:"growpart"`
 	// this one is legacy, can be removed when no more kip controllers use it
 	MilpaFiles []File `yaml:"milpa_files,omitempty"`
 	// Todo: add additional parameters supported by traditional cloud-init

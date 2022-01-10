@@ -30,4 +30,6 @@ type User struct {
 	System               bool     `yaml:"system,omitempty"`
 	NoLogInit            bool     `yaml:"no_log_init,omitempty"`
 	Shell                string   `yaml:"shell,omitempty"`
+	LockPasswd           bool     `yaml:"lock_passwd"`
+	UID                  string   `yaml:"uid"`
 }
