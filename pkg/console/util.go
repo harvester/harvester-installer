@@ -398,16 +398,21 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
 	if !hvstConfig.NoDataPartition {
 		// Add custom partition layout for cOS to create VM Data partition for us
-		cosPartLayout, err := createPartitionLayout(hvstConfig.Install.Device)
+		cosPartLayout, err := config.CreateRootPartitioningLayout(hvstConfig.Install.Device)
 		if err != nil {
 			return err
 		}
-		defer os.Remove(cosPartLayout)
-		env = append(env, fmt.Sprintf("COS_PARTITION_LAYOUT=%s", cosPartLayout))
+		cosPartLayoutFile, err := saveTemp(cosPartLayout, "part-layout")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(cosPartLayoutFile)
+		env = append(env, fmt.Sprintf("COS_PARTITION_LAYOUT=%s", cosPartLayoutFile))
 	}
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
+		return err
 	}
 	webhooks.Handle(EventInstallSuceeded)
 
@@ -552,86 +557,6 @@ func validateDiskSizeSoft(devPath string) error {
 	}
 
 	return nil
-}
-
-func createPartitionLayout(devPath string) (string, error) {
-	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
-	if err != nil {
-		return "", err
-	}
-
-	cosPersistentSizeGiB, err := calcCosPersistentPartSize(diskSizeBytes >> 30)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO(john): Use the yip/schema to define the partition layout. This requires the newer yip
-	// version because we need "Path" field of "Device" struct.
-	yipConfig := map[string]interface{}{
-		"stages": map[string][]interface{}{
-			"partitioning": {
-				map[string]interface{}{
-					"name": "Part layout",
-					"layout": map[string]interface{}{
-						"device": map[string]string{
-							"path": devPath,
-						},
-						"add_partitions": []yipSchema.Partition{
-							{
-								FSLabel:    "COS_OEM",
-								PLabel:     "oem",
-								Size:       50,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_STATE",
-								PLabel:     "state",
-								Size:       15360,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_RECOVERY",
-								PLabel:     "recovery",
-								Size:       8192,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_PERSISTENT",
-								PLabel:     "persistent",
-								Size:       uint(cosPersistentSizeGiB << 10),
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "HARV_LH_DEFAULT",
-								PLabel:     "longhorn",
-								Size:       0,
-								FileSystem: "ext4",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	return saveTemp(yipConfig, "part-layout")
-}
-
-func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
-	switch {
-	case diskSizeGiB < hardMinDiskSizeGiB:
-		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, hardMinDiskSizeGiB)
-	case diskSizeGiB < softMinDiskSizeGiB:
-		var d float64 = minCosPartSizeGiB / float64(softMinDiskSizeGiB-hardMinDiskSizeGiB)
-		partSizeGiB := minCosPartSizeGiB + float64(diskSizeGiB-hardMinDiskSizeGiB)*d
-		return uint64(partSizeGiB), nil
-	default:
-		partSizeGiB := normalCosPartSizeGiB + ((diskSizeGiB-100)/100)*10
-		if partSizeGiB > 100 {
-			partSizeGiB = 100
-		}
-		return partSizeGiB, nil
-	}
 }
 
 func systemIsBIOS() bool {
