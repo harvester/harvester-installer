@@ -30,6 +30,10 @@ if [ ! -d ${harvester_path} ];then
     git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git /tmp/harvester
     harvester_path=/tmp/harvester
 fi
+
+# This must be placed after cloning `harvester/harvester`` in case `make build-bundle` is run directly.
+source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
+
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
@@ -122,3 +126,17 @@ grep -Ev "local-path-provisioner|library-traefik|klipper-lb|multus" >"${image_li
 
 cp ${image_list_file} ${IMAGES_DIR}
 save_image "common" $BUNDLE_DIR ${IMAGES_DIR}/${image_list_file} ${IMAGES_DIR}
+
+# Tag harvester-upgrade:master-head to harvester-upgrade:<version> and save the image to an archive
+# This makes it possible to upgrade a cluster with a master ISO.
+upgrade_image_repo=$(yq -e e '.upgrade.image.repository' $values_file)
+upgrade_image_tag=$(yq -e e '.upgrade.image.tag' $values_file)
+if [ "$upgrade_image_tag" != "$HARVESTER_VERSION" ]; then
+  docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "${upgrade_image_repo}:${HARVESTER_VERSION}"
+  image_list_file="${IMAGES_DIR}/harvester-extra-${VERSION}.txt"
+  image_archive="${IMAGES_DIR}/harvester-extra-${VERSION}.tar"
+  echo "docker.io/${upgrade_image_repo}:${HARVESTER_VERSION}" > ${image_list_file}
+  docker image save -o $image_archive $(<$image_list_file)
+  zstd --rm $image_archive -o "${image_archive}.zst"
+  add_image_list_to_metadata "common" $BUNDLE_DIR $image_list_file "${image_archive}.zst"
+fi
