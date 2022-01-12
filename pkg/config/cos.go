@@ -594,8 +594,8 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 								FileSystem: "ext4",
 							},
 							{
+								// Do not specify PLabel because it's hard to remove!
 								FSLabel:    "HARV_LH_DEFAULT",
-								PLabel:     "longhorn",
 								Size:       0,
 								FileSystem: "ext4",
 							},

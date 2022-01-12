@@ -103,6 +103,7 @@ bootstrapResources:
         enabled: true
         defaultSettings:
           taintToleration: "kubevirt.io/drain:NoSchedule"
+          defaultDataPath: "/var/lib/longhorn_data"
       harvester-network-controller:
         enabled: true
         vipEnabled: true

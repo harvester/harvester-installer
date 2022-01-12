@@ -1419,6 +1419,15 @@ func addInstallPanel(c *Console) error {
 				c.config.NoDataPartition = true
 			}
 
+			// If DataDisk is specified, NoDataPartition should be set to "false" as we will have
+			// VM data partition, just on other disk.
+			if c.config.DataDisk != "" {
+				msg := fmt.Sprintf("Use %s as default VM data disk", c.config.DataDisk)
+				printToPanel(c.Gui, msg, installPanel)
+				logrus.Info(msg)
+				c.config.NoDataPartition = false
+			}
+
 			// case insensitive for network method and vip mode
 			for key, network := range c.config.Networks {
 				network.Method = strings.ToLower(network.Method)
@@ -1435,12 +1444,7 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, fmt.Sprintf("invalid webhook: %s", err), installPanel)
 			}
 
-			cOSConfig, err := config.ConvertToCOS(c.config)
-			if err != nil {
-				printToPanel(c.Gui, err.Error(), installPanel)
-				return
-			}
-			doInstall(c.Gui, c.config, cOSConfig, webhooks)
+			doInstall(c.Gui, c.config, webhooks)
 		}()
 		return c.setContentByName(footerPanel, "")
 	}

@@ -3,6 +3,22 @@
 ISOTEMP=""
 ISOMNT=/run/initramfs/live
 TARGET=/run/cos/target
+DATA_DISK_FSLABEL="HARV_LH_DEFAULT"
+
+clear_disk_label()
+{
+    # Clear the label of partitions that has $DATA_DISK_FSLABEL to prevent misidentification
+    # Also, while yip is partitioning the disk, if it sees the LABEL to be used exists,
+    # it won't create the partition. So it's necessary to clear the label
+    for part in $(blkid -t LABEL="$DATA_DISK_FSLABEL" -o device); do
+        echo "Remove filesystem label from $part"
+        # Run this tune2fs twice because sometimes the first run would show "Recovering journal"
+        # and label is not modified
+        tune2fs -L "" $part > /dev/null
+        tune2fs -L "" $part > /dev/null
+    done
+    udevadm settle
+}
 
 umount_target() {
     sync
@@ -292,6 +308,23 @@ save_wicked_state()
     cp -r /var/lib/wicked/. ${wicked_state}
 }
 
+do_data_disk_format()
+{
+    if [ -z $HARVESTER_DATA_DISK ]; then
+        return
+    fi
+
+    # Resolve link
+    local data_disk_device=$HARVESTER_DATA_DISK
+    if [ -L "$HARVESTER_DATA_DISK" ]; then
+      data_disk_device=$(readlink -f "$HARVESTER_DATA_DISK")
+    fi
+
+    # Create one EXT4 partition
+    echo "Formatting $HARVESTER_DATA_DISK as data disk..."
+    mkfs.ext4 -F -L "$DATA_DISK_FSLABEL" "$HARVESTER_DATA_DISK"
+}
+
 trap cleanup exit
 
 check_iso
@@ -302,8 +335,13 @@ if [ -L "$_COS_INSTALL_DEVICE" ]; then
   install_device=$(readlink -f "$_COS_INSTALL_DEVICE")
 fi
 
+clear_disk_label
+
 # Run cOS installer but do not let it fetch ISO and shutdown
 _COS_BOOTING_FROM_LIVE="true" _COS_INSTALL_ISO_URL="" INTERACTIVE=yes _COS_INSTALL_DEVICE="$install_device" cos install
+
+# Format the data disk if needed
+do_data_disk_format
 
 # Preload images
 do_detect

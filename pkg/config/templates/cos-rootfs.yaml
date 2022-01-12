@@ -3,7 +3,7 @@ if: '[ ! -f "/run/cos/recovery_mode" ]'
 name: "Rootfs layout overwrite"
 environment_file: /run/cos/cos-layout.env
 environment:
-  VOLUMES: "LABEL=COS_OEM:/oem LABEL=COS_PERSISTENT:/usr/local{{ if not .NoDataPartition }} LABEL=HARV_LH_DEFAULT:/var/lib/longhorn{{ end }}"
+  VOLUMES: "LABEL=COS_OEM:/oem LABEL=COS_PERSISTENT:/usr/local{{ if not .NoDataPartition }} LABEL=HARV_LH_DEFAULT:/var/lib/longhorn_data{{ end }}"
   OVERLAY: "tmpfs:25%"
   RW_PATHS: "/var /etc /srv /boot"
   PERSISTENT_STATE_PATHS: >-
@@ -22,7 +22,8 @@ environment:
     /var/lib/wicked
     /var/lib/cni
     /var/crash
-    {{- if .NoDataPartition }}
     /var/lib/longhorn
+    {{- if .NoDataPartition }}
+    /var/lib/longhorn_data
     {{- end }}
   PERSISTENT_STATE_BIND: "true"
