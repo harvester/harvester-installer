@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/jroimartin/gocui"
-	yipSchema "github.com/mudler/yip/pkg/schema"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -371,10 +370,15 @@ func saveTemp(obj interface{}, prefix string) (string, error) {
 	return tempFile.Name(), nil
 }
 
-func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipSchema.YipConfig, webhooks RendererWebhooks) error {
+func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks RendererWebhooks) error {
 	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
 
+	cosConfig, err := config.ConvertToCOS(hvstConfig)
+	if err != nil {
+		printToPanel(g, err.Error(), installPanel)
+		return err
+	}
 	cosConfigFile, err := saveTemp(cosConfig, "cos")
 	if err != nil {
 		return err
@@ -396,8 +400,9 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 
 	env := append(os.Environ(), ev...)
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
-	if !hvstConfig.NoDataPartition {
-		// Add custom partition layout for cOS to create VM Data partition for us
+	if !hvstConfig.NoDataPartition && hvstConfig.DataDisk == "" {
+		// Only use custom layout (which also creates Longhorn partition) when VM Disk is also
+		// not given
 		cosPartLayout, err := config.CreateRootPartitioningLayout(hvstConfig.Install.Device)
 		if err != nil {
 			return err
@@ -408,6 +413,10 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 		}
 		defer os.Remove(cosPartLayoutFile)
 		env = append(env, fmt.Sprintf("_COS_PARTITION_LAYOUT=%s", cosPartLayoutFile))
+	}
+
+	if hvstConfig.DataDisk != "" {
+		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
 	}
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {

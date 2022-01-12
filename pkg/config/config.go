@@ -82,8 +82,9 @@ type Install struct {
 	ForceGPT  bool   `json:"forceGpt,omitempty"`
 
 	// Following options are not cOS installer flag
-	ForceMBR        bool `json:"forceMbr,omitempty"`
-	NoDataPartition bool `json:"noDataPartition,omitempty"`
+	ForceMBR        bool   `json:"forceMbr,omitempty"`
+	NoDataPartition bool   `json:"noDataPartition,omitempty"`
+	DataDisk        string `json:"dataDisk,omitempty"`
 
 	Webhooks []Webhook `json:"webhooks,omitempty"`
 }

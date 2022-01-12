@@ -228,3 +228,66 @@ func TestHarvesterTokenRendering(t *testing.T) {
 		assert.Equal(t, loadedConf["token"].(string), testCase.token)
 	}
 }
+
+func TestHarvesterRootfsRendering(t *testing.T) {
+	type Rootfs struct {
+		Environment map[string]string
+	}
+
+	testCases := []struct {
+		name       string
+		harvConfig HarvesterConfig
+		assertion  func(t *testing.T, rootfs *Rootfs)
+	}{
+		{
+			name:       "Test default config",
+			harvConfig: HarvesterConfig{},
+			assertion: func(t *testing.T, rootfs *Rootfs) {
+				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/longhorn_data")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn")
+				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn_data")
+			},
+		},
+		{
+			name: "Test NoDataPartition true",
+			harvConfig: HarvesterConfig{
+				Install: Install{
+					NoDataPartition: true,
+				},
+			},
+			assertion: func(t *testing.T, rootfs *Rootfs) {
+				assert.NotContains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/longhorn_data")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn_data")
+			},
+		},
+		{
+			name: "Test DataDisk configured",
+			harvConfig: HarvesterConfig{
+				Install: Install{
+					DataDisk: "/dev/sda",
+				},
+			},
+			assertion: func(t *testing.T, rootfs *Rootfs) {
+				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/longhorn_data")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn")
+				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn_data")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		content, err := render("cos-rootfs.yaml", tc.harvConfig)
+		assert.NoError(t, err)
+		t.Log("Rendered content:")
+		t.Log(content)
+
+		rootfs := Rootfs{}
+		err = yaml.Unmarshal([]byte(content), &rootfs)
+		assert.NoError(t, err)
+		t.Log("Loaded Config:")
+		t.Log(rootfs)
+
+		tc.assertion(t, &rootfs)
+	}
+}
