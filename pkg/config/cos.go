@@ -517,13 +517,18 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 
 		bootstrapConfs[templateName] = rendered
 	}
-	// It's not a template but I still put it here for consistency
-	templateName := "12-monitoring-dashboard.yaml"
-	templBytes, err := templFS.ReadFile(filepath.Join(templateFolder, "rancherd-"+templateName))
-	if err != nil {
-		return nil, err
+
+	// These are not templates but I still put them here for consistency
+	for _, templateName := range []string{
+		"12-monitoring-dashboard.yaml",
+		"14-monitoring-harvester-exporter.yaml",
+	} {
+		templBytes, err := templFS.ReadFile(filepath.Join(templateFolder, "rancherd-"+templateName))
+		if err != nil {
+			return nil, err
+		}
+		bootstrapConfs[templateName] = string(templBytes)
 	}
-	bootstrapConfs[templateName] = string(templBytes)
 
 	return bootstrapConfs, nil
 }
