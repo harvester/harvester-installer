@@ -11,7 +11,7 @@ rancher:
   - docker.io/rancher/fleet-agent
   - docker.io/rancher/system-upgrade-controller
   - docker.io/rancher/kubectl
-  - docker.io/rancher/mirrored-directxman12-k8s-prometheus-adapter
+  - docker.io/rancher/mirrored-prometheus-adapter-prometheus-adapter
   - docker.io/rancher/mirrored-prometheus-node-exporter
   - docker.io/rancher/mirrored-prometheus-operator-prometheus-config-reloader
   - docker.io/rancher/mirrored-prometheus-operator-prometheus-operator
