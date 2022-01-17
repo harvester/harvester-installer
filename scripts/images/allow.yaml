@@ -21,4 +21,4 @@ rancher:
   - docker.io/rancher/mirrored-grafana-grafana
   - docker.io/rancher/mirrored-library-nginx
   - docker.io/rancher/mirrored-kube-state-metrics-kube-state-metrics
-  - docker.io/rancher/mirrored-jettech-kube-webhook-certgen
+  - docker.io/rancher/mirrored-ingress-nginx-kube-webhook-certgen
