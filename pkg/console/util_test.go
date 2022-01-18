@@ -70,13 +70,13 @@ func TestGetFormattedServerURL(t *testing.T) {
 		{
 			Name:   "ip",
 			input:  "1.2.3.4",
-			output: "https://1.2.3.4:8443",
+			output: "https://1.2.3.4:443",
 			err:    nil,
 		},
 		{
 			Name:   "domain name",
 			input:  "example.org",
-			output: "https://example.org:8443",
+			output: "https://example.org:443",
 			err:    nil,
 		},
 		{
@@ -124,8 +124,8 @@ func TestGetServerURLFromRancherdConfig(t *testing.T) {
 			err:   nil,
 		},
 		{
-			input: []byte("role: agent\nkubernetesVersion: v1.21.2+rke2r1\nserver: https://172.0.0.1:8443"),
-			url:   "https://172.0.0.1:8443",
+			input: []byte("role: agent\nkubernetesVersion: v1.21.2+rke2r1\nserver: https://172.0.0.1:443"),
+			url:   "https://172.0.0.1:443",
 			err:   nil,
 		},
 	}
