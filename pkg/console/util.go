@@ -408,6 +408,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipS
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
+		return err
 	}
 	webhooks.Handle(EventInstallSuceeded)
 
