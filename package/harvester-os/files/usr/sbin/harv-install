@@ -18,19 +18,36 @@ umount_target() {
 cleanup2()
 {
     sync
+    [ -n "$_COS_INSTALL_ISO_URL" ] && umount "$ISOMNT" || true
+    [ -n "$ISOTEMP" ] && rm -f "$ISOTEMP"
     umount_target || true
     umount ${STATEDIR}
-    [ -n "_COS_INSTALL_ISO_URL" ] && umount ${ISOMNT} || true
 }
 
 cleanup()
 {
     EXIT=$?
-    if [ -n "$ISOTEMP" ]; then
-        rm -f "$ISOTEMP"
-    fi
     cleanup2 2>/dev/null || true
     return $EXIT
+}
+
+check_url()
+{
+    local url=$1
+    case $url in
+        tftp*)
+            # There's no way verify whether the URL exists on TFTP server without
+            # actually download the file. Always pass the check.
+            echo "WARNING: Unable check TFTP URL. Assumed file exists"
+            ;;
+        ftp*|http*)
+            # Don't show anything if file exists, but show error messasge when it's not
+            curl -I -fL --progress-bar ${url} > /dev/null
+            ;;
+        *)
+            test -f $url
+            ;;
+    esac
 }
 
 get_url()
@@ -55,9 +72,17 @@ get_url()
     esac
 }
 
+check_iso(){
+    if [ -n "$_COS_INSTALL_ISO_URL" ]; then
+        echo "Checking ISO URL.."
+        check_url "$_COS_INSTALL_ISO_URL"
+    fi
+}
+
 get_iso()
 {
     if [ -n "$_COS_INSTALL_ISO_URL" ]; then
+        echo "Downloading ISO.."
         ISOMNT=$(mktemp -d -p /tmp cos.XXXXXXXX.isomnt)
         ISOTEMP=$(mktemp -p ${TARGET}/usr/local cos.XXXXXXXX.iso)
         get_url ${_COS_INSTALL_ISO_URL} ${ISOTEMP}
@@ -268,6 +293,8 @@ save_wicked_state()
 }
 
 trap cleanup exit
+
+check_iso
 
 # Follow the symbolic link to the real device
 install_device="$_COS_INSTALL_DEVICE"
