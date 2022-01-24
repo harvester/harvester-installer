@@ -243,9 +243,9 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 			name:       "Test default config",
 			harvConfig: HarvesterConfig{},
 			assertion: func(t *testing.T, rootfs *Rootfs) {
-				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/longhorn_data")
+				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/harvester/defaultdisk")
 				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn")
-				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn_data")
+				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/harvester/defaultdisk")
 			},
 		},
 		{
@@ -256,9 +256,9 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 				},
 			},
 			assertion: func(t *testing.T, rootfs *Rootfs) {
-				assert.NotContains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/longhorn_data")
+				assert.NotContains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/harvester/defaultdisk")
 				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn")
-				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn_data")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/harvester/defaultdisk")
 			},
 		},
 		{
@@ -269,9 +269,9 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 				},
 			},
 			assertion: func(t *testing.T, rootfs *Rootfs) {
-				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/longhorn_data")
+				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/harvester/defaultdisk")
 				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn")
-				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/longhorn_data")
+				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/harvester/defaultdisk")
 			},
 		},
 	}
