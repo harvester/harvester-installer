@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jroimartin/gocui"
@@ -25,6 +26,10 @@ type DropDown struct {
 
 func NewDropDown(g *gocui.Gui, name, label string, getOptionsFunc GetOptionsFunc) (*DropDown, error) {
 	maxX, maxY := g.Size()
+	selectPanel, err := NewSelect(g, name+"-dropdown-select", "", getOptionsFunc)
+	if err != nil {
+		return nil, err
+	}
 	return &DropDown{
 		Panel: &Panel{
 			Name:    name,
@@ -38,15 +43,7 @@ func NewDropDown(g *gocui.Gui, name, label string, getOptionsFunc GetOptionsFunc
 				"TAB": "choose other options",
 			},
 		},
-		Select: &Select{
-			Panel: &Panel{
-				Name:        name + "-dropdown-select",
-				g:           g,
-				KeyBindings: map[gocui.Key]func(*gocui.Gui, *gocui.View) error{},
-				Frame:       true,
-			},
-			getOptionsFunc: getOptionsFunc,
-		},
+		Select:   selectPanel,
 		ViewName: name + "-dropdown",
 	}, nil
 }
@@ -108,19 +105,28 @@ func (d *DropDown) Show() error {
 			logrus.Infof("Select confirm: %s, %s", data, d.Select.Value)
 			if d.multi {
 				// Append multiselect values
-				values := data.([]string)
+				values, ok := data.([]string)
+				if !ok {
+					return fmt.Errorf("data is not type of []string: %T", data)
+				}
 				joined := strings.Join(values, ",")
 				d.Value = joined
 				d.Text = joined
 			} else {
-				// TODO: Fix this logic that should be internal to Select
-				if len(v.BufferLines()) == 0 {
-					return nil
+				value, ok := data.(string)
+				if !ok {
+					return fmt.Errorf("data is not type of string: %T", data)
 				}
-				_, cy := v.Cursor()
-				if len(d.Select.options) >= cy+1 {
-					d.Value = d.Select.options[cy].Value
-					d.Text = d.Select.options[cy].Text
+				found := false
+				for _, opt := range d.Select.options {
+					if opt.Value == value {
+						d.Value = value
+						d.Text = opt.Text
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("no option for value %v", value)
 				}
 			}
 			if err = d.Select.Close(); err != nil {
@@ -137,7 +143,7 @@ func (d *DropDown) Show() error {
 			return nil
 		})
 		d.Select.SetOnLeave(func(data interface{}, key gocui.Key) error {
-			logrus.Info("Select Leave", data, key)
+			logrus.Infof("Select leave: %s, %s", data, d.Select.Value)
 			return nil
 		})
 
@@ -219,9 +225,9 @@ func (d *DropDown) setDefaultKeybindings() error {
 		var err error
 
 		if d.multi {
-			data = d.Select.GetMultiData()
+			data = d.GetMultiData()
 		} else {
-			data, err = d.Select.GetData()
+			data, err = d.GetData()
 			if err != nil {
 				return err
 			}
@@ -240,15 +246,15 @@ func (d *DropDown) setDefaultKeybindings() error {
 		var err error
 
 		if d.multi {
-			data = d.Select.GetMultiData()
+			data = d.GetMultiData()
 		} else {
-			data, err = d.Select.GetData()
+			data, err = d.GetData()
 			if err != nil {
 				return err
 			}
 		}
 
-		if d.onConfirm != nil {
+		if d.onLeave != nil {
 			if err := d.onLeave(data, gocui.KeyArrowUp); err != nil {
 				return err
 			}
@@ -261,15 +267,15 @@ func (d *DropDown) setDefaultKeybindings() error {
 		var err error
 
 		if d.multi {
-			data = d.Select.GetMultiData()
+			data = d.GetMultiData()
 		} else {
-			data, err = d.Select.GetData()
+			data, err = d.GetData()
 			if err != nil {
 				return err
 			}
 		}
 
-		if d.onConfirm != nil {
+		if d.onLeave != nil {
 			if err := d.onLeave(data, gocui.KeyEsc); err != nil {
 				return err
 			}
