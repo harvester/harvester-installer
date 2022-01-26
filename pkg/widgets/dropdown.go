@@ -143,7 +143,14 @@ func (d *DropDown) Show() error {
 			return nil
 		})
 		d.Select.SetOnLeave(func(data interface{}, key gocui.Key) error {
-			logrus.Infof("Select leave: %s, %s", data, d.Select.Value)
+			if key == gocui.KeyEsc {
+				if err = d.Select.Close(); err != nil {
+					return err
+				}
+				if err = d.Show(); err != nil {
+					return err
+				}
+			}
 			return nil
 		})
 
@@ -220,7 +227,15 @@ func (d *DropDown) SetOnLeave(callback EventCallback) {
 }
 
 func (d *DropDown) setDefaultKeybindings() error {
-	d.g.SetKeybinding(d.ViewName, gocui.KeyEnter, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+	d.bindConfirmOnKey(gocui.KeyEnter)
+	d.bindConfirmOnKey(gocui.KeyArrowDown)
+	d.bindLeaveOnKey(gocui.KeyArrowUp)
+	d.bindLeaveOnKey(gocui.KeyEsc)
+	return nil
+}
+
+func (d *DropDown) bindConfirmOnKey(key gocui.Key) error {
+	return d.g.SetKeybinding(d.ViewName, key, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
 		var data interface{}
 		var err error
 
@@ -234,14 +249,16 @@ func (d *DropDown) setDefaultKeybindings() error {
 		}
 
 		if d.onConfirm != nil {
-			if err := d.onConfirm(data, gocui.KeyEnter); err != nil {
+			if err := d.onConfirm(data, key); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
 
-	d.g.SetKeybinding(d.ViewName, gocui.KeyArrowUp, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+func (d *DropDown) bindLeaveOnKey(key gocui.Key) error {
+	return d.g.SetKeybinding(d.ViewName, key, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
 		var data interface{}
 		var err error
 
@@ -255,33 +272,10 @@ func (d *DropDown) setDefaultKeybindings() error {
 		}
 
 		if d.onLeave != nil {
-			if err := d.onLeave(data, gocui.KeyArrowUp); err != nil {
+			if err := d.onLeave(data, key); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
-
-	d.g.SetKeybinding(d.ViewName, gocui.KeyEsc, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
-		var data interface{}
-		var err error
-
-		if d.multi {
-			data = d.GetMultiData()
-		} else {
-			data, err = d.GetData()
-			if err != nil {
-				return err
-			}
-		}
-
-		if d.onLeave != nil {
-			if err := d.onLeave(data, gocui.KeyEsc); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	return nil
 }
