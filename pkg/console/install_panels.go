@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
@@ -51,6 +52,17 @@ var (
 func (c *Console) layoutInstall(g *gocui.Gui) error {
 	var err error
 	once.Do(func() {
+		logrus.Info("layoutInstall")
+		err = addSomeNewPage(c)
+	})
+
+	return err
+}
+
+/*
+func (c *Console) layoutInstall(g *gocui.Gui) error {
+	var err error
+	once.Do(func() {
 		setPanels(c)
 		initPanel := askCreatePanel
 
@@ -84,6 +96,7 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 	})
 	return err
 }
+*/
 
 func setPanels(c *Console) error {
 	funcs := []func(*Console) error{
@@ -1811,6 +1824,131 @@ func addDNSServersPanel(c *Console) error {
 		return asyncTaskV.Close()
 	}
 	c.AddElement(dnsServersPanel, dnsServersV)
+
+	return nil
+}
+
+func addSomeNewPage(c *Console) error {
+	logrus.Info("AddNewPage")
+	page, err := widgets.NewPage(c.Gui, "someNewPage")
+	if err != nil {
+		return err
+	}
+	page.SetTitle("Some New Page")
+	page.SetFooter("Some footer msg")
+
+	dropdown1, err := widgets.NewDropDown(c.Gui, "someNewPageDropdown1", "DropDown1", func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Text:  "Foo",
+				Value: "foo",
+			},
+			{
+				Text:  "LOL",
+				Value: "lol",
+			},
+			{
+				Text:  "Right",
+				Value: "right",
+			},
+		}, nil
+	})
+	if err != nil {
+		return err
+	}
+	dropdown1.SetMulti(true)
+	page.AddComponent(dropdown1, func(data interface{}) error {
+		somedata, ok := data.([]string)
+		if !ok {
+			err := fmt.Errorf("data is not a string")
+			return err
+		}
+		logrus.Info("Validate dropdown1:", somedata)
+		return nil
+	})
+	select1, err := widgets.NewSelect(c.Gui, "someNewPageSelect1", "", func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Text:  "Foo",
+				Value: "foo",
+			},
+			{
+				Text:  "LOL",
+				Value: "lol",
+			},
+			{
+				Text:  "Right",
+				Value: "right",
+			},
+		}, nil
+	})
+	if err != nil {
+		return err
+	}
+	page.AddComponent(select1, func(data interface{}) error {
+		selects, ok := data.(string)
+		if !ok {
+			err := fmt.Errorf("data is not a []string")
+			logrus.Error(err)
+			return err
+		}
+		logrus.Info("Validate select1:", data)
+		if len(selects) == 0 {
+			return fmt.Errorf("must select at least one item")
+		}
+		page.SetStatus("Working...", true, false)
+		time.Sleep((time.Second * 1))
+		logrus.Info("OK Valudate")
+		return nil
+	})
+	input1, err := widgets.NewInput(c.Gui, "someNewPageInput1", "Input 1", false)
+	if err != nil {
+		return err
+	}
+	if err := input1.SetData("WUUUT"); err != nil {
+		logrus.Error("Unable to set data:", err)
+	}
+	page.AddComponent(input1, func(data interface{}) error {
+		data, ok := data.(string)
+		if !ok {
+			err := fmt.Errorf("data is not a string")
+			logrus.Error(err)
+			return err
+		}
+		logrus.Info("Validate input1:", data)
+		page.SetStatus("Working...", true, false)
+		time.Sleep((time.Second * 1))
+		logrus.Info("OK Valudate")
+		return nil
+	})
+
+	input2, err := widgets.NewInput(c.Gui, "someNewPageInput2", "Input 2", false)
+	if err != nil {
+		return err
+	}
+	input2.Value = "Nah"
+	page.AddComponent(input2, func(data interface{}) error {
+		data, ok := data.(string)
+		if !ok {
+			err := fmt.Errorf("data is not a string")
+			logrus.Error(err)
+			return err
+		}
+		logrus.Info("Validate input2:", data)
+		return nil
+	})
+
+	/*
+		go func() {
+			time.Sleep((time.Second * 2))
+			c.Gui.Update(func(g *gocui.Gui) error {
+				return page.RemoveComponent(input1)
+			})
+		}()
+	*/
+
+	page.SetFocus(input1)
+	page.Show()
 
 	return nil
 }

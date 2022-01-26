@@ -1,7 +1,10 @@
 package widgets
 
 import (
+	"strings"
+
 	"github.com/jroimartin/gocui"
+	"github.com/sirupsen/logrus"
 )
 
 type DropDown struct {
@@ -14,6 +17,10 @@ type DropDown struct {
 
 	// For multiselect dropdown
 	multi bool
+
+	// Callbacks
+	onConfirm EventCallback
+	onLeave   EventCallback
 }
 
 func NewDropDown(g *gocui.Gui, name, label string, getOptionsFunc GetOptionsFunc) (*DropDown, error) {
@@ -96,12 +103,17 @@ func (d *DropDown) Show() error {
 		if err != nil {
 			return err
 		}
-		d.Select.KeyBindings[gocui.KeyEnter] = func(g *gocui.Gui, v *gocui.View) error {
+
+		d.Select.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+			logrus.Infof("Select confirm: %s, %s", data, d.Select.Value)
 			if d.multi {
 				// Append multiselect values
-				d.Value = d.Select.Value
-				d.Text = d.Select.Value
+				values := data.([]string)
+				joined := strings.Join(values, ",")
+				d.Value = joined
+				d.Text = joined
 			} else {
+				// TODO: Fix this logic that should be internal to Select
 				if len(v.BufferLines()) == 0 {
 					return nil
 				}
@@ -114,29 +126,23 @@ func (d *DropDown) Show() error {
 			if err = d.Select.Close(); err != nil {
 				return err
 			}
-			if err = d.Close(); err != nil {
-				return err
-			}
 			if err = d.Show(); err != nil {
 				return err
 			}
-			return d.KeyBindings[gocui.KeyEnter](g, v)
-		}
-		d.Select.KeyBindings[gocui.KeyEsc] = func(g *gocui.Gui, v *gocui.View) error {
-			if err = d.Select.Close(); err != nil {
-				return err
-			}
-			if err = d.Close(); err != nil {
-				return err
-			}
-			return d.Show()
-		}
-		if d.KeyBindings != nil {
-			for key, f := range d.KeyBindings {
-				if err = d.g.SetKeybinding(d.ViewName, key, gocui.ModNone, f); err != nil {
+			if d.onConfirm != nil {
+				if err := d.onConfirm(data, key); err != nil {
 					return err
 				}
 			}
+			return nil
+		})
+		d.Select.SetOnLeave(func(data interface{}, key gocui.Key) error {
+			logrus.Info("Select Leave", data, key)
+			return nil
+		})
+
+		if err := d.setDefaultKeybindings(); err != nil {
+			return err
 		}
 	}
 	if _, err = d.g.SetCurrentView(d.ViewName); err != nil {
@@ -185,6 +191,7 @@ func (d *DropDown) SetData(data string) error {
 	}
 
 	if d.multi {
+		// TODO: Fix: data will not be stored for multi-select
 		render(d.Value)
 	} else {
 		for _, option := range d.Select.options {
@@ -195,5 +202,80 @@ func (d *DropDown) SetData(data string) error {
 			}
 		}
 	}
+	return nil
+}
+
+func (d *DropDown) SetOnConfirm(callback EventCallback) {
+	d.onConfirm = callback
+}
+
+func (d *DropDown) SetOnLeave(callback EventCallback) {
+	d.onLeave = callback
+}
+
+func (d *DropDown) setDefaultKeybindings() error {
+	d.g.SetKeybinding(d.ViewName, gocui.KeyEnter, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		var data interface{}
+		var err error
+
+		if d.multi {
+			data = d.Select.GetMultiData()
+		} else {
+			data, err = d.Select.GetData()
+			if err != nil {
+				return err
+			}
+		}
+
+		if d.onConfirm != nil {
+			if err := d.onConfirm(data, gocui.KeyEnter); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	d.g.SetKeybinding(d.ViewName, gocui.KeyArrowUp, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		var data interface{}
+		var err error
+
+		if d.multi {
+			data = d.Select.GetMultiData()
+		} else {
+			data, err = d.Select.GetData()
+			if err != nil {
+				return err
+			}
+		}
+
+		if d.onConfirm != nil {
+			if err := d.onLeave(data, gocui.KeyArrowUp); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	d.g.SetKeybinding(d.ViewName, gocui.KeyEsc, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		var data interface{}
+		var err error
+
+		if d.multi {
+			data = d.Select.GetMultiData()
+		} else {
+			data, err = d.Select.GetData()
+			if err != nil {
+				return err
+			}
+		}
+
+		if d.onConfirm != nil {
+			if err := d.onLeave(data, gocui.KeyEsc); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
 	return nil
 }
