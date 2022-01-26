@@ -128,21 +128,25 @@ func (s *Select) SetMulti(multi bool) {
 	}
 }
 
-func (s *Select) GetData() (string, error) {
+func (s *Select) getOptUnderCursor() (int, Option, error) {
 	optionViewName := s.Name + "-options"
 	ov, err := s.g.View(optionViewName)
 	if err != nil {
-		return "", err
+		return 0, Option{}, err
 	}
 	if len(ov.BufferLines()) == 0 {
-		return "", nil
+		return 0, Option{}, fmt.Errorf("no options")
 	}
 	_, cy := ov.Cursor()
-	var value string
+	var value Option
 	if len(s.options) >= cy+1 {
-		value = s.options[cy].Value
+		value = s.options[cy]
 	}
-	return value, nil
+	return cy, value, nil
+}
+
+func (s *Select) GetData() (string, error) {
+	return s.Value, nil
 }
 
 func (s *Select) GetMultiData() []string {
@@ -153,23 +157,35 @@ func (s *Select) SetData(data string) error {
 	optionViewName := s.Name + "-options"
 	ov, err := s.g.View(optionViewName)
 	if err != nil {
-		return err
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		// View is not created, only set Value, don't update buffer
+		s.Value = data
+		return nil
 	}
-	// FIXED: Should be relative to origin, not current cursor position
+
 	ox, oy := ov.Origin()
+	optFound := false
 	for i, option := range s.options {
 		if option.Value == data {
 			if err = ov.SetCursor(ox, oy+i); err != nil {
 				return err
 			}
+			s.Value = data
+			optFound = true
 			break
 		}
 	}
+	if !optFound {
+		return fmt.Errorf("option for data %v not found", data)
+	}
+
 	return nil
 }
 
 /* TODO: Support set multi-select data
-func (s *Select) Set MultiData(data string) error {
+func (s *Select) SetMultiData(data string) error {
 }
 */
 
@@ -221,10 +237,11 @@ func (s *Select) setOptionsKeyBindings(viewName string) error {
 	// TODO: Generic handler for both multi and not-multi
 	if s.multi {
 		handler := func(g *gocui.Gui, v *gocui.View) error {
-			_, cy := v.Cursor()
-			if len(s.options) >= cy+1 {
-				s.selectedIndexes[cy] = !s.selectedIndexes[cy]
+			optIdx, _, err := s.getOptUnderCursor()
+			if err != nil {
+				return err
 			}
+			s.selectedIndexes[optIdx] = !s.selectedIndexes[optIdx]
 			s.updateSelectedStatus(v)
 			return nil
 		}
@@ -233,11 +250,11 @@ func (s *Select) setOptionsKeyBindings(viewName string) error {
 		}
 	} else {
 		handler := func(g *gocui.Gui, v *gocui.View) error {
-			_, cy := v.Cursor()
-			if len(s.options) >= cy+1 {
-				s.Value = s.options[cy].Value
+			_, opt, err := s.getOptUnderCursor()
+			if err != nil {
+				return err
 			}
-			s.SetData(s.Value)
+			s.SetData(opt.Value)
 			return nil
 		}
 		if err := s.g.SetKeybinding(viewName, gocui.KeyEnter, gocui.ModNone, handler); err != nil {
@@ -282,18 +299,6 @@ func (s *Select) setOptionsKeyBindings(viewName string) error {
 			if err != nil {
 				return err
 			}
-			// TODO: Should be generic
-			if !s.multi {
-				value, ok := data.(string)
-				if !ok {
-					return fmt.Errorf("data is not string type: %T", data)
-				} else {
-					// TODO: Fix this s.Value stuff
-					s.Value = value
-					s.SetData(value)
-				}
-			}
-
 			if s.onLeave != nil {
 				if err := s.onLeave(data, gocui.KeyArrowUp); err != nil {
 					return err
