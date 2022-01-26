@@ -165,20 +165,17 @@ func (s *Select) SetData(data string) error {
 		return nil
 	}
 
+	// If the given data is not found, we consider it as "nothing selected",
+	// and Value would be an empty string
 	ox, oy := ov.Origin()
-	optFound := false
 	for i, option := range s.options {
 		if option.Value == data {
 			if err = ov.SetCursor(ox, oy+i); err != nil {
 				return err
 			}
 			s.Value = data
-			optFound = true
 			break
 		}
-	}
-	if !optFound {
-		return fmt.Errorf("option for data %v not found", data)
 	}
 
 	return nil

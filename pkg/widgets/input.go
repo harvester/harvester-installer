@@ -153,7 +153,7 @@ func (i *Input) bindLeaveOnKey(key gocui.Key) error {
 		if data, err := i.GetData(); err != nil {
 			return err
 		} else {
-			if i.onConfirm != nil {
+			if i.onLeave != nil {
 				if err := i.onLeave(data, key); err != nil {
 					return err
 				}
