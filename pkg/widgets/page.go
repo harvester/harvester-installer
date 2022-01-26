@@ -20,6 +20,8 @@ type EditablePageComponent interface {
 	PageComponent
 	SetOnConfirm(EventCallback)
 	SetOnLeave(EventCallback)
+	GetNote() string
+	GetFooterNote() string
 	// TODO: Generalize the SetData interface:
 	// SetData(interface{}) error
 }
@@ -28,6 +30,10 @@ func createVerticalLocator(g *gocui.Gui) func(component PageComponent, height in
 	maxX, maxY := g.Size()
 	lastY := 0
 	return func(component PageComponent, height int) {
+		if component == nil {
+			lastY += height
+			return
+		}
 		var (
 			x0 = maxX / 8
 			y0 = lastY
@@ -47,16 +53,23 @@ func createVerticalLocator(g *gocui.Gui) func(component PageComponent, height in
 type Page struct {
 	g             *gocui.Gui
 	title         *Panel
+	note          *Panel
 	status        *Panel
 	footer        *Panel
 	components    []PageComponent
 	statusSpinner *Spinner
 	currentFocus  PageComponent
+
+	// callbacks
+	onNextPage EventCallback
+	onPrevPage EventCallback
 }
 
 func NewPage(g *gocui.Gui, name string) (*Page, error) {
 	title := NewPanel(g, fmt.Sprintf("%s-title", name))
 	title.Focus = false
+	note := NewPanel(g, fmt.Sprintf("%s-note", name))
+	note.Focus = false
 	status := NewPanel(g, fmt.Sprintf("%s-status", name))
 	status.Focus = false
 	footer := NewPanel(g, fmt.Sprintf("%s-footer", name))
@@ -65,6 +78,7 @@ func NewPage(g *gocui.Gui, name string) (*Page, error) {
 	page := &Page{
 		g:          g,
 		title:      title,
+		note:       note,
 		status:     status,
 		footer:     footer,
 		components: []PageComponent{},
@@ -76,6 +90,9 @@ func NewPage(g *gocui.Gui, name string) (*Page, error) {
 
 func (p *Page) Show() error {
 	if err := p.title.Show(); err != nil {
+		return err
+	}
+	if err := p.note.Show(); err != nil {
 		return err
 	}
 	if err := p.status.Show(); err != nil {
@@ -102,7 +119,12 @@ func (p *Page) Show() error {
 }
 
 func (p *Page) Close() error {
+	logrus.Info("Close page")
+	defer logrus.Info("Close page done")
 	if err := p.title.Close(); err != nil {
+		return err
+	}
+	if err := p.note.Show(); err != nil {
 		return err
 	}
 	if err := p.status.Close(); err != nil {
@@ -123,6 +145,10 @@ func (p *Page) SetTitle(msg string) {
 	p.title.SetContent(msg)
 }
 
+func (p *Page) SetNote(msg string) {
+	p.note.SetContent(msg)
+}
+
 func (p *Page) SetStatus(msg string, busy, isError bool) {
 	if p.statusSpinner != nil {
 		p.statusSpinner.Stop()
@@ -135,13 +161,16 @@ func (p *Page) SetStatus(msg string, busy, isError bool) {
 	} else {
 		p.g.Update(func(g *gocui.Gui) error {
 			statusView, err := p.g.View(p.status.Name)
-			if err != nil {
+			if err == gocui.ErrUnknownView {
+				return nil
+			} else if err != nil {
 				return err
 			}
+
 			if isError {
 				statusView.FgColor = errorColor
 			} else {
-				statusView.FgColor = infoColor
+				statusView.FgColor = normalColor
 			}
 			p.status.SetContent(msg)
 			return nil
@@ -159,6 +188,10 @@ func (p *Page) SetFocus(targetComp PageComponent) {
 			if comp == targetComp {
 				p.currentFocus = targetComp
 				logrus.Info("Focus on:", targetComp)
+				if editable, ok := targetComp.(EditablePageComponent); ok {
+					p.SetFooter(editable.GetFooterNote())
+					p.SetNote(editable.GetNote())
+				}
 				return targetComp.Show()
 			}
 		}
@@ -189,7 +222,10 @@ func (p *Page) AddComponent(comp EditablePageComponent, validator ComponentValid
 					logrus.Info(nextComp)
 					p.SetFocus(nextComp)
 				} else {
-					logrus.Info("No next comp")
+					logrus.Info("Go to next page")
+					p.g.Update(func(g *gocui.Gui) error {
+						return p.gotoNextPage(key)
+					})
 				}
 			}
 		}()
@@ -200,6 +236,7 @@ func (p *Page) AddComponent(comp EditablePageComponent, validator ComponentValid
 		switch key {
 		case gocui.KeyEsc:
 			logrus.Info("Go to prev page")
+			return p.gotoPrevPage(key)
 		case gocui.KeyArrowUp:
 			if prevComp, ok := p.getPrevComponent(comp); ok {
 				logrus.Info("Go to prev panel")
@@ -214,6 +251,23 @@ func (p *Page) AddComponent(comp EditablePageComponent, validator ComponentValid
 	})
 	p.layout()
 	return nil
+}
+
+func (p *Page) SetOnNextPage(callback EventCallback) {
+	p.onNextPage = callback
+}
+
+func (p *Page) SetOnPrevPage(callback EventCallback) {
+	p.onPrevPage = callback
+}
+
+// Dummy method for Element interface
+func (p *Page) GetData() (string, error) {
+	return "", nil
+}
+
+// Dummy method for Element interface
+func (p *Page) SetContent(string) {
 }
 
 // TODO: FIX ME
@@ -233,14 +287,17 @@ func (p *Page) RemoveComponent(compToRemove PageComponent) error {
 }
 
 func (p *Page) layout() {
-	setLocation := createVerticalLocator(p.g)
-	setLocation(p.title, 3)
-	for _, comp := range p.components {
-		setLocation(comp, 5)
-	}
-	setLocation(p.status, 5)
-
 	maxX, maxY := p.g.Size()
+	p.title.SetLocation(maxX/8, maxY/8-3, maxX/8*7, maxY/8)
+
+	setLocation := createVerticalLocator(p.g)
+	setLocation(nil, maxY/8)
+	for _, comp := range p.components {
+		setLocation(comp, 3)
+	}
+	setLocation(p.note, 5)
+	setLocation(p.status, 3)
+
 	p.footer.SetLocation(0, maxY-2, maxX, maxY)
 	p.g.Cursor = true
 }
@@ -264,4 +321,24 @@ func (p *Page) getPrevComponent(currComp PageComponent) (PageComponent, bool) {
 	}
 
 	return nil, false
+}
+
+func (p *Page) gotoNextPage(key gocui.Key) error {
+	if p.onNextPage != nil {
+		if err := p.Close(); err != nil {
+			return err
+		}
+		return p.onNextPage(nil, key)
+	}
+	return nil
+}
+
+func (p *Page) gotoPrevPage(key gocui.Key) error {
+	if p.onPrevPage != nil {
+		if err := p.Close(); err != nil {
+			return err
+		}
+		return p.onPrevPage(nil, key)
+	}
+	return nil
 }

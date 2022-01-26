@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/jroimartin/gocui"
-	"github.com/sirupsen/logrus"
 )
 
 type Spinner struct {
@@ -20,6 +19,7 @@ type Spinner struct {
 }
 
 const (
+	normalColor  = gocui.ColorDefault
 	infoColor    = gocui.ColorCyan
 	errorColor   = gocui.ColorRed
 	spinInterval = 100 * time.Millisecond
@@ -87,7 +87,6 @@ func (s *Spinner) writePanel(message string, clear bool, fgColor gocui.Attribute
 		}
 
 		if s.focus {
-			logrus.Info("SetCurrentView", s.panel)
 			g.SetCurrentView(s.panel)
 		}
 		if clear {

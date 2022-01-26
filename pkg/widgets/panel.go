@@ -32,6 +32,7 @@ type Panel struct {
 	KeyBindings    map[gocui.Key]func(*gocui.Gui, *gocui.View) error
 	KeyBindingTips map[string]string
 	FirstPage      bool
+	AdditionalNote string
 }
 
 func NewPanel(g *gocui.Gui, name string) *Panel {
@@ -103,20 +104,7 @@ func (p *Panel) Show() error {
 			}
 		}
 	}
-	tips := "<"
-	if !p.FirstPage {
-		tips += "Use ESC to go back to previous page"
-	}
-	for key, tip := range p.KeyBindingTips {
-		if tips != "<" {
-			tips += ", "
-		}
-		tips += fmt.Sprintf("Use %s to %s", key, tip)
-	}
-	tips += ">"
-	if tips == "<>" {
-		tips = ""
-	}
+	tips := p.GetFooterNote()
 	footerV, err := p.g.View(footerPanel)
 	if err != nil && err != gocui.ErrUnknownView {
 		return err
@@ -140,15 +128,42 @@ func (p *Panel) SetContent(content string) {
 	p.Content = content
 	p.g.Update(func(g *gocui.Gui) error {
 		v, err := p.g.View(p.Name)
-		if err != nil && err != gocui.ErrUnknownView {
+		if err != nil {
+			if err != gocui.ErrUnknownView {
+				return err
+			}
+
+			return nil
+		} else {
+			v.Clear()
+			_, err = fmt.Fprint(v, p.Content)
 			return err
 		}
-		v.Clear()
-		_, err = fmt.Fprint(v, p.Content)
-		return err
 	})
 }
 
 func (p *Panel) GetData() (string, error) {
 	return p.Content, nil
+}
+
+func (p *Panel) GetNote() string {
+	return p.AdditionalNote
+}
+
+func (p *Panel) GetFooterNote() string {
+	tips := "<"
+	if !p.FirstPage {
+		tips += "Use ESC to go back to previous page"
+	}
+	for key, tip := range p.KeyBindingTips {
+		if tips != "<" {
+			tips += ", "
+		}
+		tips += fmt.Sprintf("Use %s to %s", key, tip)
+	}
+	tips += ">"
+	if tips == "<>" {
+		tips = ""
+	}
+	return tips
 }

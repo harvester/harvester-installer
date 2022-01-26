@@ -107,6 +107,7 @@ func setPanels(c *Console) error {
 		addAskCreatePanel,
 		addDiskPanel,
 		addNetworkPanel,
+		addDNSServersPanelNew,
 		/*
 			addVIPPanel,
 			addDNSServersPanel,
@@ -779,10 +780,13 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	setupNetwork := func() ([]byte, error) {
-		return applyNetworks(
-			map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
-			c.config.Hostname,
-		)
+		return nil, nil
+		/*
+			return applyNetworks(
+				map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
+				c.config.Hostname,
+			)
+		*/
 	}
 
 	preGotoNextPage := func() (string, error) {
@@ -810,10 +814,6 @@ func addNetworkPanel(c *Console) error {
 		return "", nil
 	}
 
-	getNextPagePanel := func() []string {
-		return []string{dnsServersPanel}
-	}
-
 	closeThisPage := func() {
 		c.CloseElements(
 			hostNamePanel,
@@ -831,7 +831,7 @@ func addNetworkPanel(c *Console) error {
 		if err := networkValidatorV.Show(); err != nil {
 			return err
 		}
-		spinner := NewFocusSpinner(c.Gui, networkValidatorPanel, fmt.Sprintf("Applying network configuration..."))
+		spinner := NewFocusSpinner(c.Gui, networkValidatorPanel, "Applying network configuration...")
 		spinner.Start()
 		go func(g *gocui.Gui) {
 			msg, err := preGotoNextPage()
@@ -853,7 +853,7 @@ func addNetworkPanel(c *Console) error {
 				spinner.Stop(false, "")
 				g.Update(func(g *gocui.Gui) error {
 					closeThisPage()
-					return showNext(c, getNextPagePanel()...)
+					return showNext(c, "dnsServersNew")
 				})
 			}
 		}(c.Gui)
@@ -1698,6 +1698,58 @@ func addNTPServersPanel(c *Console) error {
 		return asyncTaskV.Close()
 	}
 	c.AddElement(ntpServersPanel, ntpServersV)
+
+	return nil
+}
+
+func addDNSServersPanelNew(c *Console) error {
+	page, err := widgets.NewPage(c.Gui, "dnsServersNew")
+	if err != nil {
+		return err
+	}
+	page.SetOnPrevPage(func(_ interface{}, _ gocui.Key) error {
+		return showNetworkPage(c)
+	})
+	page.SetOnNextPage(func(_ interface{}, _ gocui.Key) error {
+		logrus.Info("NEXT!")
+		return showNetworkPage(c)
+	})
+	page.SetTitle("Optional: Configure DNS Servers")
+
+	dnsServersInput, err := widgets.NewInput(c.Gui, "dnsServersNewInput", dnsServersLabel, false)
+	if err != nil {
+		return err
+	}
+	dnsServersInput.SetData(userInputData.DNSServers)
+	dnsServersInput.AdditionalNote = dnsServersNote
+	page.AddComponent(dnsServersInput, func(data interface{}) error {
+		dnsServers := strings.TrimSpace(assertTypeString(data))
+		userInputData.DNSServers = dnsServers
+
+		if mgmtNetwork.Method == config.NetworkMethodStatic && dnsServers == "" {
+			return fmt.Errorf("DNS servers are required for static IP address")
+		}
+
+		if dnsServers != "" {
+			// check input syntax
+			dnsServerList := strings.Split(dnsServers, ",")
+			if err = checkIPList(dnsServerList); err != nil {
+				return err
+			}
+
+			// setup dns
+			page.SetStatus(fmt.Sprintf("Setup DNS Servers: %q...", dnsServers), true, false)
+			time.Sleep(time.Second * 5)
+			if err = updateDNSServersAndReloadNetConfig(dnsServerList); err != nil {
+				return fmt.Errorf("Failed to update DNS servers: %v.", err)
+			}
+			c.config.OS.DNSNameservers = dnsServerList
+		}
+
+		return nil
+	})
+
+	c.AddElement("dnsServersNew", page)
 
 	return nil
 }
