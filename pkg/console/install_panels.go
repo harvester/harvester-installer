@@ -49,6 +49,7 @@ var (
 	}
 )
 
+/* Test new page component
 func (c *Console) layoutInstall(g *gocui.Gui) error {
 	var err error
 	once.Do(func() {
@@ -58,8 +59,8 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 
 	return err
 }
+*/
 
-/*
 func (c *Console) layoutInstall(g *gocui.Gui) error {
 	var err error
 	once.Do(func() {
@@ -96,7 +97,6 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 	})
 	return err
 }
-*/
 
 func setPanels(c *Console) error {
 	funcs := []func(*Console) error{
@@ -107,20 +107,22 @@ func setPanels(c *Console) error {
 		addAskCreatePanel,
 		addDiskPanel,
 		addNetworkPanel,
-		addVIPPanel,
-		addDNSServersPanel,
-		addNTPServersPanel,
-		addServerURLPanel,
-		addTokenPanel,
-		addPasswordPanels,
-		addSSHKeyPanel,
-		addProxyPanel,
-		addCloudInitPanel,
-		addConfirmInstallPanel,
-		addConfirmUpgradePanel,
-		addInstallPanel,
-		addSpinnerPanel,
-		addUpgradePanel,
+		/*
+			addVIPPanel,
+			addDNSServersPanel,
+			addNTPServersPanel,
+			addServerURLPanel,
+			addTokenPanel,
+			addPasswordPanels,
+			addSSHKeyPanel,
+			addProxyPanel,
+			addCloudInitPanel,
+			addConfirmInstallPanel,
+			addConfirmUpgradePanel,
+			addInstallPanel,
+			addSpinnerPanel,
+			addUpgradePanel,
+		*/
 	}
 	for _, f := range funcs {
 		if err := f(c); err != nil {
@@ -194,7 +196,7 @@ func addDiskPanel(c *Console) error {
 		return err
 	}
 	diskV.PreShow = func() error {
-		diskV.Value = c.config.Install.Device
+		diskV.SetData(c.config.Install.Device)
 		if systemIsBIOS() {
 			c.setContentByName(askForceMBRTitlePanel, "Use MBR partitioning scheme")
 		}
@@ -238,6 +240,7 @@ func addDiskPanel(c *Console) error {
 	diskValidatorV.FgColor = gocui.ColorRed
 	diskValidatorV.Wrap = true
 	updateValidatorMessage := func(msg string) error {
+		logrus.Info("Update validator msg: ", msg)
 		diskValidatorV.Focus = false
 		return c.setContentByName(diskValidatorPanel, msg)
 	}
@@ -255,11 +258,11 @@ func addDiskPanel(c *Console) error {
 			askForceMBRTitlePanel,
 		)
 	}
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoPrevPage := func() error {
 		closeThisPage()
 		return showNext(c, askCreatePanel)
 	}
-	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoNextPage := func() error {
 		forceMBR, err := askForceMBRV.GetData()
 		if err != nil {
 			return err
@@ -278,51 +281,65 @@ func addDiskPanel(c *Console) error {
 		return showNetworkPage(c)
 	}
 
-	// Keybindings
-	diskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			device, err := diskV.GetData()
+	diskV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		device := assertTypeString(data)
+		if err := validateDiskSize(device); err != nil {
+			return updateValidatorMessage(err.Error())
+		}
+
+		if err := validateDiskSizeSoft(device); err != nil && !userInputData.HasWarnedDiskSize {
+			userInputData.HasWarnedDiskSize = true
+			return updateValidatorMessage(fmt.Sprintf("%s. Press Enter to continue.", err.Error()))
+		}
+
+		c.config.Install.Device = device
+		userInputData.HasWarnedDiskSize = false
+		err := updateValidatorMessage("")
+		if err != nil {
+			return err
+		}
+
+		if systemIsBIOS() {
+			c.setContentByName(forceMBRNotePanel, forceMBRNote)
+			return askForceMBRV.Show()
+		}
+		return gotoNextPage()
+	})
+	diskV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		switch key {
+		case gocui.KeyEsc:
+			return gotoPrevPage()
+		}
+
+		return nil
+	})
+
+	askForceMBRV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		forceMBR := assertTypeString(data)
+		if forceMBR == "yes" {
+			diskTooLargeForMBR, err := diskExceedsMBRLimit(c.config.Device)
 			if err != nil {
 				return err
 			}
-			if err := validateDiskSize(device); err != nil {
-				return updateValidatorMessage(err.Error())
+			if diskTooLargeForMBR {
+				return updateValidatorMessage("Disk too large for MBR. Must be less than 2TiB")
 			}
+		}
 
-			if err := validateDiskSizeSoft(device); err != nil && !userInputData.HasWarnedDiskSize {
-				userInputData.HasWarnedDiskSize = true
-				return updateValidatorMessage(fmt.Sprintf("%s. Press Enter to continue.", err.Error()))
-			}
-
-			c.config.Install.Device = device
-
-			if systemIsBIOS() {
-				c.setContentByName(forceMBRNotePanel, forceMBRNote)
-				return showNext(c, askForceMBRPanel)
-			}
-			return gotoNextPage(g, v)
-		},
-		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.HasWarnedDiskSize = false
-			return updateValidatorMessage("")
-		},
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.HasWarnedDiskSize = false
-			return updateValidatorMessage("")
-		},
-		gocui.KeyEsc: gotoPrevPage,
-	}
-
-	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: gotoNextPage,
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
-			//XXX Must close diskPanel first or gocui would crash
+		c.config.ForceMBR = (forceMBR == "yes")
+		return gotoNextPage()
+	})
+	askForceMBRV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		logrus.Info("ONLEAVE")
+		switch key {
+		case gocui.KeyEsc:
+			return gotoPrevPage()
+		case gocui.KeyArrowUp:
 			c.CloseElement(diskPanel)
-			return showNext(c, diskPanel)
-		},
-		gocui.KeyArrowDown: gotoNextPage,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
+			return diskV.Show()
+		}
+		return nil
+	})
 	return nil
 }
 
@@ -378,24 +395,21 @@ func addAskCreatePanel(c *Console) error {
 		askCreateV.Value = c.config.Install.Mode
 		return c.setContentByName(titlePanel, "Choose installation mode")
 	}
-	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			selected, err := askCreateV.GetData()
-			if err != nil {
-				return err
-			}
-			c.config.Install.Mode = selected
-			askCreateV.Close()
+	askCreateV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		selected := assertTypeString(data)
 
-			if selected == config.ModeCreate {
-				c.config.ServerURL = ""
-				userInputData.ServerURL = ""
-			} else if selected == config.ModeUpgrade {
-				return showNext(c, confirmUpgradePanel)
-			}
-			return showDiskPage(c)
-		},
-	}
+		c.config.Install.Mode = selected
+		askCreateV.Close()
+
+		if selected == config.ModeCreate {
+			c.config.ServerURL = ""
+			userInputData.ServerURL = ""
+		} else if selected == config.ModeUpgrade {
+			return showNext(c, confirmUpgradePanel)
+		}
+
+		return showDiskPage(c)
+	})
 	c.AddElement(askCreatePanel, askCreateV)
 	return nil
 }
@@ -716,6 +730,7 @@ func addNetworkPanel(c *Console) error {
 	if err != nil {
 		return err
 	}
+	askInterfaceV.SetMulti(true)
 
 	askBondModeV, err := widgets.NewDropDown(c.Gui, askBondModePanel, askBondModeLabel, getBondModeOptions)
 	if err != nil {
@@ -763,38 +778,6 @@ func addNetworkPanel(c *Console) error {
 		return c.setContentByName(networkValidatorPanel, msg)
 	}
 
-	gotoNextPanel := func(c *Console, name []string, hooks ...func() (string, error)) func(g *gocui.Gui, v *gocui.View) error {
-		return func(g *gocui.Gui, v *gocui.View) error {
-			c.CloseElement(networkValidatorPanel)
-			for _, hook := range hooks {
-				msg, err := hook()
-				if err != nil {
-					return err
-				}
-				if msg != "" {
-					return updateValidatorMessage(msg)
-				}
-			}
-			if err := showBondNote(); err != nil {
-				return err
-			}
-			return showNext(c, name...)
-		}
-	}
-
-	closeThisPage := func() {
-		c.CloseElements(
-			hostNamePanel,
-			askInterfacePanel,
-			askBondModePanel,
-			askNetworkMethodPanel,
-			addressPanel,
-			gatewayPanel,
-			networkValidatorPanel,
-			bondNotePanel,
-		)
-	}
-
 	setupNetwork := func() ([]byte, error) {
 		return applyNetworks(
 			map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
@@ -831,6 +814,19 @@ func addNetworkPanel(c *Console) error {
 		return []string{dnsServersPanel}
 	}
 
+	closeThisPage := func() {
+		c.CloseElements(
+			hostNamePanel,
+			askInterfacePanel,
+			askBondModePanel,
+			askNetworkMethodPanel,
+			addressPanel,
+			gatewayPanel,
+			networkValidatorPanel,
+			bondNotePanel,
+		)
+	}
+
 	gotoNextPage := func(fromPanel string) error {
 		if err := networkValidatorV.Show(); err != nil {
 			return err
@@ -864,7 +860,7 @@ func addNetworkPanel(c *Console) error {
 		return nil
 	}
 
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoPrevPage := func() error {
 		closeThisPage()
 		return showDiskPage(c)
 	}
@@ -875,102 +871,103 @@ func addNetworkPanel(c *Console) error {
 		hostNameV.Value = c.config.Hostname
 		return c.setContentByName(titlePanel, networkTitle)
 	}
-	validateHostName := func() (string, error) {
-		hostName, err := hostNameV.GetData()
-		if err != nil {
-			return "", err
-		}
+	hostNameV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		hostName := assertTypeString(data)
 		if hostName == "" {
-			return "must specify hostname", nil
+			return updateValidatorMessage("must specify hostname")
 		}
 		// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
 		if errs := validation.IsDNS1123Subdomain(hostName); len(errs) > 0 {
 			// TODO: show regexp for validation to users
-			return "Invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.", nil
+			return updateValidatorMessage("Invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.")
 		}
 		c.config.Hostname = hostName
-		return "", nil
-	}
-	hostNameVConfirm := gotoNextPanel(c, []string{askInterfacePanel}, validateHostName)
-	hostNameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowDown: hostNameVConfirm,
-		gocui.KeyEnter:     hostNameVConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
+		updateValidatorMessage("")
+		showBondNote()
+		return askInterfaceV.Show()
+	})
+	hostNameV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		switch key {
+		case gocui.KeyEsc:
+			updateValidatorMessage("")
+			return gotoPrevPage()
+		}
+		return nil
+	})
 	setLocation(hostNameV.Panel, 3)
 	c.AddElement(hostNamePanel, hostNameV)
 
 	// askInterfaceV
-	validateInterface := func() (string, error) {
-		ifaces := askInterfaceV.GetMultiData()
+	askInterfaceV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		ifaces := assertTypeStringSlice(data)
 		if len(ifaces) == 0 {
-			return "Must select at least once interface", nil
+			return updateValidatorMessage("Must select at least once interface")
 		}
+
 		interfaces := make([]config.NetworkInterface, 0, len(ifaces))
 		for _, iface := range ifaces {
 			switch nicState := getNICState(iface); nicState {
 			case NICStateNotFound:
-				return fmt.Sprintf("NIC %s not found", iface), nil
+				return updateValidatorMessage(fmt.Sprintf("NIC %s not found", iface))
 			case NICStateDown:
-				return fmt.Sprintf("NIC %s is down", iface), nil
+				return updateValidatorMessage(fmt.Sprintf("NIC %s is down", iface))
 			case NICStateLowerDown:
-				return fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", iface), nil
+				return updateValidatorMessage(fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", iface))
 			}
 			interfaces = append(interfaces, config.NetworkInterface{Name: iface})
 		}
 		mgmtNetwork.Interfaces = interfaces
-		return "", nil
-	}
-	interfaceVConfirm := gotoNextPanel(c, []string{askBondModePanel}, validateInterface)
-	askInterfaceV.SetMulti(true)
-	askInterfaceV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{hostNamePanel}),
-		gocui.KeyArrowDown: interfaceVConfirm,
-		gocui.KeyEnter:     interfaceVConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
+		return askBondModeV.Show()
+	})
+	askInterfaceV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		switch key {
+		case gocui.KeyEsc:
+			return gotoPrevPage()
+		case gocui.KeyArrowUp:
+			updateValidatorMessage("")
+			return hostNameV.Show()
+		}
+		return nil
+	})
 	setLocation(askInterfaceV.Panel, 3)
 	c.AddElement(askInterfacePanel, askInterfaceV)
 
 	// askBondModeV
 	askBondModeV.PreShow = func() error {
 		if mgmtNetwork.BondOptions == nil {
-			askBondModeV.Value = config.BondModeBalanceTLB
+			err := askBondModeV.SetData(config.BondModeBalanceTLB)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}
-	askBondModeVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		mode, err := askBondModeV.GetData()
+	askBondModeV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		mode := assertTypeString(data)
 		mgmtNetwork.BondOptions = map[string]string{
 			"mode":   mode,
 			"miimon": "100",
-		}
-		if err != nil {
-			return err
-		}
-		if err := showBondNote(); err != nil {
-			return err
 		}
 		if mgmtNetwork.Method != config.NetworkMethodStatic {
 			return showNext(c, askNetworkMethodPanel)
 		}
 		return showNext(c, gatewayPanel, addressPanel, askNetworkMethodPanel)
-	}
-	askBondModeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askInterfacePanel}),
-		gocui.KeyArrowDown: askBondModeVConfirm,
-		gocui.KeyEnter:     askBondModeVConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
+	})
+	askBondModeV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		switch key {
+		case gocui.KeyEsc:
+			return gotoPrevPage()
+		case gocui.KeyArrowUp:
+			return askInterfaceV.Show()
+		}
+		return nil
+	})
 	setLocation(askBondModeV.Panel, 3)
 	c.AddElement(askBondModePanel, askBondModeV)
 
 	// askNetworkMethodV
-	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
-		selected, err := askNetworkMethodV.GetData()
-		if err != nil {
-			return err
-		}
+	askNetworkMethodV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		selected := assertTypeString(data)
 		mgmtNetwork.Method = selected
 		if selected == config.NetworkMethodStatic {
 			return showNext(c, gatewayPanel, addressPanel)
@@ -978,93 +975,76 @@ func addNetworkPanel(c *Console) error {
 
 		c.CloseElements(gatewayPanel, addressPanel)
 		return gotoNextPage(askNetworkMethodPanel)
-	}
-	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askBondModePanel}),
-		gocui.KeyArrowDown: askNetworkMethodVConfirm,
-		gocui.KeyEnter:     askNetworkMethodVConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
+	})
+	askNetworkMethodV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		switch key {
+		case gocui.KeyEsc:
+			return gotoPrevPage()
+		case gocui.KeyArrowUp:
+			return askBondModeV.Show()
+		}
+		return nil
+	})
 	setLocation(askNetworkMethodV.Panel, 3)
 	c.AddElement(askNetworkMethodPanel, askNetworkMethodV)
 
 	// AddressV
 	addressV.PreShow = func() error {
-		c.Gui.Cursor = true
-		addressV.Value = userInputData.Address
+		addressV.SetData(userInputData.Address)
 		return nil
 	}
-	validateAddress := func() (string, error) {
-		address, err := addressV.GetData()
-		if err != nil {
-			return "", err
-		}
+	addressV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		address := assertTypeString(data)
 		if err = checkStaticRequiredString("address", address); err != nil {
-			return err.Error(), nil
+			return updateValidatorMessage(err.Error())
 		}
 		ip, ipNet, err := net.ParseCIDR(address)
 		if err != nil {
-			return err.Error(), nil
+			return updateValidatorMessage(err.Error())
 		}
 		mask := ipNet.Mask
 		userInputData.Address = address
 		mgmtNetwork.IP = ip.String()
 		mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3])
-		return "", nil
-	}
-	addressVConfirm := gotoNextPanel(c, []string{gatewayPanel}, validateAddress)
-	addressV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, []string{askNetworkMethodPanel}, func() (string, error) {
-			userInputData.Address, err = addressV.GetData()
-			return "", err
-		}),
-		gocui.KeyArrowDown: addressVConfirm,
-		gocui.KeyEnter:     addressVConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
+		return gatewayV.Show()
+	})
+	addressV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		switch key {
+		case gocui.KeyEsc:
+			return gotoPrevPage()
+		case gocui.KeyArrowUp:
+			return askNetworkMethodV.Show()
+		}
+		return nil
+	})
 	setLocation(addressV.Panel, 3)
 	c.AddElement(addressPanel, addressV)
 
 	// gatewayV
 	gatewayV.PreShow = func() error {
-		c.Gui.Cursor = true
-		gatewayV.Value = mgmtNetwork.Gateway
+		gatewayV.SetData(mgmtNetwork.Gateway)
 		return nil
 	}
-	validateGateway := func() (string, error) {
-		gateway, err := gatewayV.GetData()
-		if err != nil {
-			return "", err
-		}
+	gatewayV.SetOnConfirm(func(data interface{}, key gocui.Key) error {
+		gateway := assertTypeString(data)
 		if err = checkStaticRequiredString("gateway", gateway); err != nil {
-			return err.Error(), nil
+			return updateValidatorMessage(err.Error())
 		}
 		if err = checkIP(gateway); err != nil {
-			return err.Error(), nil
+			return updateValidatorMessage(err.Error())
 		}
 		mgmtNetwork.Gateway = gateway
-		return "", nil
-	}
-	gatewayVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		msg, err := validateGateway()
-		if err != nil {
-			return err
+		return gotoNextPage(askNetworkMethodPanel)
+	})
+	gatewayV.SetOnLeave(func(data interface{}, key gocui.Key) error {
+		switch key {
+		case gocui.KeyEsc:
+			return gotoPrevPage()
+		case gocui.KeyArrowUp:
+			return addressV.Show()
 		}
-		if msg != "" {
-			return updateValidatorMessage(msg)
-		}
-
-		return gotoNextPage(gatewayPanel)
-	}
-	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, []string{addressPanel}, func() (string, error) {
-			mgmtNetwork.Gateway, err = gatewayV.GetData()
-			return "", err
-		}),
-		gocui.KeyArrowDown: gatewayVConfirm,
-		gocui.KeyEnter:     gatewayVConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
+		return nil
+	})
 	setLocation(gatewayV.Panel, 3)
 	c.AddElement(gatewayPanel, gatewayV)
 
@@ -1837,35 +1817,6 @@ func addSomeNewPage(c *Console) error {
 	page.SetTitle("Some New Page")
 	page.SetFooter("Some footer msg")
 
-	dropdown1, err := widgets.NewDropDown(c.Gui, "someNewPageDropdown1", "DropDown1", func() ([]widgets.Option, error) {
-		return []widgets.Option{
-			{
-				Text:  "Foo",
-				Value: "foo",
-			},
-			{
-				Text:  "LOL",
-				Value: "lol",
-			},
-			{
-				Text:  "Right",
-				Value: "right",
-			},
-		}, nil
-	})
-	if err != nil {
-		return err
-	}
-	dropdown1.SetMulti(true)
-	page.AddComponent(dropdown1, func(data interface{}) error {
-		somedata, ok := data.([]string)
-		if !ok {
-			err := fmt.Errorf("data is not a string")
-			return err
-		}
-		logrus.Info("Validate dropdown1:", somedata)
-		return nil
-	})
 	select1, err := widgets.NewSelect(c.Gui, "someNewPageSelect1", "", func() ([]widgets.Option, error) {
 		return []widgets.Option{
 			{
@@ -1885,8 +1836,9 @@ func addSomeNewPage(c *Console) error {
 	if err != nil {
 		return err
 	}
+	select1.SetMulti(true)
 	page.AddComponent(select1, func(data interface{}) error {
-		selects, ok := data.(string)
+		selects, ok := data.([]string)
 		if !ok {
 			err := fmt.Errorf("data is not a []string")
 			logrus.Error(err)
@@ -1899,6 +1851,34 @@ func addSomeNewPage(c *Console) error {
 		page.SetStatus("Working...", true, false)
 		time.Sleep((time.Second * 1))
 		logrus.Info("OK Valudate")
+		return nil
+	})
+	dropdown1, err := widgets.NewDropDown(c.Gui, "someNewPageDropdown1", "DropDown1", func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Text:  "Foo",
+				Value: "foo",
+			},
+			{
+				Text:  "LOL",
+				Value: "lol",
+			},
+			{
+				Text:  "Right",
+				Value: "right",
+			},
+		}, nil
+	})
+	if err != nil {
+		return err
+	}
+	page.AddComponent(dropdown1, func(data interface{}) error {
+		somedata, ok := data.(string)
+		if !ok {
+			err := fmt.Errorf("data is not a string")
+			return err
+		}
+		logrus.Info("Validate dropdown1:", somedata)
 		return nil
 	})
 	input1, err := widgets.NewInput(c.Gui, "someNewPageInput1", "Input 1", false)
@@ -1951,4 +1931,25 @@ func addSomeNewPage(c *Console) error {
 	page.Show()
 
 	return nil
+}
+
+func assertTypeString(data interface{}) string {
+	val, ok := data.(string)
+	if !ok {
+		msg := fmt.Sprintf("cannot unwrap data as string: has type %T", data)
+		logrus.Panic(msg)
+		panic(msg)
+	}
+
+	return val
+}
+
+func assertTypeStringSlice(data interface{}) []string {
+	val, ok := data.([]string)
+	if !ok {
+		msg := fmt.Sprintf("cannot unwrap data as string: has type %T", data)
+		logrus.Panic(msg)
+	}
+
+	return val
 }
