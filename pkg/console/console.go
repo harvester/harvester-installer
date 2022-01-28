@@ -89,6 +89,16 @@ func (c *Console) AddElement(name string, element widgets.Element) {
 	c.elements[name] = element
 }
 
+// ShowElement shows the element by name
+func (c *Console) ShowElement(name string) error {
+	if elem, err := c.GetElement(name); err != nil {
+		return err
+	} else {
+		elem.Show()
+		return nil
+	}
+}
+
 func (c *Console) setContentByName(name string, content string) error {
 	v, err := c.GetElement(name)
 	if err != nil {

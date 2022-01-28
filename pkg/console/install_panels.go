@@ -20,15 +20,16 @@ import (
 )
 
 type UserInputData struct {
-	ServerURL            string
-	SSHKeyURL            string
-	Password             string
-	PasswordConfirm      string
-	Address              string
-	DNSServers           string
-	NTPServers           string
-	HasCheckedNTPServers bool
-	HasWarnedDiskSize    bool
+	ServerURL             string
+	SSHKeyURL             string
+	Password              string
+	PasswordConfirm       string
+	Address               string
+	DNSServers            string
+	NTPServers            string
+	HasCheckedNTPServers  bool
+	HasWarnedDiskSize     bool
+	HasWarnedDataDiskSize bool
 }
 
 const (
@@ -93,6 +94,7 @@ func setPanels(c *Console) error {
 		addFooterPanel,
 		addAskCreatePanel,
 		addDiskPanel,
+		addDataDiskPanel,
 		addNetworkPanel,
 		addVIPPanel,
 		addDNSServersPanel,
@@ -182,9 +184,6 @@ func addDiskPanel(c *Console) error {
 	}
 	diskV.PreShow = func() error {
 		diskV.Value = c.config.Install.Device
-		if systemIsBIOS() {
-			c.setContentByName(askForceMBRTitlePanel, "Use MBR partitioning scheme")
-		}
 		return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
 	}
 	setLocation(diskV.Panel, len(diskOpts)+2)
@@ -192,6 +191,7 @@ func addDiskPanel(c *Console) error {
 
 	// Asking force MBR title
 	askForceMBRTitleV := widgets.NewPanel(c.Gui, askForceMBRTitlePanel)
+	askForceMBRTitleV.SetContent("Use MBR partitioning scheme")
 	setLocation(askForceMBRTitleV, 2)
 	c.AddElement(askForceMBRTitlePanel, askForceMBRTitleV)
 
@@ -261,8 +261,15 @@ func addDiskPanel(c *Console) error {
 			}
 		}
 		c.config.ForceMBR = (forceMBR == "yes")
+
 		closeThisPage()
-		return showNetworkPage(c)
+		if canChoose, err := canChooseDataDisk(); err != nil {
+			return err
+		} else if canChoose {
+			return showDataDiskPage(c)
+		} else {
+			return showNetworkPage(c)
+		}
 	}
 
 	// Keybindings
@@ -331,6 +338,120 @@ func getDiskOptions() ([]widgets.Option, error) {
 	}
 
 	return options, nil
+}
+
+func showDataDiskPage(c *Console) error {
+	setLocation := createVerticalLocatorWithName(c)
+	diskOpts, err := getDataDiskOptions(c.config)
+	if err != nil {
+		return err
+	}
+	panels := []string{dataDiskPanel, dataDiskValidatorPanel}
+	setLocation(dataDiskPanel, len(diskOpts)+2)
+	setLocation(dataDiskValidatorPanel, 3)
+
+	if err := showNext(c, panels...); err != nil {
+		return err
+	}
+	if err := c.ShowElement(dataDiskPanel); err != nil {
+		return err
+	}
+	if err := c.setContentByName(titlePanel, "Choose disk for storing VM data"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getDataDiskOptions(hvstConfig *config.HarvesterConfig) ([]widgets.Option, error) {
+	// Show the OS disk as "Use the installation disk (<Disk Name>)"
+	deviceForOS := hvstConfig.Install.Device
+	diskOpts, err := getDiskOptions()
+	if err != nil {
+		return nil, err
+	}
+	for i, diskOpt := range diskOpts {
+		if diskOpt.Value == deviceForOS {
+			osDiskOpt := widgets.Option{
+				Text:  fmt.Sprintf("Use the installation disk (%s)", diskOpt.Text),
+				Value: diskOpt.Value,
+			}
+			diskOpts = append(diskOpts[:i], diskOpts[i+1:]...)
+			diskOpts = append([]widgets.Option{osDiskOpt}, diskOpts...)
+			return diskOpts, nil
+		}
+	}
+	return nil, fmt.Errorf("device '%s' not found in disk options", deviceForOS)
+}
+
+func addDataDiskPanel(c *Console) error {
+	dataDiskV, err := widgets.NewSelect(c.Gui, dataDiskPanel, "", func() ([]widgets.Option, error) {
+		return getDataDiskOptions(c.config)
+	})
+	if err != nil {
+		return err
+	}
+	dataDiskV.PreShow = func() error {
+		return dataDiskV.SetData(c.config.Install.DataDisk)
+	}
+	c.AddElement(dataDiskPanel, dataDiskV)
+
+	dataDiskValidatorV := widgets.NewPanel(c.Gui, dataDiskValidatorPanel)
+	dataDiskValidatorV.FgColor = gocui.ColorRed
+	dataDiskValidatorV.Wrap = true
+	dataDiskValidatorV.Focus = false
+	updateValidatorMessage := func(msg string) error {
+		return c.setContentByName(dataDiskValidatorPanel, msg)
+	}
+	c.AddElement(dataDiskValidatorPanel, dataDiskValidatorV)
+
+	closeThisPage := func() {
+		userInputData.HasWarnedDataDiskSize = false
+		c.CloseElements(dataDiskPanel, dataDiskValidatorPanel)
+	}
+
+	gotoNextPage := func() error {
+		closeThisPage()
+		return showNetworkPage(c)
+	}
+
+	gotoPrevPage := func() error {
+		closeThisPage()
+		return showDiskPage(c)
+	}
+
+	dataDiskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			device, err := dataDiskV.GetData()
+			if err != nil {
+				return err
+			}
+
+			if err := validateDiskSize(device); err != nil {
+				return updateValidatorMessage(err.Error())
+			}
+			if err := validateDiskSizeSoft(device); err != nil && !userInputData.HasWarnedDataDiskSize {
+				userInputData.HasWarnedDataDiskSize = true
+				return updateValidatorMessage(fmt.Sprintf("%s. Press Enter to continue.", err.Error()))
+			}
+
+			c.config.Install.DataDisk = device
+			return gotoNextPage()
+		},
+		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error {
+			userInputData.HasWarnedDataDiskSize = false
+			return updateValidatorMessage("")
+		},
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			userInputData.HasWarnedDataDiskSize = false
+			return updateValidatorMessage("")
+		},
+		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+			return gotoPrevPage()
+		},
+	}
+
+	return nil
 }
 
 func addAskCreatePanel(c *Console) error {
@@ -853,7 +974,13 @@ func addNetworkPanel(c *Console) error {
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
-		return showDiskPage(c)
+		if canChoose, err := canChooseDataDisk(); err != nil {
+			return err
+		} else if canChoose {
+			return showDataDiskPage(c)
+		} else {
+			return showDiskPage(c)
+		}
 	}
 
 	// hostNameV
@@ -1419,8 +1546,12 @@ func addInstallPanel(c *Console) error {
 				c.config.NoDataPartition = true
 			}
 
-			// If DataDisk is specified, NoDataPartition should be set to "false" as we will have
-			// VM data partition, just on other disk.
+			// Clear the DataDisk field if it's identical to the installation disk
+			if c.config.DataDisk == c.config.Device {
+				c.config.DataDisk = ""
+			}
+			// If DataDisk is specified and it's different from the install device, NoDataPartition
+			// should be set to "false" as we DO have a VM data partition, just on other disk.
 			if c.config.DataDisk != "" {
 				msg := fmt.Sprintf("Use %s as default VM data disk", c.config.DataDisk)
 				printToPanel(c.Gui, msg, installPanel)

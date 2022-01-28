@@ -140,8 +140,12 @@ func (p *Panel) SetContent(content string) {
 	p.Content = content
 	p.g.Update(func(g *gocui.Gui) error {
 		v, err := p.g.View(p.Name)
-		if err != nil && err != gocui.ErrUnknownView {
-			return err
+		if err != nil {
+			if err != gocui.ErrUnknownView {
+				return err
+			} else {
+				return nil
+			}
 		}
 		v.Clear()
 		_, err = fmt.Fprint(v, p.Content)

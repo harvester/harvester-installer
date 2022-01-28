@@ -35,10 +35,6 @@ const (
 	defaultHTTPTimeout    = 15 * time.Second
 	harvesterNodePort     = "30443"
 	automaticCmdline      = "harvester.automatic"
-	softMinDiskSizeGiB    = 140
-	hardMinDiskSizeGiB    = 60
-	minCosPartSizeGiB     = 25
-	normalCosPartSizeGiB  = 50
 )
 
 func newProxyClient() http.Client {
@@ -549,8 +545,8 @@ func validateDiskSize(devPath string) error {
 	if err != nil {
 		return err
 	}
-	if diskSizeBytes>>30 < hardMinDiskSizeGiB {
-		return fmt.Errorf("Disk size too small. Minimum %dGB is required", hardMinDiskSizeGiB)
+	if diskSizeBytes>>30 < config.HardMinDiskSizeGiB {
+		return fmt.Errorf("Disk size too small. Minimum %dGB is required", config.HardMinDiskSizeGiB)
 	}
 
 	return nil
@@ -561,8 +557,8 @@ func validateDiskSizeSoft(devPath string) error {
 	if err != nil {
 		return err
 	}
-	if diskSizeBytes>>30 < softMinDiskSizeGiB {
-		return fmt.Errorf("Disk size smaller than recommended size %dGB", softMinDiskSizeGiB)
+	if diskSizeBytes>>30 < config.SoftMinDiskSizeGiB {
+		return fmt.Errorf("Disk size is smaller than the recommended size: %dGB", config.SoftMinDiskSizeGiB)
 	}
 
 	return nil
@@ -575,10 +571,31 @@ func systemIsBIOS() bool {
 	return false
 }
 
-func createVerticalLocator(c *Console) func(p *widgets.Panel, height int) {
+func canChooseDataDisk() (bool, error) {
+	// TODO This is a copy of getDiskOptions(). Deduplicate these two
+	output, err := exec.Command("/bin/sh", "-c", `lsblk -r -o NAME,SIZE,TYPE | grep -w disk|cut -d ' ' -f 1,2`).CombinedOutput()
+	if err != nil {
+		return false, err
+	}
+	lines := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
+	var options []widgets.Option
+	for _, line := range lines {
+		splits := strings.SplitN(line, " ", 2)
+		if len(splits) == 2 {
+			options = append(options, widgets.Option{
+				Value: "/dev/" + splits[0],
+				Text:  line,
+			})
+		}
+	}
+
+	return len(options) > 1, nil
+}
+
+func createVerticalLocator(c *Console) func(elem widgets.Element, height int) {
 	maxX, maxY := c.Gui.Size()
 	lastY := maxY / 8
-	return func(p *widgets.Panel, height int) {
+	return func(elem widgets.Element, height int) {
 		var (
 			x0 = maxX / 8
 			y0 = lastY
@@ -591,7 +608,33 @@ func createVerticalLocator(c *Console) func(p *widgets.Panel, height int) {
 			y1 = y0 + height
 		}
 		lastY += height
-		p.SetLocation(x0, y0, x1, y1)
+		elem.SetLocation(x0, y0, x1, y1)
+	}
+}
+
+func createVerticalLocatorWithName(c *Console) func(elemName string, height int) error {
+	maxX, maxY := c.Gui.Size()
+	lastY := maxY / 8
+	return func(elemName string, height int) error {
+		elem, err := c.GetElement(elemName)
+		if err != nil {
+			return err
+		}
+
+		var (
+			x0 = maxX / 8
+			y0 = lastY
+			x1 = maxX / 8 * 7
+			y1 int
+		)
+		if height == 0 {
+			y1 = maxY / 8 * 7
+		} else {
+			y1 = y0 + height
+		}
+		lastY += height
+		elem.SetLocation(x0, y0, x1, y1)
+		return nil
 	}
 }
 

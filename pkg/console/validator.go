@@ -33,7 +33,7 @@ var (
 	ErrMsgInterfaceIsLoop              = "interface is a loopback interface"
 	ErrMsgDeviceNotSpecified           = "no device specified"
 	ErrMsgDeviceNotFound               = "device not found"
-	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", hardMinDiskSizeGiB)
+	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", config.HardMinDiskSizeGiB)
 	ErrMsgNoCredentials                = "no SSH authorized keys or passwords are set"
 	ErrMsgForceMBROnLargeDisk          = "disk size too large for MBR partitioning table"
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
@@ -84,7 +84,7 @@ func checkInterface(iface config.NetworkInterface) error {
 	return prettyError(ErrMsgInterfaceNotFound, iface.Name)
 }
 
-func checkDevice(device string, checkSize bool) error {
+func checkDevice(device string) error {
 	if device == "" {
 		return errors.New(ErrMsgDeviceNotSpecified)
 	}
@@ -119,10 +119,8 @@ func checkDevice(device string, checkSize bool) error {
 		return prettyError(ErrMsgDeviceNotFound, device)
 	}
 
-	if checkSize {
-		if err := validateDiskSize(device); err != nil {
-			return prettyError(ErrMsgDeviceTooSmall, device)
-		}
+	if err := validateDiskSize(device); err != nil {
+		return prettyError(ErrMsgDeviceTooSmall, device)
 	}
 
 	return nil
@@ -282,12 +280,12 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		return errors.Errorf("Invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.")
 	}
 
-	if err := checkDevice(cfg.Install.Device, true); err != nil {
+	if err := checkDevice(cfg.Install.Device); err != nil {
 		return err
 	}
 
 	if cfg.Install.DataDisk != "" {
-		if err := checkDevice(cfg.Install.DataDisk, false); err != nil {
+		if err := checkDevice(cfg.Install.DataDisk); err != nil {
 			return err
 		}
 	}
