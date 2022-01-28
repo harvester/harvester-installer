@@ -5,4 +5,5 @@ type Element interface {
 	Close() error
 	GetData() (string, error)
 	SetContent(string)
+	SetLocation(int, int, int, int)
 }

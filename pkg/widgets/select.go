@@ -43,10 +43,8 @@ func (s *Select) Show() error {
 	if err := s.Panel.Show(); err != nil {
 		return err
 	}
-	if s.getOptionsFunc != nil {
-		if s.options, err = s.getOptionsFunc(); err != nil {
-			return err
-		}
+	if err := s.updateOptions(); err != nil {
+		return err
 	}
 	optionViewName := s.Name + "-options"
 	offset := len(strings.Split(s.Content, "\n"))
@@ -144,21 +142,38 @@ func (s *Select) GetMultiData() []string {
 }
 
 func (s *Select) SetData(data string) error {
-	optionViewName := s.Name + "-options"
-	ov, err := s.g.View(optionViewName)
-	if err != nil {
+	if data == "" {
+		s.Value = ""
+		return nil
+	}
+	if err := s.updateOptions(); err != nil {
 		return err
 	}
-	cx, cy := ov.Cursor()
+
+	var foundOptIdx = -1
 	for i, option := range s.options {
 		if option.Value == data {
-			if err = ov.SetCursor(cx, cy+i); err != nil {
-				return err
-			}
+			foundOptIdx = i
+			s.Value = option.Value
 			break
 		}
 	}
-	return nil
+	if foundOptIdx == -1 {
+		return fmt.Errorf("given data '%s' not found in options", data)
+	}
+
+	optionViewName := s.Name + "-options"
+	ov, err := s.g.View(optionViewName)
+	if err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		} else {
+			return nil
+		}
+	}
+
+	ox, oy := ov.Origin()
+	return ov.SetCursor(ox, oy+foundOptIdx)
 }
 
 func (s *Select) updateSelectedStatus(v *gocui.View) error {
@@ -205,6 +220,16 @@ func setOptionsKeyBindings(g *gocui.Gui, viewName string) error {
 	}
 	if err := g.SetKeybinding(viewName, gocui.KeyArrowDown, gocui.ModNone, ArrowDown); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *Select) updateOptions() error {
+	var err error
+	if s.getOptionsFunc != nil {
+		if s.options, err = s.getOptionsFunc(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
