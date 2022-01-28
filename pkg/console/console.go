@@ -16,12 +16,24 @@ var (
 	debug bool
 )
 
+const (
+	defaultLogFilePath = "/var/log/console.log"
+)
+
 func initLogs() error {
 	if os.Getenv("DEBUG") == "true" {
 		debug = true
 		logrus.SetLevel(logrus.DebugLevel)
 	}
-	f, err := os.OpenFile("/var/log/console.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755) //0600)
+
+	var logFilePath string
+	if path := os.Getenv("LOGFILE"); path != "" {
+		logFilePath = path
+	} else {
+		logFilePath = defaultLogFilePath
+	}
+
+	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755) //0600)
 	if err != nil {
 		return err
 	}
