@@ -117,6 +117,11 @@ type OS struct {
 	Labels         map[string]string `json:"labels,omitempty"`
 }
 
+type ClusterNetwork struct {
+	Description string            `json:"description,omitempty"`
+	Config      map[string]string `json:"config,omitempty"`
+}
+
 type HarvesterConfig struct {
 	ServerURL string `json:"serverUrl,omitempty"`
 	Token     string `json:"token,omitempty"`
@@ -127,6 +132,7 @@ type HarvesterConfig struct {
 	HarvesterChartVersion  string            `json:"harvesterChartVersion,omitempty"`
 	MonitoringChartVersion string            `json:"monitoringChartVersion,omitempty"`
 	SystemSettings         map[string]string `json:"systemSettings,omitempty"`
+	ClusterNetworks        map[string]ClusterNetwork `json:"clusterNetworks,omitempty"`
 }
 
 func NewHarvesterConfig() *HarvesterConfig {
