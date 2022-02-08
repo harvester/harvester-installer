@@ -35,6 +35,27 @@ const (
 	NormalCosPartSizeGiB = 50
 )
 
+// refer: https://docs.harvesterhci.io/latest/settings/settings/
+func GetSystemSettingsAllowList() []string {
+	return []string{
+		"additional-ca",
+		"backup-target",
+		"cluster-registeration-url",
+		"http-proxy",
+		"log-level",
+		"overcommit-config",
+		"server-version",
+		"ssl-certificates",
+		"ssl-parameters",
+		"ui-index",
+		"ui-source",
+		"upgrade-checker-enabled",
+		"upgrade-checker-url",
+		"auto-disk-provision-paths",
+		"vm-force-reset-policy",
+	}
+}
+
 type Network struct {
 	Interfaces   []NetworkInterface `json:"interfaces,omitempty"`
 	Method       string             `json:"method,omitempty"`

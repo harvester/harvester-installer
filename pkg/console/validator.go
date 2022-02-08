@@ -40,6 +40,8 @@ var (
 
 	ErrMsgNetworkMethodUnknown = "unknown network method"
 	ErrMsgNetworkVLANID        = "vlan id should be 0 to 4094"
+
+	ErrMsgSystemSettingsUnknown = "unknown system settings: %s"
 )
 
 type ValidatorInterface interface {
@@ -272,6 +274,27 @@ func checkToken(token string) error {
 	return nil
 }
 
+func checkSystemSettings(systemSettings map[string]string) error {
+	if systemSettings == nil {
+		return nil
+	}
+
+	allowList := config.GetSystemSettingsAllowList()
+	for systemSetting, _ := range systemSettings {
+		isValid := false
+		for _, allowSystemSetting := range allowList {
+			if systemSetting == allowSystemSetting {
+				isValid = true
+				break
+			}
+		}
+		if !isValid {
+			return errors.Errorf(ErrMsgSystemSettingsUnknown, systemSetting)
+		}
+	}
+	return nil
+}
+
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	// check hostname
 	// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
@@ -302,6 +325,10 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 
 	if cfg.Install.Mode == config.ModeCreate {
 		if err := checkVip(cfg.Vip, cfg.VipHwAddr, cfg.VipMode); err != nil {
+			return err
+		}
+
+		if err := checkSystemSettings(cfg.SystemSettings); err != nil {
 			return err
 		}
 	}
