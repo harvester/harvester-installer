@@ -1,0 +1,20 @@
+bootstrapResources: {{ if not .ClusterNetworks -}} [] {{- else }}
+{{- range $name, $network := .ClusterNetworks }}
+- apiVersion: harvesterhci.io/v1beta1
+  kind: ClusterNetwork
+  enable: true
+  metadata:
+    name: {{ printf "%q" $name }}
+{{- with $network }}
+{{- if .Description }}
+  description: {{ printf "%q" .Description }}
+{{- end }}
+{{- if .Config }}
+  config:
+{{- range $name, $value := .Config }}
+    {{ $name }}: {{ $value }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
