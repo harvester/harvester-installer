@@ -1,6 +1,8 @@
 package util
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -44,7 +46,8 @@ func parseCmdLine(cmdline string, prefix string) (map[string]interface{}, error)
 		}
 	}
 
-	return data, nil
+	err = toNetworkInterfaces(data)
+	return data, err
 }
 
 // ReadCmdline parses /proc/cmdline and returns a map contains kernel parameters
@@ -56,4 +59,33 @@ func ReadCmdline(prefix string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return parseCmdLine(string(bytes), prefix)
+}
+
+// parse kernel arguments and process network interfaces as a struct
+func toNetworkInterfaces(data map[string]interface{}) error {
+	networkInterfaces, ok := values.GetValue(data, "install", "networks", "harvester-mgmt", "interfaces")
+	if !ok {
+		return nil
+	}
+	var ifDetails []string
+	var outDetails []interface{}
+
+	switch networkInterfaces.(type) {
+	case string:
+		ifDetails = append(ifDetails, networkInterfaces.(string))
+	case []string:
+		ifDetails = networkInterfaces.([]string)
+	}
+	for _, v := range ifDetails {
+		tmpStrings := strings.SplitN(v, ":", 2)
+		n := make(map[string]interface{})
+		err := json.Unmarshal([]byte(fmt.Sprintf("{\"%s\":\"%s\"}", tmpStrings[0], strings.ReplaceAll(tmpStrings[1], " ", ""))), &n)
+		if err != nil {
+			return err
+		}
+		outDetails = append(outDetails, n)
+	}
+
+	values.PutValue(data, outDetails, "install", "networks", "harvester-mgmt", "interfaces")
+	return nil
 }

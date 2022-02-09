@@ -1,9 +1,10 @@
 package util
 
 import (
-	"testing"
-
+	"fmt"
+	"github.com/rancher/mapper/values"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func Test_parseCmdLineWithPrefix(t *testing.T) {
@@ -32,4 +33,30 @@ func Test_parseCmdLineWithoutPrefix(t *testing.T) {
 		"console": []string{"tty1", "ttyS0,115200n8"},
 	}
 	assert.Equal(t, want, m)
+}
+
+func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
+
+	cmdline := `harvester.os.sshAuthorizedKeys=a  harvester.install.networks.harvester-mgmt.method=dhcp harvester.install.networks.harvester-mgmt.bond_options.mode=balance-tlb harvester.install.networks.harvester-mgmt.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.networks.harvester-mgmt.interfaces="hwAddr: ab:cd:ef:gh" harvester.install.networks.harvester-mgmt.interfaces="hwAddr:   de:fg:hi:jk"`
+
+	m, err := parseCmdLine(cmdline, "harvester")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []interface{}{
+		map[string]interface{}{
+			"hwAddr": "ab:cd:ef:gh",
+		},
+		map[string]interface{}{
+			"hwAddr": "de:fg:hi:jk",
+		},
+	}
+
+	have, ok := values.GetValue(m, "install", "networks", "harvester-mgmt", "interfaces")
+	if !ok {
+		t.Fatal(fmt.Errorf("no network interfaces found"))
+	}
+
+	assert.Equal(t, want, have)
 }
