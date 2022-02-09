@@ -118,6 +118,8 @@ type OS struct {
 }
 
 type ClusterNetwork struct {
+	// by default: false
+	Enable      bool              `json:"enable,omitempty"`
 	Description string            `json:"description,omitempty"`
 	Config      map[string]string `json:"config,omitempty"`
 }
