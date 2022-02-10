@@ -282,7 +282,7 @@ func checkSystemSettings(systemSettings map[string]string) error {
 	}
 
 	allowList := config.GetSystemSettingsAllowList()
-	for systemSetting, _ := range systemSettings {
+	for systemSetting := range systemSettings {
 		isValid := false
 		for _, allowSystemSetting := range allowList {
 			if systemSetting == allowSystemSetting {
