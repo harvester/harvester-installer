@@ -54,7 +54,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	initramfs := yipSchema.Stage{
-		SSHKeys:   make(map[string][]string),
 		Users:     make(map[string]yipSchema.User),
 		TimeSyncd: make(map[string]string),
 	}
@@ -65,8 +64,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	// OS
-	initramfs.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
-
 	for _, ff := range cfg.OS.WriteFiles {
 		perm, err := strconv.ParseUint(ff.RawFilePermissions, 8, 0)
 		if err != nil {
@@ -128,11 +125,18 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		})
 	}
 
+	// After network is available
+	afterNetwork := yipSchema.Stage{
+		SSHKeys: make(map[string][]string),
+	}
+	afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
+
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
 		Stages: map[string][]yipSchema.Stage{
 			"rootfs":    {rootfs},
 			"initramfs": {initramfs},
+			"network":   {afterNetwork},
 		},
 	}
 
