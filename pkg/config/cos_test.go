@@ -3,6 +3,7 @@ package config
 import (
 	"testing"
 
+	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -100,4 +101,15 @@ func TestCalcCosPersistentPartSize(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConvertToCos_SSHKeysInYipNetworkStage(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	assert.NoError(t, err)
+
+	yipConfig, err := ConvertToCOS(conf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, yipConfig.Stages["network"][0].SSHKeys["rancher"], conf.OS.SSHAuthorizedKeys)
+	assert.Nil(t, yipConfig.Stages["initramfs"][0].SSHKeys)
 }
