@@ -35,24 +35,33 @@ const (
 	NormalCosPartSizeGiB = 50
 )
 
-// refer: https://docs.harvesterhci.io/latest/settings/settings/
+// refer: https://github.com/harvester/harvester/blob/master/pkg/settings/settings.go
 func GetSystemSettingsAllowList() []string {
 	return []string{
 		"additional-ca",
-		"backup-target",
+		"api-ui-version",
 		"cluster-registeration-url",
-		"http-proxy",
-		"log-level",
-		"overcommit-config",
 		"server-version",
-		"ssl-certificates",
-		"ssl-parameters",
 		"ui-index",
+		"ui-path",
 		"ui-source",
+		"voluem-snapshot-class",
+		"backup-target",
+		"upgradable-versions",
 		"upgrade-checker-enabled",
 		"upgrade-checker-url",
-		"auto-disk-provision-paths",
+		"log-level",
+		"ssl-certificates",
+		"ssl-parameters",
+		"support-bundle-image",
+		"support-bundle-namespaces",
+		"support-bundle-timeout",
+		"default-sotrage-class",
+		"http-proxy",
 		"vm-force-reset-policy",
+		"overcommit-config",
+		"vip-pools",
+		"auto-disk-provision-paths",
 	}
 }
 
