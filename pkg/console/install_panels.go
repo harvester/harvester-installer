@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -806,10 +807,38 @@ func addTokenPanel(c *Console) error {
 }
 
 func showNetworkPage(c *Console) error {
-	if mgmtNetwork.Method != config.NetworkMethodStatic {
-		return showNext(c, askInterfacePanel, askBondModePanel, askNetworkMethodPanel, hostNamePanel)
+	panels := []string{
+		hostNamePanel,
+		askInterfacePanel,
+		askBondModePanel,
+		vlanIdPanel,
+		askNetworkMethodPanel,
 	}
-	return showNext(c, askInterfacePanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, hostNamePanel)
+
+	if mgmtNetwork.Method == config.NetworkMethodStatic {
+		panels = append(panels, addressPanel, gatewayPanel)
+	}
+
+	if err := showNext(c, panels...); err != nil {
+		return err
+	}
+
+	// Focus on the hostName panel
+	return c.ShowElement(hostNamePanel)
+}
+
+func closeNetworkPage(c *Console) {
+	c.CloseElements(
+		hostNamePanel,
+		askInterfacePanel,
+		askBondModePanel,
+		vlanIdPanel,
+		askNetworkMethodPanel,
+		addressPanel,
+		gatewayPanel,
+		networkValidatorPanel,
+		bondNotePanel,
+	)
 }
 
 func addNetworkPanel(c *Console) error {
@@ -826,6 +855,11 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	askBondModeV, err := widgets.NewDropDown(c.Gui, askBondModePanel, askBondModeLabel, getBondModeOptions)
+	if err != nil {
+		return err
+	}
+
+	askVlanIdV, err := widgets.NewInput(c.Gui, vlanIdPanel, vlanIdLabel, false)
 	if err != nil {
 		return err
 	}
@@ -849,7 +883,7 @@ func addNetworkPanel(c *Console) error {
 
 	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
 
-	showBondNote := func() error {
+	updateNoteMessage := func(msg string) error {
 		if err := networkValidatorV.Close(); err != nil {
 			return err
 		}
@@ -857,7 +891,7 @@ func addNetworkPanel(c *Console) error {
 			return err
 		}
 		bondNoteV.Focus = false
-		return c.setContentByName(bondNotePanel, bondNote)
+		return c.setContentByName(bondNotePanel, msg)
 	}
 
 	updateValidatorMessage := func(msg string) error {
@@ -883,24 +917,8 @@ func addNetworkPanel(c *Console) error {
 					return updateValidatorMessage(msg)
 				}
 			}
-			if err := showBondNote(); err != nil {
-				return err
-			}
 			return showNext(c, name...)
 		}
-	}
-
-	closeThisPage := func() {
-		c.CloseElements(
-			hostNamePanel,
-			askInterfacePanel,
-			askBondModePanel,
-			askNetworkMethodPanel,
-			addressPanel,
-			gatewayPanel,
-			networkValidatorPanel,
-			bondNotePanel,
-		)
 	}
 
 	setupNetwork := func() ([]byte, error) {
@@ -922,7 +940,7 @@ func addNetworkPanel(c *Console) error {
 		}
 
 		if mgmtNetwork.Method == config.NetworkMethodDHCP {
-			if addr, err := getIPThroughDHCP(config.MgmtInterfaceName); err != nil {
+			if addr, err := getIPThroughDHCP(config.MgmtInterfaceName, mgmtNetwork); err != nil {
 				return fmt.Sprintf("Requesting IP through DHCP failed: %s", err.Error()), nil
 			} else {
 				logrus.Infof("DHCP test passed. Got IP: %s", addr)
@@ -943,7 +961,7 @@ func addNetworkPanel(c *Console) error {
 		if err := networkValidatorV.Show(); err != nil {
 			return err
 		}
-		spinner := NewFocusSpinner(c.Gui, networkValidatorPanel, fmt.Sprintf("Applying network configuration..."))
+		spinner := NewFocusSpinner(c.Gui, networkValidatorPanel, "Applying network configuration...")
 		spinner.Start()
 		go func(g *gocui.Gui) {
 			msg, err := preGotoNextPage()
@@ -964,7 +982,7 @@ func addNetworkPanel(c *Console) error {
 			} else {
 				spinner.Stop(false, "")
 				g.Update(func(g *gocui.Gui) error {
-					closeThisPage()
+					closeNetworkPage(c)
 					return showNext(c, getNextPagePanel()...)
 				})
 			}
@@ -973,7 +991,7 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
-		closeThisPage()
+		closeNetworkPage(c)
 		if canChoose, err := canChooseDataDisk(); err != nil {
 			return err
 		} else if canChoose {
@@ -987,6 +1005,9 @@ func addNetworkPanel(c *Console) error {
 	hostNameV.PreShow = func() error {
 		c.Gui.Cursor = true
 		hostNameV.Value = c.config.Hostname
+		if err := updateNoteMessage(""); err != nil {
+			return err
+		}
 		return c.setContentByName(titlePanel, networkTitle)
 	}
 	validateHostName := func() (string, error) {
@@ -1015,6 +1036,9 @@ func addNetworkPanel(c *Console) error {
 	c.AddElement(hostNamePanel, hostNameV)
 
 	// askInterfaceV
+	askInterfaceV.PreShow = func() error {
+		return updateNoteMessage(bondNote)
+	}
 	validateInterface := func() (string, error) {
 		ifaces := askInterfaceV.GetMultiData()
 		if len(ifaces) == 0 {
@@ -1051,24 +1075,22 @@ func addNetworkPanel(c *Console) error {
 		if mgmtNetwork.BondOptions == nil {
 			askBondModeV.Value = config.BondModeBalanceTLB
 		}
-		return nil
+		return updateNoteMessage(bondNote)
 	}
 	askBondModeVConfirm := func(g *gocui.Gui, v *gocui.View) error {
 		mode, err := askBondModeV.GetData()
+		if err != nil {
+			return err
+		}
 		mgmtNetwork.BondOptions = map[string]string{
 			"mode":   mode,
 			"miimon": "100",
 		}
-		if err != nil {
-			return err
-		}
-		if err := showBondNote(); err != nil {
-			return err
-		}
+
 		if mgmtNetwork.Method != config.NetworkMethodStatic {
-			return showNext(c, askNetworkMethodPanel)
+			return showNext(c, vlanIdPanel)
 		}
-		return showNext(c, gatewayPanel, addressPanel, askNetworkMethodPanel)
+		return showNext(c, gatewayPanel, addressPanel, vlanIdPanel)
 	}
 	askBondModeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askInterfacePanel}),
@@ -1078,6 +1100,46 @@ func addNetworkPanel(c *Console) error {
 	}
 	setLocation(askBondModeV.Panel, 3)
 	c.AddElement(askBondModePanel, askBondModeV)
+
+	// vlanId
+	askVlanIdV.PreShow = func() error {
+		if mgmtNetwork.VlanID != 0 {
+			askVlanIdV.Value = strconv.Itoa(mgmtNetwork.VlanID)
+		}
+		updateNoteMessage(vlanIdNote)
+		return nil
+	}
+	validateVlanId := func() (string, error) {
+		vlanIdData, err := askVlanIdV.GetData()
+		if err != nil {
+			return "", err
+		}
+
+		var vlanId int
+		if vlanIdData == "" {
+			vlanId = 0 // 0 means no VLAN ID
+		} else {
+			vlanId, err = strconv.Atoi(vlanIdData)
+			if err != nil {
+				return "Invalid VLAN ID", nil
+			}
+			if vlanId < 1 || vlanId > 4094 {
+				return "Invalid VLAN ID: Should be within range 1 to 4094", nil
+			}
+		}
+
+		mgmtNetwork.VlanID = vlanId
+		return "", nil
+	}
+	vlanIdVConfirm := gotoNextPanel(c, []string{askNetworkMethodPanel}, validateVlanId)
+	askVlanIdV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askBondModePanel}),
+		gocui.KeyArrowDown: vlanIdVConfirm,
+		gocui.KeyEnter:     vlanIdVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(askVlanIdV.Panel, 3)
+	c.AddElement(vlanIdPanel, askVlanIdV)
 
 	// askNetworkMethodV
 	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
@@ -1094,7 +1156,7 @@ func addNetworkPanel(c *Console) error {
 		return gotoNextPage(askNetworkMethodPanel)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askBondModePanel}),
+		gocui.KeyArrowUp:   gotoNextPanel(c, []string{vlanIdPanel}),
 		gocui.KeyArrowDown: askNetworkMethodVConfirm,
 		gocui.KeyEnter:     askNetworkMethodVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -1502,7 +1564,7 @@ func addInstallPanel(c *Console) error {
 						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
 						return
 					}
-					vip, err := getVipThroughDHCP(config.MgmtInterfaceName)
+					vip, err := getVipThroughDHCP(config.MgmtInterfaceName, c.config.Networks[config.MgmtInterfaceName])
 					if err != nil {
 						printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
 						return
@@ -1647,7 +1709,7 @@ func addVIPPanel(c *Console) error {
 			spinner := NewSpinner(c.Gui, vipTextPanel, "Requesting IP through DHCP...")
 			spinner.Start()
 			go func(g *gocui.Gui) {
-				vip, err := getVipThroughDHCP(config.MgmtInterfaceName)
+				vip, err := getVipThroughDHCP(config.MgmtInterfaceName, c.config.Networks[config.MgmtInterfaceName])
 				if err != nil {
 					spinner.Stop(true, err.Error())
 					g.Update(func(g *gocui.Gui) error {

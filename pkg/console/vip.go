@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/insomniacslk/dhcp/dhcpv4/nclient4"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -56,13 +57,21 @@ func deleteMacvlan(l netlink.Link) error {
 	return nil
 }
 
-func getVipThroughDHCP(iface string) (*vipAddr, error) {
+func getVipThroughDHCP(iface string, cfg config.Network) (*vipAddr, error) {
+	vlanIface := cfg.GetVlanInterfaceName()
+	if vlanIface != "" {
+		iface = vlanIface
+	}
+
 	l, err := createMacvlan(iface)
 	if err != nil {
 		return nil, err
 	}
 
-	ip, err := getIPThroughDHCP(l.Attrs().Name)
+	// The MACVLAN interface is created on-top of the VLAN interface (if required),
+	// so passing an empty Network struct to getIPThroughDHCP to prevent it uses
+	// the VLAN interface to request for DHCP IP
+	ip, err := getIPThroughDHCP(l.Attrs().Name, config.Network{})
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +86,15 @@ func getVipThroughDHCP(iface string) (*vipAddr, error) {
 	}, nil
 }
 
-func getIPThroughDHCP(iface string) (net.IP, error) {
+// getIPThroughDHCP tries to get a DHCP IP using the given interface and the
+// Network struct of the interface. We need the Network struct because we might
+// have to use the VLAN interface to send out the DHCP request.
+func getIPThroughDHCP(iface string, cfg config.Network) (net.IP, error) {
+	vlanIface := cfg.GetVlanInterfaceName()
+	if vlanIface != "" {
+		iface = vlanIface
+	}
+
 	broadcast, err := nclient4.New(iface)
 	if err != nil {
 		return nil, err

@@ -1,7 +1,6 @@
 package console
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -107,30 +106,4 @@ func getNICState(name string) int {
 		return NICStateLowerDown
 	}
 	return NICStateUP
-}
-
-type networkHardwareInfo struct {
-	Name        string `json:"logicalname"`
-	Vendor      string `json:"vendor"`
-	Product     string `json:"product"`
-	Description string `json:"description"`
-}
-
-func listNetworkHardware() (map[string]networkHardwareInfo, error) {
-	out, err := exec.Command("/bin/sh", "-c", "lshw -c network -json").CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-
-	m := make(map[string]networkHardwareInfo)
-	var networkHardwareList []networkHardwareInfo
-	if err := json.Unmarshal(out, &networkHardwareList); err != nil {
-		return nil, err
-	}
-
-	for _, networkHardware := range networkHardwareList {
-		m[networkHardware.Name] = networkHardware
-	}
-
-	return m, nil
 }

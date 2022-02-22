@@ -160,10 +160,10 @@ type HarvesterConfig struct {
 
 	OS                     `json:"os,omitempty"`
 	Install                `json:"install,omitempty"`
-	RuntimeVersion         string            `json:"runtimeVersion,omitempty"`
-	HarvesterChartVersion  string            `json:"harvesterChartVersion,omitempty"`
-	MonitoringChartVersion string            `json:"monitoringChartVersion,omitempty"`
-	SystemSettings         map[string]string `json:"systemSettings,omitempty"`
+	RuntimeVersion         string                    `json:"runtimeVersion,omitempty"`
+	HarvesterChartVersion  string                    `json:"harvesterChartVersion,omitempty"`
+	MonitoringChartVersion string                    `json:"monitoringChartVersion,omitempty"`
+	SystemSettings         map[string]string         `json:"systemSettings,omitempty"`
 	ClusterNetworks        map[string]ClusterNetwork `json:"clusterNetworks,omitempty"`
 }
 
@@ -259,4 +259,14 @@ func (n *NetworkInterface) FindNetworkInterfaceName() error {
 	// Default, there is no Name or HwAddress, do nothing. Let validation capture it
 	return nil
 
+}
+
+// GetVlanInterfaceName returns the VLAN interface name based on the VlanID field.
+// If VlanID is 0, this method returns empty string.
+func (n Network) GetVlanInterfaceName() string {
+	if n.VlanID == 0 {
+		return ""
+	} else {
+		return fmt.Sprintf("vlan%d", n.VlanID)
+	}
 }

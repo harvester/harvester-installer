@@ -21,6 +21,7 @@ const (
 	bondNotePanel          = "bondNote"
 	askNetworkMethodPanel  = "askNetworkMethod"
 	hostNamePanel          = "hostname"
+	vlanIdPanel            = "vlanId"
 	addressPanel           = "address"
 	gatewayPanel           = "gateway"
 	dnsServersPanel        = "dnsServers"
@@ -45,6 +46,7 @@ const (
 	askInterfaceLabel     = "Management NIC"
 	askNetworkMethodLabel = "IPv4 Method"
 	hostNameLabel         = "HostName"
+	vlanIdLabel           = "VLAN ID"
 	addressLabel          = "IPv4 Address"
 	gatewayLabel          = "Gateway"
 	dnsServersLabel       = "DNS Servers"
@@ -65,6 +67,7 @@ const (
 	ntpServersNote         = "Note: You can use comma to add more NTP servers."
 	dnsServersNote         = "Note: You can use comma to add more DNS servers. Leave blank to use default DNS."
 	bondNote               = "Note: Select one or more NICs for the Management NIC.\nUse the default value for the Bond Mode if only one NIC is selected."
+	vlanIdNote             = "Note: Leave blank to disable VLAN tagging"
 	forceMBRNote           = "Note: GPT is used by default. You can use MBR if you encountered compatibility issues."
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"

@@ -457,7 +457,7 @@ func updateVLAN(stage *yipSchema.Stage, name string, network *Network) error {
 	}
 
 	stage.Files = append(stage.Files, yipSchema.File{
-		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-vlan%d", network.VlanID),
+		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", network.GetVlanInterfaceName()),
 		Content:     ifcfg,
 		Permissions: 0600,
 		Owner:       0,
