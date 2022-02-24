@@ -74,6 +74,7 @@ type Network struct {
 	DefaultRoute bool               `json:"-"`
 	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
 	VlanID       int                `json:"vlanId,omitempty"`
+	MTU          int                `json:"mtu,omitempty"`
 }
 
 type HTTPBasicAuth struct {
@@ -160,10 +161,10 @@ type HarvesterConfig struct {
 
 	OS                     `json:"os,omitempty"`
 	Install                `json:"install,omitempty"`
-	RuntimeVersion         string            `json:"runtimeVersion,omitempty"`
-	HarvesterChartVersion  string            `json:"harvesterChartVersion,omitempty"`
-	MonitoringChartVersion string            `json:"monitoringChartVersion,omitempty"`
-	SystemSettings         map[string]string `json:"systemSettings,omitempty"`
+	RuntimeVersion         string                    `json:"runtimeVersion,omitempty"`
+	HarvesterChartVersion  string                    `json:"harvesterChartVersion,omitempty"`
+	MonitoringChartVersion string                    `json:"monitoringChartVersion,omitempty"`
+	SystemSettings         map[string]string         `json:"systemSettings,omitempty"`
 	ClusterNetworks        map[string]ClusterNetwork `json:"clusterNetworks,omitempty"`
 }
 
@@ -227,6 +228,29 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	}
 
 	return []string{}, nil
+}
+
+func (c *HarvesterConfig) Merge(other HarvesterConfig) error {
+	// We need to manually merge the "Networks" field (map[string]Network) because Mergo won't
+	// merge the struct inside a map. See https://github.com/imdario/mergo#usage
+	updatedNetworks := make(map[string]Network, len(c.Networks))
+	for ifaceName, network := range c.Networks {
+		// Update the network struct if exist in other config
+		if otherNetwork, ok := other.Networks[ifaceName]; ok {
+			if err := mergo.Merge(&network, otherNetwork, mergo.WithAppendSlice); err != nil {
+				return err
+			}
+		}
+
+		updatedNetworks[ifaceName] = network
+	}
+	c.Networks = updatedNetworks
+
+	if err := mergo.Merge(c, other, mergo.WithAppendSlice); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // FindNetworkInterfaceName uses MAC address to lookup interface name

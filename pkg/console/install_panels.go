@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/imdario/mergo"
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -60,7 +59,7 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 		if cfg, err := config.ReadConfig(); err == nil {
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
-				mergo.Merge(c.config, cfg, mergo.WithAppendSlice)
+				c.config.Merge(cfg)
 				initPanel = installPanel
 			}
 		}
@@ -1490,7 +1489,7 @@ func addInstallPanel(c *Console) error {
 					return
 				}
 				logrus.Info("Remote config: ", remoteConfig)
-				if err := mergo.Merge(c.config, remoteConfig, mergo.WithAppendSlice); err != nil {
+				if err := c.config.Merge(*remoteConfig); err != nil {
 					printToPanel(c.Gui, fmt.Sprintf("fail to merge config: %s", err), installPanel)
 					return
 				}
