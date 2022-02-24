@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jroimartin/gocui"
@@ -35,6 +37,13 @@ const (
 	defaultHTTPTimeout    = 15 * time.Second
 	harvesterNodePort     = "30443"
 	automaticCmdline      = "harvester.automatic"
+	installFailureMessage = `
+** Installation Failed **
+You can see the full installation log by:
+  - Press CTRL + ALT + F2 to switch to a different TTY console.
+  - Login with user "rancher" (password is "rancher").
+  - Run the command: less %s.
+`
 )
 
 func newProxyClient() http.Client {
@@ -325,25 +334,44 @@ func execute(ctx context.Context, g *gocui.Gui, env []string, cmdName string) er
 	if err != nil {
 		return err
 	}
+	defer stderr.Close()
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
+	defer stdout.Close()
+
+	var wg sync.WaitGroup
+	var writeLock sync.Mutex
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		printToPanelAndLog(g, installPanel, "[stderr]", stderr, &writeLock)
+	}()
+
+	go func() {
+		defer wg.Done()
+		printToPanelAndLog(g, installPanel, "[stdout]", stdout, &writeLock)
+	}()
+
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
-	scanner := bufio.NewScanner(stdout)
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		printToPanel(g, scanner.Text(), installPanel)
-	}
-	scanner = bufio.NewScanner(stderr)
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		printToPanel(g, scanner.Text(), installPanel)
-	}
+	wg.Wait()
 	return cmd.Wait()
+}
+
+func printToPanelAndLog(g *gocui.Gui, panel string, logPrefix string, reader io.Reader, lock *sync.Mutex) {
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		logrus.Infof("%s: %s", logPrefix, scanner.Text())
+		lock.Lock()
+		printToPanel(g, scanner.Text(), panel)
+		lock.Unlock()
+	}
 }
 
 func saveTemp(obj interface{}, prefix string) (string, error) {
@@ -362,6 +390,8 @@ func saveTemp(obj interface{}, prefix string) (string, error) {
 	if err := tempFile.Close(); err != nil {
 		return "", err
 	}
+
+	logrus.Infof("Content of %s: %s", tempFile.Name(), string(bytes))
 
 	return tempFile.Name(), nil
 }
@@ -396,6 +426,8 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	env := append(os.Environ(), ev...)
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
+	env = append(env, fmt.Sprintf("HARVESTER_INSTALLATION_LOG=%s", defaultLogFilePath))
+
 	if !hvstConfig.NoDataPartition && hvstConfig.DataDisk == "" {
 		// Only use custom layout (which also creates Longhorn partition) when VM Disk is also
 		// not given
@@ -417,6 +449,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
+		printToPanel(g, fmt.Sprintf(installFailureMessage, defaultLogFilePath), installPanel)
 		return err
 	}
 	webhooks.Handle(EventInstallSuceeded)
