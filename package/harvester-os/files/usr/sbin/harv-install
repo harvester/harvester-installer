@@ -293,10 +293,29 @@ update_grub_settings()
     add_debug_grub_entry
 }
 
-save_config()
+save_configs()
 {
+    save_dir=${TARGET}/oem
+
+    # When saving files to /oem, do not use yaml as the extension name because cos-setup will load them.
     if [ -e "$HARVESTER_CONFIG" ]; then
-        cp $HARVESTER_CONFIG ${TARGET}/oem/harvester.config
+        # harvester.config has to be stored in /oem/, it will be use by the harv-update-rke2-server-url script
+        cp $HARVESTER_CONFIG $save_dir/harvester.config
+    fi
+
+    if [ -e "$_COS_PARTITION_LAYOUT" ]; then
+        cp $_COS_PARTITION_LAYOUT $save_dir/part-layout.config
+    fi
+}
+
+save_installation_log()
+{
+    save_dir=${TARGET}/oem/install
+    mkdir -p $save_dir
+
+    if [ -e "$HARVESTER_INSTALLATION_LOG" ]; then
+        fsync $HARVESTER_INSTALLATION_LOG
+        cp $HARVESTER_INSTALLATION_LOG $save_dir
     fi
 }
 
@@ -347,8 +366,11 @@ do_data_disk_format
 do_detect
 do_mount
 get_iso  # For PXE Boot
-save_config
+save_configs
 save_wicked_state
 do_preload
 
 update_grub_settings
+
+# This needs to be the at the last because the log file captures the output of this script
+save_installation_log
