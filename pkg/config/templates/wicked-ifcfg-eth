@@ -4,3 +4,6 @@ BOOTPROTO='{{ .Method }}'
 IPADDR={{ .IP }}
 NETMASK={{ .SubnetMask }}
 {{- end }}
+{{ if gt .MTU 0 -}}
+MTU={{ .MTU }}
+{{- end }}

@@ -19,3 +19,6 @@ BONDING_MODULE_OPTS='{{ range $key, $value := .BondOptions }}{{ $key }}={{ $valu
   {{- $defaultRoute = "yes" -}}
 {{- end }}
 DHCLIENT_SET_DEFAULT_ROUTE='{{ $defaultRoute }}'
+{{ if gt .MTU 0 -}}
+MTU={{ .MTU }}
+{{- end }}

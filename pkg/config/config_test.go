@@ -291,3 +291,148 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 		tc.assertion(t, &rootfs)
 	}
 }
+
+func TestNetworkRendering_MTU(t *testing.T) {
+	testCases := []struct {
+		name         string
+		templateName string
+		network      Network
+		assertion    func(t *testing.T, result string)
+	}{
+		{
+			name:         "MTU = 0 will not set MTU for bond master",
+			templateName: "wicked-ifcfg-bond-master",
+			network:      Network{MTU: 0},
+			assertion: func(t *testing.T, result string) {
+				assert.NotContains(t, result, "MTU=")
+			},
+		},
+		{
+			name:         "MTU != 0  will set the MTU for bond master",
+			templateName: "wicked-ifcfg-bond-master",
+			network:      Network{MTU: 1234},
+			assertion: func(t *testing.T, result string) {
+				assert.Contains(t, result, "MTU=1234")
+			},
+		},
+		{
+			name:         "MTU = 0 will not set MTU for eth",
+			templateName: "wicked-ifcfg-eth",
+			network:      Network{MTU: 0},
+			assertion: func(t *testing.T, result string) {
+				assert.NotContains(t, result, "MTU=")
+			},
+		},
+		{
+			name:         "MTU != 0  will set the MTU for eth",
+			templateName: "wicked-ifcfg-eth",
+			network:      Network{MTU: 2345},
+			assertion: func(t *testing.T, result string) {
+				assert.Contains(t, result, "MTU=2345")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := render(tc.templateName, tc.network)
+			t.Log(result)
+			assert.NoError(t, err)
+
+			tc.assertion(t, result)
+		})
+	}
+}
+
+func TestHarvesterConfigMerge_NetworkAttributes(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.Networks = map[string]Network{
+		"harvester-mgmt": {
+			Interfaces: []NetworkInterface{{Name: "eth1"}, {Name: "eth2"}},
+			Method:     "dhcp",
+		},
+	}
+
+	otherConf := NewHarvesterConfig()
+	otherConf.Networks = map[string]Network{
+		"harvester-mgmt": {
+			MTU: 1234,
+		},
+	}
+
+	err := conf.Merge(*otherConf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1234, conf.Networks["harvester-mgmt"].MTU)
+	assert.Equal(t, []NetworkInterface{{Name: "eth1"}, {Name: "eth2"}}, conf.Networks["harvester-mgmt"].Interfaces)
+	assert.Equal(t, "dhcp", conf.Networks["harvester-mgmt"].Method)
+}
+
+func TestHarvesterConfigMerge_AdditionalNetworks(t *testing.T) {
+	conf := NewHarvesterConfig()
+	mgmtNetwork := Network{
+		Interfaces: []NetworkInterface{{Name: "eth1"}, {Name: "eth2"}},
+		Method:     "dhcp",
+	}
+	conf.Networks = map[string]Network{"harvester-mgmt": mgmtNetwork}
+
+	otherConf := NewHarvesterConfig()
+	someNetwork := Network{
+		Interfaces: []NetworkInterface{{Name: "eth100"}, {Name: "eth200"}},
+		Method:     "dhcp",
+	}
+	otherConf.Networks = map[string]Network{"some-network": someNetwork}
+
+	err := conf.Merge(*otherConf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, conf.Networks["harvester-mgmt"], mgmtNetwork)
+	assert.Equal(t, conf.Networks["some-network"], someNetwork)
+	t.Log(conf)
+}
+
+func TestHarvesterConfigMerge_NetworkInterfacesAreAppended(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.Networks = map[string]Network{
+		"harvester-mgmt": {
+			Interfaces: []NetworkInterface{{Name: "eth1"}, {Name: "eth2"}},
+			Method:     "dhcp",
+		},
+	}
+
+	otherConf := NewHarvesterConfig()
+	otherConf.Networks = map[string]Network{
+		"harvester-mgmt": {
+			Interfaces: []NetworkInterface{{Name: "eth3"}},
+		},
+	}
+
+	err := conf.Merge(*otherConf)
+	assert.NoError(t, err)
+
+	assert.Equal(t,
+		conf.Networks["harvester-mgmt"].Interfaces,
+		[]NetworkInterface{{Name: "eth1"}, {Name: "eth2"}, {Name: "eth3"}},
+	)
+}
+
+func TestHarvesterConfigMerge_OtherField(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.Hostname = "hellofoo"
+	conf.Labels = map[string]string{"foo": "bar"}
+	conf.DNSNameservers = []string{"1.1.1.1"}
+
+	otherConf := NewHarvesterConfig()
+	otherConf.Hostname = "NOOOOOOO"
+	otherConf.Token = "TokenValue"
+	otherConf.Labels = map[string]string{"key": "val"}
+	otherConf.DNSNameservers = []string{"8.8.8.8"}
+
+	err := conf.Merge(*otherConf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "hellofoo", conf.Hostname, "Primitive field should not be override")
+	assert.Equal(t, map[string]string{"foo": "bar", "key": "val"}, conf.Labels, "Map field should be merged")
+	assert.Equal(t, []string{"1.1.1.1", "8.8.8.8"}, conf.DNSNameservers, "Slice shoule be appended")
+	assert.Equal(t, "TokenValue", conf.Token, "New field should be added")
+}
