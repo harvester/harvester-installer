@@ -39,7 +39,6 @@ var (
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
 
 	ErrMsgNetworkMethodUnknown = "unknown network method"
-	ErrMsgNetworkVLANID        = "vlan id should be 0 to 4094"
 
 	ErrMsgSystemSettingsUnknown = "unknown system settings: %s"
 )
@@ -216,11 +215,6 @@ func checkNetworks(networks map[string]config.Network, dnsServers []string) erro
 			}
 		default:
 			return prettyError(ErrMsgNetworkMethodUnknown, network.Method)
-		}
-
-		// vlan id 0 means no vlan setting, so it is valid.
-		if network.VlanID < 0 || network.VlanID > 4094 {
-			return errors.New(ErrMsgNetworkVLANID)
 		}
 	}
 

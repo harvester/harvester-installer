@@ -1,12 +1,8 @@
 STARTMODE='onboot'
 BONDING_MASTER='yes'
-{{ if and (eq .Method "dhcp") (ne .VlanID 0) -}}
-BOOTPROTO='none'
-{{ else -}}
 BOOTPROTO='{{ .Method }}'
-{{- end }}
 
-{{ if and (eq .Method "static") (eq .VlanID 0) -}}
+{{ if eq .Method "static" -}}
 IPADDR={{ .IP }}
 NETMASK={{ .SubnetMask }}
 {{- end }}
