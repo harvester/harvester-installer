@@ -108,7 +108,7 @@ done
 cat <<EOF >> ${image_list_file}
 busybox:1.32.0
 alpine:3
-registry.suse.com/harvester-beta/vmdp:latest
+registry.suse.com/suse/vmdp/vmdp:2.5.3
 EOF
 
 # get longhorn image list
