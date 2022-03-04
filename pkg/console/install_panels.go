@@ -1537,25 +1537,9 @@ func addInstallPanel(c *Console) error {
 			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
 			c.config.ForceGPT = !c.config.ForceMBR
 
-			// If Forcing MBR, VM data (Longhorn) partition will NOT be created
-			if c.config.ForceMBR {
-				msg := "Use MBR partitioning scheme, will not create VM Data partition"
-				printToPanel(c.Gui, msg, installPanel)
-				logrus.Info(msg)
-				c.config.NoDataPartition = true
-			}
-
 			// Clear the DataDisk field if it's identical to the installation disk
 			if c.config.DataDisk == c.config.Device {
 				c.config.DataDisk = ""
-			}
-			// If DataDisk is specified and it's different from the install device, NoDataPartition
-			// should be set to "false" as we DO have a VM data partition, just on other disk.
-			if c.config.DataDisk != "" {
-				msg := fmt.Sprintf("Use %s as default VM data disk", c.config.DataDisk)
-				printToPanel(c.Gui, msg, installPanel)
-				logrus.Info(msg)
-				c.config.NoDataPartition = false
 			}
 
 			// case insensitive for network method and vip mode

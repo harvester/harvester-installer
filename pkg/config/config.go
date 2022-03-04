@@ -112,9 +112,8 @@ type Install struct {
 	ForceGPT  bool   `json:"forceGpt,omitempty"`
 
 	// Following options are not cOS installer flag
-	ForceMBR        bool   `json:"forceMbr,omitempty"`
-	NoDataPartition bool   `json:"noDataPartition,omitempty"`
-	DataDisk        string `json:"dataDisk,omitempty"`
+	ForceMBR bool   `json:"forceMbr,omitempty"`
+	DataDisk string `json:"dataDisk,omitempty"`
 
 	Webhooks []Webhook `json:"webhooks,omitempty"`
 }
@@ -227,6 +226,22 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	}
 
 	return []string{}, nil
+}
+
+func (c HarvesterConfig) ShouldCreateDataPartitionOnOsDisk() bool {
+	// DataDisk is empty means only using the OS disk, and most of the time we should create data
+	// partition on OS disk, unless when ForceMBR=true then we should not create data partition.
+	return c.DataDisk == "" && !c.ForceMBR
+}
+
+func (c HarvesterConfig) ShouldMountDataPartition() bool {
+	// With ForceMBR=true and no DataDisk assigned (Using the OS disk), no data partition/disk will
+	// be created, so no need to mount the data disk/partition
+	if c.ForceMBR && c.DataDisk == "" {
+		return false
+	}
+
+	return true
 }
 
 func (c *HarvesterConfig) Merge(other HarvesterConfig) error {

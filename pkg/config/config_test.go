@@ -249,10 +249,11 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 			},
 		},
 		{
-			name: "Test NoDataPartition true",
+			name: "Test ForceMBR=true and no DataDisk -> No need to mount data partition",
 			harvConfig: HarvesterConfig{
 				Install: Install{
-					NoDataPartition: true,
+					ForceMBR: true,
+					DataDisk: "",
 				},
 			},
 			assertion: func(t *testing.T, rootfs *Rootfs) {
@@ -262,10 +263,11 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 			},
 		},
 		{
-			name: "Test DataDisk configured",
+			name: "Test ForceMBR=true but has DataDisk -> Still need to mount data partition",
 			harvConfig: HarvesterConfig{
 				Install: Install{
-					DataDisk: "/dev/sda",
+					ForceMBR: true,
+					DataDisk: "/dev/sdb",
 				},
 			},
 			assertion: func(t *testing.T, rootfs *Rootfs) {
