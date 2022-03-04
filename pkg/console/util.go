@@ -428,9 +428,8 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
 	env = append(env, fmt.Sprintf("HARVESTER_INSTALLATION_LOG=%s", defaultLogFilePath))
 
-	if !hvstConfig.NoDataPartition && hvstConfig.DataDisk == "" {
-		// Only use custom layout (which also creates Longhorn partition) when VM Disk is also
-		// not given
+	if hvstConfig.ShouldCreateDataPartitionOnOsDisk() {
+		// Use custom layout (which also creates Longhorn partition) when needed
 		cosPartLayout, err := config.CreateRootPartitioningLayout(hvstConfig.Install.Device)
 		if err != nil {
 			return err
