@@ -30,7 +30,7 @@ const (
 
 const (
 	SoftMinDiskSizeGiB   = 140
-	HardMinDiskSizeGiB   = 60
+	HardMinDiskSizeGiB   = 56
 	MinCosPartSizeGiB    = 25
 	NormalCosPartSizeGiB = 50
 )
