@@ -22,7 +22,7 @@ func TestCalcCosPersistentPartSize(t *testing.T) {
 		},
 		{
 			name:        "Disk meet hard requirement",
-			input:       60,
+			input:       56,
 			output:      25,
 			expectError: false,
 		},
