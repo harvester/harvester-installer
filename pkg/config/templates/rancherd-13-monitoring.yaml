@@ -31,8 +31,12 @@ bootstrapResources:
         prometheusSpec:
           evaluationInterval: 1m
           resources:
+            limits:
+              cpu: 1000m
+              memory: 2500Mi
             requests:
-              cpu: 500m
+              cpu: 750m
+              memory: 1750Mi
           retention: 5d
           retentionSize: 50GiB
           scrapeInterval: 1m
