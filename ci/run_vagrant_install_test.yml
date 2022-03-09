@@ -91,8 +91,17 @@
         regexp: "^harvester_rootfs_url:.*"
         replace: "harvester_rootfs_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-rootfs-amd64.squashfs"
 
+    - openssh_keypair:
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/ci_ssh_key"
+
+    - get_url:
+        url: https://github.com/mikefarah/yq/releases/download/v4.21.1/yq_linux_amd64
+        dest: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/yq"
+        mode: '0755'
+
     - name: Run setup Harvester
-      shell: >
+      shell: |
+        NEW_KEY=$(cat ci_ssh_key.pub) ./yq e '.harvester_config.ssh_authorized_keys += strenv(NEW_KEY)' settings.yml -i
         ./setup_harvester.sh
       register: setup_harvester_result
       args:
@@ -102,6 +111,28 @@
     - name: Print Harvester installation output
       debug:
         msg: "{{ setup_harvester_result.stdout_lines }}"
+
+    - name: Print Harvester installation output (error)
+      debug:
+        msg: "{{ setup_harvester_result.stderr_lines }}"
+
+    - name: Debug
+      shell: |
+        df -h
+        vagrant global-status
+
+        ssh -i ./ci_ssh_key rancher@192.168.0.30 sudo -i kubectl get nodes
+        ssh -i ./ci_ssh_key rancher@192.168.0.30 sudo -i kubectl get all -A
+        ssh -i ./ci_ssh_key rancher@192.168.0.30 sudo -i kubectl get machines -A
+        ssh -i ./ci_ssh_key rancher@192.168.0.30 sudo -i kubectl get cluster -A
+      register: debug_result
+      args:
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+      ignore_errors: yes
+
+    - name: Print debug output
+      debug:
+        msg: "{{ debug_result.stdout_lines }}"
 
     - name: Cleanup Harvester Vagrant VMs
       shell: >
