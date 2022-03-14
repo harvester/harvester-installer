@@ -1,0 +1,17 @@
+#!/bin/bash
+
+cd "${1}" || exit
+source ./scripts/version
+
+echo "Replace the Harvester chart version to ${CHART_VERSION}"
+yq e -i '.version = "'"${CHART_VERSION}"'"' ./deploy/charts/harvester/Chart.yaml
+yq e -i '.version = "'"${CHART_VERSION}"'"' ./deploy/charts/harvester-crd/Chart.yaml
+
+echo "Replace the Harvester appVersion to ${APP_VERSION}"
+yq e -i '.appVersion = "'"${APP_VERSION}"'"' ./deploy/charts/harvester/Chart.yaml
+yq e -i '.appVersion = "'"${APP_VERSION}"'"' ./deploy/charts/harvester-crd/Chart.yaml
+
+echo "Replace the Harvester image tag to ${IMAGE_PUSH_TAG}"
+yq e -i '.containers.apiserver.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
+yq e -i '.webhook.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
+yq e -i '.upgrade.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
