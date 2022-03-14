@@ -34,6 +34,9 @@ fi
 # This must be placed after cloning `harvester/harvester`` in case `make build-bundle` is run directly.
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 
+# Replace harvester chart version
+${SCRIPTS_DIR}/patch-harvester ${TOP_DIR}/../harvester
+# Package harvester chart
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
@@ -135,8 +138,13 @@ if [ "$upgrade_image_tag" != "$HARVESTER_VERSION" ]; then
   docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "${upgrade_image_repo}:${HARVESTER_VERSION}"
   image_list_file="${IMAGES_DIR}/harvester-extra-${VERSION}.txt"
   image_archive="${IMAGES_DIR}/harvester-extra-${VERSION}.tar"
-  echo "docker.io/${upgrade_image_repo}:${HARVESTER_VERSION}" > ${image_list_file}
+  echo "${upgrade_image_repo}:${HARVESTER_VERSION}" | awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}}' > ${image_list_file}
   docker image save -o $image_archive $(<$image_list_file)
   zstd --rm $image_archive -o "${image_archive}.zst"
   add_image_list_to_metadata "common" $BUNDLE_DIR $image_list_file "${image_archive}.zst"
 fi
+
+# Revert harvester chart version patch to clean dirty git status
+pushd ${harvester_path}
+git checkout -- ./deploy/charts
+popd

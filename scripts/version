@@ -6,8 +6,8 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
 fi
 
 COMMIT=$(git rev-parse --short HEAD)
-COMMIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-VERSION=${DRONE_TAG:-${COMMIT_BRANCH}}
+VERSION=${DRONE_TAG:-${DRONE_BRANCH}}
+VERSION=${VERSION:-"master"}
 
 if [[ -n "$DIRTY" ]]; then
     VERSION="${COMMIT}${DIRTY}"
