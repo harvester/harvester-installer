@@ -50,3 +50,11 @@ bootstrapResources:
                     storage: 50Gi
                 storageClassName: longhorn
                 volumeMode: Filesystem
+      prometheus-node-exporter:
+        resources:
+          limits:
+            cpu: 200m
+            memory: 180Mi
+          requests:
+            cpu: 100m
+            memory: 30Mi
