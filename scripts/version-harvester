@@ -2,3 +2,4 @@
 
 HARVESTER_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $VERSION)
 HARVESTER_CHART_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $CHART_VERSION)
+HARVESTER_KUBEVIRT_VERSION=$(yq e '.kubevirt-operator.containers.operator.image.tag' $1/deploy/charts/harvester/values.yaml)
