@@ -28,7 +28,11 @@ os: ${PRETTY_NAME}
 kubernetes: ${RKE2_VERSION}
 rancher: ${RANCHER_VERSION}
 monitoringChart: ${MONITORING_VERSION}
+kubevirt: ${HARVESTER_KUBEVIRT_VERSION}
 EOF
+
+# Collect dependencies' versions
+${SCRIPTS_DIR}/collect-deps.sh harvester-release.yaml
 
 docker build --pull \
 	--build-arg BASE_OS_IMAGE="${BASE_OS_IMAGE}" \
