@@ -41,8 +41,9 @@ const (
 )
 
 type state struct {
-	installed bool
-	firstHost bool
+	installed     bool
+	firstHost     bool
+	managementURL string
 }
 
 var (
@@ -216,10 +217,7 @@ func doSyncManagementURL(g *gocui.Gui) {
 	managementIP := getVIP()
 	if managementIP != "" {
 		managementURL = fmt.Sprintf("https://%s", managementIP)
-	} else {
-		if managementIP = getFirstReadyMasterIP(); managementIP != "" {
-			managementURL = fmt.Sprintf("https://%s:%s", managementIP, harvesterNodePort)
-		}
+		current.managementURL = managementURL
 	}
 
 	g.Update(func(g *gocui.Gui) error {
@@ -231,21 +229,6 @@ func doSyncManagementURL(g *gocui.Gui) {
 		fmt.Fprintf(v, "Harvester management URL: \n\n%s", managementURL)
 		return nil
 	})
-}
-
-func getFirstReadyMasterIP() string {
-	// get first ready master node's internal ip
-	cmd := exec.Command("/bin/sh", "-c", `kubectl get no -l 'node-role.kubernetes.io/master=true' --sort-by='.metadata.creationTimestamp' \
--o jsonpath='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{range @.status.addresses[*]}{@.type}={@.address};{end}{"\n"}{end}' 2>/dev/null \
-| grep 'Ready=True' | head -n 1 | tr ';' '\n' | awk -F '=' '/InternalIP/{printf $2}'`)
-	cmd.Env = os.Environ()
-	output, err := cmd.Output()
-	outStr := string(output)
-	if err != nil {
-		logrus.Error(err, outStr)
-		return ""
-	}
-	return outStr
 }
 
 func getVIP() string {
@@ -330,6 +313,17 @@ func chartIsInstalled() bool {
 	return processed >= 1
 }
 
+func isAPIReady(managementURL, path string) bool {
+	if !strings.HasPrefix(current.managementURL, "https://") {
+		return false
+	}
+	command := fmt.Sprintf(`curl -fk %s%s`, managementURL, path)
+	cmd := exec.Command("/bin/sh", "-c", command)
+	cmd.Env = os.Environ()
+	_, err := cmd.CombinedOutput()
+	return err == nil
+}
+
 func isPodReady(namespace, labelSelector string) bool {
 	command := fmt.Sprintf(`kubectl get po -n %s -l "%s" -o jsonpath='{range .items[*]}{range @.status.conditions[*]}{@.type}={@.status};{end}{"\n"}' | grep "Ready=True"`, namespace, labelSelector)
 	cmd := exec.Command("/bin/sh", "-c", command)
@@ -371,7 +365,8 @@ func getHarvesterStatus() string {
 
 	harvesterReady := isPodReady("harvester-system", "app.kubernetes.io/name=harvester")
 	rancherReady := isPodReady("cattle-system", "app=rancher")
-	if harvesterReady && rancherReady {
+	harvesterAPIReady := isAPIReady(current.managementURL, "/version")
+	if harvesterReady && rancherReady && harvesterAPIReady {
 		return wrapColor(statusReady, colorGreen)
 	}
 	return wrapColor(statusNotReady, colorYellow)

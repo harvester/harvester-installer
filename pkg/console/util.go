@@ -35,7 +35,6 @@ import (
 const (
 	rancherManagementPort = "443"
 	defaultHTTPTimeout    = 15 * time.Second
-	harvesterNodePort     = "30443"
 	automaticCmdline      = "harvester.automatic"
 	installFailureMessage = `
 ** Installation Failed **
