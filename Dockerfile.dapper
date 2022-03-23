@@ -1,5 +1,5 @@
 FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
-FROM quay.io/costoolkit/releases-green:luet-makeiso-toolchain-0.3.8-16 as makeiso
+FROM quay.io/costoolkit/releases-green:luet-makeiso-toolchain-0.4.0 as makeiso
 
 FROM registry.suse.com/bci/bci-base:15.3
 
@@ -16,8 +16,9 @@ ENV HARVESTER_INSTALLER_OFFLINE_BUILD=$HARVESTER_INSTALLER_OFFLINE_BUILD
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
+# mtools and dosfstools are requirements for luet-makeiso >= 0.4.0 to build hybrid ISO.
 RUN zypper -n rm container-suseconnect && \
-    zypper -n install go1.16 git curl docker gzip tar wget zstd squashfs xorriso awk jq
+    zypper -n install go1.16 git curl docker gzip tar wget zstd squashfs xorriso awk jq mtools dosfstools
 RUN curl -sfL https://github.com/mikefarah/yq/releases/download/v4.21.1/yq_linux_${ARCH} -o /usr/bin/yq && chmod +x /usr/bin/yq
 RUN go get -u golang.org/x/lint/golint
 RUN go get -u golang.org/x/tools/cmd/goimports
