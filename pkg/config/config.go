@@ -50,6 +50,7 @@ func GetSystemSettingsAllowList() []string {
 		"upgradable-versions",
 		"upgrade-checker-enabled",
 		"upgrade-checker-url",
+		"release-download-url",
 		"log-level",
 		"ssl-certificates",
 		"ssl-parameters",
