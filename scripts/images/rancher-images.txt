@@ -14,7 +14,7 @@ docker.io/rancher/mirrored-prometheus-operator-prometheus-config-reloader:v0.50.
 docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.50.0
 docker.io/rancher/mirrored-prometheus-prometheus:v2.28.1
 docker.io/rancher/rancher-webhook:v0.2.5
-docker.io/rancher/rancher:v2.6.4-harvester1
+docker.io/rancher/rancher:v2.6.4-rc15
 docker.io/rancher/shell:v0.1.16
 docker.io/rancher/shell:v0.1.8
 docker.io/rancher/system-agent:v0.2.3-suc
