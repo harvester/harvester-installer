@@ -6,7 +6,4 @@ rancherValues:
   features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
   bootstrapPassword: admin
-  extraEnv:
-  - name: CATTLE_RANCHER_WEBHOOK_MIN_VERSION
-    value: "1.0.3+up0.2.5"
 rancherInstallerImage: rancher/system-agent-installer-rancher:v2.6.4-harvester1
