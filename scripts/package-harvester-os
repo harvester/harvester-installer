@@ -91,8 +91,8 @@ metadata:
   name: ${VERSION}
   namespace: harvester-system
 spec:
-  isoChecksum: ${ISO_CHECKSUM}
+  isoChecksum: '${ISO_CHECKSUM}'
   isoURL: https://releases.rancher.com/harvester/${VERSION}/${ISO_PREFIX}.iso
-  releaseDate: ${RELEASE_DATE}
+  releaseDate: '${RELEASE_DATE}'
 EOF
 fi
