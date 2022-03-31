@@ -74,11 +74,7 @@ update_rancher_deps()
   # Get the latest version >= min_version and update it to yaml file
   update_chart_app_versions $repo_index fleet $CATTLE_FLEET_MIN_VERSION $output_file
   update_chart_app_versions $repo_index fleet-crd $CATTLE_FLEET_MIN_VERSION $output_file
-
-  # temporary workaround for https://github.com/rancher/rancher/issues/37113
-  # update_chart_app_versions $repo_index rancher-webhook $CATTLE_RANCHER_WEBHOOK_MIN_VERSION $output_file
-  yq e ".rancherDependencies.rancher-webhook.chart = \"1.0.3+up0.2.5\"" -i $output_file
-  yq e ".rancherDependencies.rancher-webhook.app = \"0.2.5\"" -i $output_file
+  update_chart_app_versions $repo_index rancher-webhook $CATTLE_RANCHER_WEBHOOK_MIN_VERSION $output_file
 }
 
 
