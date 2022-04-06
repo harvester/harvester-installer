@@ -260,7 +260,7 @@ add_debug_grub_entry()
 {
     cat > "${STATEDIR}/grubmenu" << "EOF"
 menuentry "${display_name} (debug)" --id debug {
-  search.fs_label COS_STATE root
+  search --no-floppy --set=root --label COS_STATE
   set img=/cOS/active.img
   set label=COS_ACTIVE
   loopback loop0 /$img
@@ -289,6 +289,14 @@ update_grub_settings()
     if [ -n "$CRASH_KERNEL_PARAMS" ]; then
         sed -i "s/^set crash_kernel_params=.*/crash_kernel_params=\"${CRASH_KERNEL_PARAMS}\"/" ${TARGET}/etc/cos/bootargs.cfg
     fi
+
+    # PATCH: Adding '--no-floppy' option to search command
+    GRUB_CFG="${STATEDIR}/grub2/grub.cfg"
+    sed -i "s/search /search --no-floppy /" "$GRUB_CFG"
+    sed -i "s/search.fs_label /search --no-floppy --label /" "$GRUB_CFG"
+    sed -i "s/search.file /search --no-floppy --file /" "$GRUB_CFG"
+    sed -i "s/search.fs_uuid /search --no-floppy --fs-uuid /" "$GRUB_CFG"
+    sed -i -E 's/^(\s*search\b)(.*)root$/\1 --set=root\2/' "$GRUB_CFG"
 
     add_debug_grub_entry
 }
