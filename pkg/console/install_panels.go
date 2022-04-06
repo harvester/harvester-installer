@@ -1759,10 +1759,8 @@ func addNTPServersPanel(c *Console) error {
 				return err
 			}
 
-			// Go to next page when user give an empty input or
-			// when input servers can't be reached and users don't want to change it, we continue the process.
-			if ntpServers == "" ||
-				(userInputData.NTPServers == ntpServers && userInputData.HasCheckedNTPServers == true) {
+			// When input servers can't be reached and users don't want to change it, we continue the process.
+			if userInputData.NTPServers == ntpServers && userInputData.HasCheckedNTPServers == true {
 				return gotoNextPage()
 			}
 			// reset HasCheckedNTPServers if users change input
@@ -1791,6 +1789,11 @@ func addNTPServersPanel(c *Console) error {
 				userInputData.NTPServers = ntpServers
 				ntpServerList := strings.Split(ntpServers, ",")
 				c.config.OS.NTPServers = ntpServerList
+
+				if ntpServers == "" {
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Empty NTP Server is not recommended. Press Enter to continue."))
+					return
+				}
 
 				if err = validateNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("validate ntp servers: %v", err)
