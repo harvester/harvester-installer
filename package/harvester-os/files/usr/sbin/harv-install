@@ -260,7 +260,7 @@ add_debug_grub_entry()
 {
     cat > "${STATEDIR}/grubmenu" << "EOF"
 menuentry "${display_name} (debug)" --id debug {
-  search.fs_label COS_STATE root
+  search --no-floppy --set=root --label COS_STATE
   set img=/cOS/active.img
   set label=COS_ACTIVE
   loopback loop0 /$img
