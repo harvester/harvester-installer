@@ -1,0 +1,13 @@
+[Unit]
+Description=Kill RKE2 Containers for clean unmount
+DefaultDependencies=no
+RefuseManualStart=yes
+Before=reboot.target halt.target shutdown.target poweroff.target umount.target final.target
+
+[Install]
+RequiredBy=reboot.target halt.target shutdown.target poweroff.target umount.target final.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=-/usr/local/bin/rke2-killall.sh
