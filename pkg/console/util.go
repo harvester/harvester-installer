@@ -135,12 +135,12 @@ func validateNTPServers(ntpServerList []string) error {
 
 			// RFC: https://datatracker.ietf.org/doc/html/rfc4330#section-4
 			// NTP Packet is 48 bytes and we set the first byte for request.
-			// 00 100 011 (or 0x2B)
+			// 00 100 011 (or 0x23)
 			// |  |   +-- client mode (3)
 			// |  + ----- version (4)
 			// + -------- leap year indicator, 0 no warning
 			req := make([]byte, 48)
-			req[0] = 0x2B
+			req[0] = 0x23
 
 			// send time request
 			if err = binary.Write(conn, binary.BigEndian, req); err != nil {
