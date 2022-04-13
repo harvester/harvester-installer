@@ -10,4 +10,4 @@ RequiredBy=reboot.target halt.target shutdown.target poweroff.target umount.targ
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=-/usr/local/bin/rke2-killall.sh
+ExecStart=/usr/sbin/rke2-kill-containers.sh
