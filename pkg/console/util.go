@@ -438,7 +438,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 			return err
 		}
 		defer os.Remove(cosPartLayoutFile)
-		env = append(env, fmt.Sprintf("_COS_PARTITION_LAYOUT=%s", cosPartLayoutFile))
+		env = append(env, fmt.Sprintf("ELEMENTAL_PARTITION_LAYOUT=%s", cosPartLayoutFile))
 	}
 
 	if hvstConfig.DataDisk != "" {
