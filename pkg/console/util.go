@@ -448,6 +448,12 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
 		printToPanel(g, fmt.Sprintf(installFailureMessage, defaultLogFilePath), installPanel)
+		if hvstConfig.Debug {
+			err = execute(ctx, g, []string{}, "/sbin/supportconfig")
+			if err != nil {
+				printToPanel(g, fmt.Sprintf("support bundle collection failed %v", err), installPanel)
+			}
+		}
 		return err
 	}
 	webhooks.Handle(EventInstallSuceeded)
