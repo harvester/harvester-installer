@@ -449,10 +449,13 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		webhooks.Handle(EventInstallFailed)
 		printToPanel(g, fmt.Sprintf(installFailureMessage, defaultLogFilePath), installPanel)
 		if hvstConfig.Debug {
-			err = execute(ctx, g, []string{}, "/sbin/supportconfig")
-			if err != nil {
+			printToPanel(g, "support config is being generated as running in debug mode, this can take a few minutes...", installPanel)
+			fileSuffix := fmt.Sprintf("harvester_%s", rand.String(5))
+			scErr := executeSupportconfig(ctx, fileSuffix)
+			if scErr != nil {
 				printToPanel(g, fmt.Sprintf("support bundle collection failed %v", err), installPanel)
 			}
+			printToPanel(g, fmt.Sprintf("support config is available at /var/log/scc_%s.txz", fileSuffix), installPanel)
 		}
 		return err
 	}
@@ -677,4 +680,15 @@ func createVerticalLocatorWithName(c *Console) func(elemName string, height int)
 
 func needToGetVIPFromDHCP(mode, vip, hwAddr string) bool {
 	return strings.ToLower(mode) == config.NetworkMethodDHCP && (vip == "" || hwAddr == "")
+}
+
+func executeSupportconfig(ctx context.Context, fileName string) error {
+	cmd := exec.CommandContext(ctx, "/sbin/supportconfig", "-Q", "-B", fileName)
+
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	return cmd.Wait()
 }
