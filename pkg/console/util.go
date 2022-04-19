@@ -453,7 +453,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 			fileSuffix := fmt.Sprintf("harvester_%s", rand.String(5))
 			scErr := executeSupportconfig(ctx, fileSuffix)
 			if scErr != nil {
-				printToPanel(g, fmt.Sprintf("support bundle collection failed %v", err), installPanel)
+				printToPanel(g, fmt.Sprintf("support config collection failed %v", err), installPanel)
 			}
 			printToPanel(g, fmt.Sprintf("support config is available at /var/log/scc_%s.txz", fileSuffix), installPanel)
 		}
