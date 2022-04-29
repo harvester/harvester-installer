@@ -46,6 +46,7 @@ var (
 	mgmtNetwork = config.Network{
 		DefaultRoute: true,
 	}
+	installModeBoot bool
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -267,6 +268,11 @@ func addDiskPanel(c *Console) error {
 		} else if canChoose {
 			return showDataDiskPage(c)
 		} else {
+			//TODO: When Install modeonly.. we need to decide that this
+			// network page is not shown and skip straight to the token page
+			if c.config.Install.Mode == config.ModeInstall {
+				return showNext(c, passwordConfirmPanel, passwordPanel)
+			}
 			return showNetworkPage(c)
 		}
 	}
@@ -464,10 +470,21 @@ func addAskCreatePanel(c *Console) error {
 				Text:  "Join an existing Harvester cluster",
 			},
 		}
+
+		// layoutInstall is now called from layoutDashboard due to the addition
+		// of the new config.ModeInstall. config will be setup by layoutDashboard before passing control here
+		// this extra option should only show up if that is not the case
+		if !installModeBoot {
+			options = append(options, widgets.Option{
+				Value: config.ModeInstall,
+				Text:  "Install Harvester binaries only",
+			})
+		}
+
 		installed, err := harvesterInstalled()
 		if err != nil {
 			logrus.Error(err)
-		} else if installed {
+		} else if installed && c.config.Install.Mode != config.ModeInstall {
 			options = append(options, widgets.Option{
 				Value: config.ModeUpgrade,
 				Text:  "Upgrade Harvester",
@@ -494,12 +511,19 @@ func addAskCreatePanel(c *Console) error {
 			c.config.Install.Mode = selected
 			askCreateV.Close()
 
-			if selected == config.ModeCreate {
+			if selected == config.ModeCreate || selected == config.ModeInstall {
 				c.config.ServerURL = ""
 				userInputData.ServerURL = ""
 			} else if selected == config.ModeUpgrade {
 				return showNext(c, confirmUpgradePanel)
 			}
+
+			if installModeBoot {
+				// all packages are already install
+				// configure network only
+				return showNetworkPage(c)
+			}
+
 			return showDiskPage(c)
 		},
 	}
@@ -657,6 +681,10 @@ func addPasswordPanels(c *Console) error {
 				return err
 			}
 			c.config.Password = encrypted
+			//TODO: When booted in install mode.. show steps for application of config
+			if c.config.Install.Mode == config.ModeInstall {
+				return showNext(c, confirmInstallPanel)
+			}
 			return showNext(c, ntpServersPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
@@ -789,6 +817,11 @@ func addTokenPanel(c *Console) error {
 			}
 			c.config.Token = token
 			closeThisPage()
+			// booted from install mode, password was already setup as part of install mode
+			// hence we skip password change, and move straight to NTP configuration
+			if installModeBoot {
+				return showNext(c, ntpServersPanel)
+			}
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
@@ -903,6 +936,7 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	setupNetwork := func() ([]byte, error) {
+		//TODO: In Install Only mode, during runtime additional logic needed in this panel to ensure that the file is written to persistent config
 		return applyNetworks(
 			map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
 			c.config.Hostname,

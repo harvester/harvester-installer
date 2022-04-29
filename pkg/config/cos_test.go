@@ -107,7 +107,7 @@ func TestConvertToCos_SSHKeysInYipNetworkStage(t *testing.T) {
 	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
 	assert.NoError(t, err)
 
-	yipConfig, err := ConvertToCOS(conf)
+	yipConfig, err := ConvertToCOS(conf, false)
 	assert.NoError(t, err)
 
 	assert.Equal(t, yipConfig.Stages["network"][0].SSHKeys["rancher"], conf.OS.SSHAuthorizedKeys)

@@ -41,7 +41,7 @@ var (
 )
 
 // ConvertToCOS converts HarvesterConfig to cOS configuration.
-func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
+func ConvertToCOS(config *HarvesterConfig, installModeOnly bool) (*yipSchema.YipConfig, error) {
 	cfg, err := config.DeepCopy()
 	if err != nil {
 		return nil, err
@@ -56,11 +56,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	initramfs := yipSchema.Stage{
 		Users:     make(map[string]yipSchema.User),
 		TimeSyncd: make(map[string]string),
-	}
-
-	// TOP
-	if err := initRancherdStage(config, &initramfs); err != nil {
-		return nil, err
 	}
 
 	// OS
@@ -78,20 +73,8 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		})
 	}
 
-	initramfs.Hostname = cfg.OS.Hostname
 	initramfs.Modules = cfg.OS.Modules
 	initramfs.Sysctl = cfg.OS.Sysctls
-	if len(cfg.OS.NTPServers) > 0 {
-		initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
-		initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
-	}
-	if len(cfg.OS.DNSNameservers) > 0 {
-		initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
-	}
-
-	if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
-		return nil, err
-	}
 
 	initramfs.Users[cosLoginUser] = yipSchema.User{
 		PasswordHash: cfg.OS.Password,
@@ -99,45 +82,67 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	initramfs.Environment = cfg.OS.Environment
 
-	if err := UpdateNetworkConfig(&initramfs, cfg.Networks, false); err != nil {
-		return nil, err
-	}
-
-	// mgmt interface: https://docs.rke2.io/install/network_options/#canal-options
-	if cfg.Install.Mode == "create" {
-		initramfs.Directories = append(initramfs.Directories, yipSchema.Directory{
-			Path:        manifestsDirectory,
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
-
-		canalHelmChartConfig, err := render(canalConfig, config)
-		if err != nil {
-			return nil, err
-		}
-		initramfs.Files = append(initramfs.Files, yipSchema.File{
-			Path:        manifestsDirectory + canalConfig,
-			Content:     canalHelmChartConfig,
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
-	}
-
-	// After network is available
-	afterNetwork := yipSchema.Stage{
-		SSHKeys: make(map[string][]string),
-	}
-	afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
-
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
 		Stages: map[string][]yipSchema.Stage{
 			"rootfs":    {rootfs},
 			"initramfs": {initramfs},
-			"network":   {afterNetwork},
+			//"network":   {afterNetwork},
 		},
+	}
+
+	// if booted in installMode then we ignore this
+	// and allow configuration to be used
+	if !installModeOnly {
+		if err := initRancherdStage(config, &initramfs); err != nil {
+			return nil, err
+		}
+
+		initramfs.Hostname = cfg.OS.Hostname
+		if len(cfg.OS.NTPServers) > 0 {
+			initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
+			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
+		}
+		if len(cfg.OS.DNSNameservers) > 0 {
+			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
+		}
+
+		if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
+			return nil, err
+		}
+
+		if err := UpdateNetworkConfig(&initramfs, cfg.Networks, false); err != nil {
+			return nil, err
+		}
+
+		// mgmt interface: https://docs.rke2.io/install/network_options/#canal-options
+		if cfg.Install.Mode == "create" {
+			initramfs.Directories = append(initramfs.Directories, yipSchema.Directory{
+				Path:        manifestsDirectory,
+				Permissions: 0600,
+				Owner:       0,
+				Group:       0,
+			})
+
+			canalHelmChartConfig, err := render(canalConfig, config)
+			if err != nil {
+				return nil, err
+			}
+			initramfs.Files = append(initramfs.Files, yipSchema.File{
+				Path:        manifestsDirectory + canalConfig,
+				Content:     canalHelmChartConfig,
+				Permissions: 0600,
+				Owner:       0,
+				Group:       0,
+			})
+		}
+
+		// After network is available
+		afterNetwork := yipSchema.Stage{
+			SSHKeys: make(map[string][]string),
+		}
+		afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
+		cosConfig.Stages["network"] = []yipSchema.Stage{afterNetwork}
 	}
 
 	return cosConfig, nil
@@ -586,4 +591,34 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 	}
 
 	return &yipConfig, nil
+}
+
+func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
+
+	runtimeConfig := yipSchema.Stage{}
+
+	runtimeConfig.Hostname = config.OS.Hostname
+	if len(config.OS.NTPServers) > 0 {
+		runtimeConfig.TimeSyncd["NTP"] = strings.Join(config.OS.NTPServers, " ")
+		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, ntpdService)
+	}
+	if len(config.OS.DNSNameservers) > 0 {
+		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
+	}
+	err := initRancherdStage(config, &runtimeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	runtimeConfig.SSHKeys[cosLoginUser] = config.OS.SSHAuthorizedKeys
+	conf := &yipSchema.YipConfig{
+		Name: "RancherD Configuration",
+		Stages: map[string][]yipSchema.Stage{
+			"live": {
+				runtimeConfig,
+			},
+		},
+	}
+
+	return conf, nil
 }

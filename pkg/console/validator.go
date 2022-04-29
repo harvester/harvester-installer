@@ -313,8 +313,16 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		}
 	}
 
-	if err := checkNetworks(cfg.Install.Networks, cfg.OS.DNSNameservers); err != nil {
-		return err
+	// skip checks when in ModeInstall as these settings
+	// will not be available till later
+	if cfg.Install.Mode != config.ModeInstall {
+		if err := checkNetworks(cfg.Install.Networks, cfg.OS.DNSNameservers); err != nil {
+			return err
+		}
+
+		if err := checkToken(cfg.Token); err != nil {
+			return err
+		}
 	}
 
 	if cfg.Install.Mode == config.ModeCreate {
@@ -331,10 +339,6 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		return err
 	}
 
-	if err := checkToken(cfg.Token); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -343,7 +347,7 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 	switch mode := cfg.Install.Mode; mode {
 	case config.ModeUpgrade:
 		return nil
-	case config.ModeCreate:
+	case config.ModeCreate, config.ModeInstall:
 		if cfg.ServerURL != "" {
 			return errors.New(ErrMsgModeCreateContainsServerURL)
 		}
@@ -359,7 +363,7 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 		return errors.New(ErrMsgISOURLNotSpecified)
 	}
 
-	if cfg.Token == "" {
+	if cfg.Install.Mode != config.ModeInstall && cfg.Token == "" {
 		return errors.New(ErrMsgTokenNotSpecified)
 	}
 

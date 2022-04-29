@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	yipSchema "github.com/mudler/yip/pkg/schema"
 	"io"
 	"io/ioutil"
 	"net"
@@ -399,7 +400,13 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
 
-	cosConfig, err := config.ConvertToCOS(hvstConfig)
+	// skip rancherd and network config in the cos config
+	var installModeOnly bool
+	if hvstConfig.Install.Mode == config.ModeInstall {
+		installModeOnly = true
+	}
+
+	cosConfig, err := config.ConvertToCOS(hvstConfig, installModeOnly)
 	if err != nil {
 		printToPanel(g, err.Error(), installPanel)
 		return err
@@ -415,6 +422,18 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		return err
 	}
 	defer os.Remove(hvstConfigFile)
+
+	// we booted in install mode only
+	// lets save rancherd and network config and update 99_custom.yaml for persisting changes
+	if installModeBoot {
+		// copy cosConfigFile
+		// copy hvstConfigFile and break execution here
+		err = applyRancherdConfig(ctx, g, hvstConfig, cosConfigFile, hvstConfigFile)
+		if err != nil {
+			printToPanel(g, fmt.Sprintf("error applying rancherd config :%v", err), installPanel)
+		}
+		return err
+	}
 
 	hvstConfig.Install.ConfigURL = cosConfigFile
 
@@ -443,6 +462,15 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	if hvstConfig.DataDisk != "" {
 		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
+	}
+
+	// Apply a dummy route to ensure rke2 can extract the images
+	if installModeBoot {
+		err = applyDummyRoute()
+		if err != nil {
+			printToPanel(g, fmt.Sprintf("error applying a fake default route during installOnlyMode: %v", err), installPanel)
+		}
+		return err
 	}
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
@@ -691,4 +719,79 @@ func executeSupportconfig(ctx context.Context, fileName string) error {
 	}
 
 	return cmd.Wait()
+}
+
+func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfigFile, hvstConfigFile string) error {
+
+	conf, err := config.GenerateRancherdConfig(hvstConfig)
+	if err != nil {
+		return err
+	}
+
+	// additional config to copy files over to persist the new changes
+	copyFiles := yipSchema.Stage{
+		Name: "copy files",
+		Commands: []string{
+			fmt.Sprintf("cp %s /oem/99_custom.yaml", cosConfigFile),
+			fmt.Sprintf("cp %s /oem/harvester.config", hvstConfigFile),
+		},
+	}
+
+	conf.Stages["live"] = append(conf.Stages["live"], copyFiles)
+
+	tempFile, err := ioutil.TempFile("/tmp", "live.XXXXXXXX")
+	if err != nil {
+		return err
+	}
+	defer tempFile.Close()
+
+	bytes, err := yaml.Marshal(conf)
+	if err != nil {
+		return err
+	}
+	if _, err := tempFile.Write(bytes); err != nil {
+		return err
+	}
+	defer os.Remove(tempFile.Name())
+
+	cmd := exec.CommandContext(ctx, "/usr/bin/yip", "-s", "live", tempFile.Name())
+	cmd.Env = os.Environ()
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	defer stderr.Close()
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	defer stdout.Close()
+
+	var wg sync.WaitGroup
+	var writeLock sync.Mutex
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		printToPanelAndLog(g, installPanel, "[stderr]", stderr, &writeLock)
+	}()
+
+	go func() {
+		defer wg.Done()
+		printToPanelAndLog(g, installPanel, "[stdout]", stdout, &writeLock)
+	}()
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	wg.Wait()
+	return cmd.Wait()
+}
+
+func applyDummyRoute() error {
+	cmd := exec.Command("ip", "route", "add", "default", "via", "127.0.0.1")
+	_, err := cmd.Output()
+	return err
 }

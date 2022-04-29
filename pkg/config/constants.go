@@ -4,6 +4,7 @@ const (
 	ModeCreate  = "create"
 	ModeJoin    = "join"
 	ModeUpgrade = "upgrade"
+	ModeInstall = "install"
 
 	NetworkMethodDHCP   = "dhcp"
 	NetworkMethodStatic = "static"

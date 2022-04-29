@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -27,11 +28,11 @@ const (
 	colorYellow
 	colorBlue
 
-	statusReady     = "Ready"
-	statusNotReady  = "NotReady"
-	statusSettingUp = "Setting up Harvester"
-
-	logo string = `
+	statusReady                   = "Ready"
+	statusNotReady                = "NotReady"
+	statusSettingUp               = "Setting up Harvester"
+	defaultHarvesterConfig        = "/oem/harvester.config"
+	logo                   string = `
 ██╗░░██╗░█████╗░██████╗░██╗░░░██╗███████╗░██████╗████████╗███████╗██████╗░
 ██║░░██║██╔══██╗██╔══██╗██║░░░██║██╔════╝██╔════╝╚══██╔══╝██╔════╝██╔══██╗
 ███████║███████║█████╔╝╚██╗░░██╔╝█████╗░░╚█████╗░░░░██║░░░█████╗░░██████╔╝
@@ -47,11 +48,15 @@ type state struct {
 }
 
 var (
-	current state
+	current         state
+	installedConfig config.HarvesterConfig
 )
 
 func (c *Console) layoutDashboard(g *gocui.Gui) error {
 	once.Do(func() {
+		if err := c.installationModeWorkflow(g); err != nil {
+			logrus.Error(err)
+		}
 		if err := initState(); err != nil {
 			logrus.Error(err)
 		}
@@ -59,6 +64,7 @@ func (c *Console) layoutDashboard(g *gocui.Gui) error {
 			logrus.Error(err)
 		}
 		logrus.Infof("state: %+v", current)
+		// based on state decide to reconfigure the node //
 	})
 	maxX, maxY := g.Size()
 	if v, err := g.SetView("url", maxX/2-40, 10, maxX/2+40, 14); err != nil {
@@ -374,4 +380,29 @@ func getHarvesterStatus() string {
 
 func wrapColor(s string, color int) string {
 	return fmt.Sprintf("\033[3%d;7m%s\033[0m", color, s)
+}
+
+func (c *Console) getHarvesterConfig() error {
+	content, err := ioutil.ReadFile(defaultHarvesterConfig)
+	if err != nil {
+		return fmt.Errorf("unable to read default harvester.config file %s: %v", defaultHarvesterConfig, err)
+	}
+
+	return yaml.Unmarshal(content, c.config)
+}
+
+func (c *Console) installationModeWorkflow(g *gocui.Gui) error {
+	err := c.getHarvesterConfig()
+	if err != nil {
+		return err
+	}
+
+	if c.config.Install.Mode == config.ModeInstall {
+		// execute the installers to configure
+		// components before booting harvester
+		installModeBoot = true
+		return c.layoutInstall(g)
+	}
+
+	return nil
 }
