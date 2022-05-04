@@ -48,15 +48,11 @@ type state struct {
 }
 
 var (
-	current         state
-	installedConfig config.HarvesterConfig
+	current state
 )
 
 func (c *Console) layoutDashboard(g *gocui.Gui) error {
 	once.Do(func() {
-		if err := c.installationModeWorkflow(g); err != nil {
-			logrus.Error(err)
-		}
 		if err := initState(); err != nil {
 			logrus.Error(err)
 		}
@@ -389,20 +385,4 @@ func (c *Console) getHarvesterConfig() error {
 	}
 
 	return yaml.Unmarshal(content, c.config)
-}
-
-func (c *Console) installationModeWorkflow(g *gocui.Gui) error {
-	err := c.getHarvesterConfig()
-	if err != nil {
-		return err
-	}
-
-	if c.config.Install.Mode == config.ModeInstall {
-		// execute the installers to configure
-		// components before booting harvester
-		installModeBoot = true
-		return c.layoutInstall(g)
-	}
-
-	return nil
 }

@@ -172,14 +172,6 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		config.MonitoringChartVersion = MonitoringChartVersion
 	}
 
-	stage.Directories = append(stage.Directories,
-		yipSchema.Directory{
-			Path:        "/etc/rancher/rke2/config.yaml.d",
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
-
 	rancherdConfig, err := render("rancherd-config.yaml", config)
 	if err != nil {
 		return err
@@ -195,15 +187,6 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	)
 
 	if config.Install.Mode == "create" {
-		stage.Directories = append(stage.Directories,
-			yipSchema.Directory{
-				Path:        rancherdBootstrapDir,
-				Permissions: 0600,
-				Owner:       0,
-				Group:       0,
-			},
-		)
-
 		bootstrapResources, err := genBootstrapResources(config)
 		if err != nil {
 			return err
@@ -595,7 +578,14 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 
 func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
-	runtimeConfig := yipSchema.Stage{}
+	runtimeConfig := yipSchema.Stage{
+		Users:            make(map[string]yipSchema.User),
+		TimeSyncd:        make(map[string]string),
+		SSHKeys:          make(map[string][]string),
+		Sysctl:           make(map[string]string),
+		Environment:      make(map[string]string),
+		SystemdFirstBoot: make(map[string]string),
+	}
 
 	runtimeConfig.Hostname = config.OS.Hostname
 	if len(config.OS.NTPServers) > 0 {
@@ -606,6 +596,11 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
 	}
 	err := initRancherdStage(config, &runtimeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	err = UpdateNetworkConfig(&runtimeConfig, config.Networks, true)
 	if err != nil {
 		return nil, err
 	}

@@ -401,11 +401,6 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	webhooks.Handle(EventInstallStarted)
 
 	// skip rancherd and network config in the cos config
-	var installModeOnly bool
-	if hvstConfig.Install.Mode == config.ModeInstall {
-		installModeOnly = true
-	}
-
 	cosConfig, err := config.ConvertToCOS(hvstConfig, installModeOnly)
 	if err != nil {
 		printToPanel(g, err.Error(), installPanel)
@@ -425,12 +420,18 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	// we booted in install mode only
 	// lets save rancherd and network config and update 99_custom.yaml for persisting changes
-	if installModeBoot {
+	if alreadyInstalled {
 		// copy cosConfigFile
 		// copy hvstConfigFile and break execution here
-		err = applyRancherdConfig(ctx, g, hvstConfig, cosConfigFile, hvstConfigFile)
+		err = applyRancherdConfig(ctx, g, hvstConfig, cosConfig)
 		if err != nil {
 			printToPanel(g, fmt.Sprintf("error applying rancherd config :%v", err), installPanel)
+			return err
+		}
+
+		err = restartCoreServices()
+		if err != nil {
+			printToPanel(g, fmt.Sprintf("error restarting core services: %v", err), installPanel)
 		}
 		return err
 	}
@@ -465,12 +466,12 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	}
 
 	// Apply a dummy route to ensure rke2 can extract the images
-	if installModeBoot {
+	if installModeOnly {
 		err = applyDummyRoute()
 		if err != nil {
 			printToPanel(g, fmt.Sprintf("error applying a fake default route during installOnlyMode: %v", err), installPanel)
+			return err
 		}
-		return err
 	}
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
@@ -721,14 +722,28 @@ func executeSupportconfig(ctx context.Context, fileName string) error {
 	return cmd.Wait()
 }
 
-func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfigFile, hvstConfigFile string) error {
+func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipSchema.YipConfig) error {
 
 	conf, err := config.GenerateRancherdConfig(hvstConfig)
 	if err != nil {
 		return err
 	}
 
+	for _, v := range conf.Stages["live"] {
+		cosConfig.Stages["initramfs"] = append(cosConfig.Stages["initramfs"], v)
+	}
+
 	// additional config to copy files over to persist the new changes
+	cosConfigFile, err := saveTemp(cosConfig, "cos")
+	if err != nil {
+		return err
+	}
+
+	hvstConfigFile, err := saveTemp(hvstConfig, "hvst")
+	if err != nil {
+		return err
+	}
+
 	copyFiles := yipSchema.Stage{
 		Name: "copy files",
 		Commands: []string{
@@ -737,24 +752,27 @@ func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.H
 		},
 	}
 
-	conf.Stages["live"] = append(conf.Stages["live"], copyFiles)
+	conf.Stages["finalise"] = append(conf.Stages["finalise"], copyFiles)
 
-	tempFile, err := ioutil.TempFile("/tmp", "live.XXXXXXXX")
+	liveCosConfig, err := saveTemp(conf, "live")
 	if err != nil {
 		return err
 	}
-	defer tempFile.Close()
+	//defer os.Remove(liveCosConfig)
 
-	bytes, err := yaml.Marshal(conf)
+	// apply live stage to configure node
+	err = apply(ctx, g, liveCosConfig, "live")
 	if err != nil {
 		return err
 	}
-	if _, err := tempFile.Write(bytes); err != nil {
-		return err
-	}
-	defer os.Remove(tempFile.Name())
 
-	cmd := exec.CommandContext(ctx, "/usr/bin/yip", "-s", "live", tempFile.Name())
+	// apply finalise stage to copy contents
+	// this will persist content across reboots
+	return apply(ctx, g, liveCosConfig, "finalise")
+}
+
+func apply(ctx context.Context, g *gocui.Gui, configFile string, stage string) error {
+	cmd := exec.CommandContext(ctx, "/usr/bin/yip", "-s", stage, configFile)
 	cmd.Env = os.Environ()
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -791,7 +809,13 @@ func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.H
 }
 
 func applyDummyRoute() error {
-	cmd := exec.Command("ip", "route", "add", "default", "via", "127.0.0.1")
+	cmd := exec.Command("/usr/sbin/harv-dummy-iface")
+	_, err := cmd.Output()
+	return err
+}
+
+func restartCoreServices() error {
+	cmd := exec.Command("/usr/sbin/harv-restart-services")
 	_, err := cmd.Output()
 	return err
 }
