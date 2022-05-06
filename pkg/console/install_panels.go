@@ -509,6 +509,9 @@ func addAskCreatePanel(c *Console) error {
 	askCreateV.FirstPage = true
 	askCreateV.PreShow = func() error {
 		askCreateV.Value = c.config.Install.Mode
+		if alreadyInstalled {
+			return c.setContentByName(titlePanel, "Harvester binaries already installed. Choose configuration mode")
+		}
 		return c.setContentByName(titlePanel, "Choose installation mode")
 	}
 	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -657,6 +660,10 @@ func addPasswordPanels(c *Console) error {
 			passwordConfirmV.Close()
 			if err := c.setContentByName(notePanel, ""); err != nil {
 				return err
+			}
+			// for InstallModeOnly need to go back to Disk page
+			if installModeOnly {
+				return showDiskPage(c)
 			}
 			return showNext(c, tokenPanel)
 		},
@@ -1019,6 +1026,10 @@ func addNetworkPanel(c *Console) error {
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
+		// Disk panel suppressed if booted in already Installed mode
+		if alreadyInstalled {
+			return showNext(c, askCreatePanel)
+		}
 		if canChoose, err := canChooseDataDisk(); err != nil {
 			return err
 		} else if canChoose {
@@ -1449,8 +1460,17 @@ func addConfirmInstallPanel(c *Console) error {
 		options += string(installBytes)
 		logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))
 		if !c.config.Install.Silent {
-			confirmV.SetContent(options +
-				"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+			if alreadyInstalled {
+				confirmV.SetContent(options +
+					"\nHarvester is already installed. It will be configured with \nthe above configuration.\n Continue?\n")
+			} else if installModeOnly {
+				confirmV.SetContent(options +
+					"\nHarvester will be copied to local disk.\n No configuration will be performed.\n Continue?\n")
+			} else {
+				confirmV.SetContent(options +
+					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+			}
+
 		}
 		c.Gui.Cursor = false
 		return c.setContentByName(titlePanel, "Confirm installation options")
@@ -1473,6 +1493,9 @@ func addConfirmInstallPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			confirmV.Close()
+			if installModeOnly {
+				return showNext(c, passwordConfirmPanel, passwordPanel)
+			}
 			return showNext(c, cloudInitPanel)
 		},
 	}
@@ -1783,6 +1806,10 @@ func addNTPServersPanel(c *Console) error {
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		userInputData.HasCheckedNTPServers = false
 		closeThisPage()
+		// suppress password change when in alreadyInstalled mode
+		if alreadyInstalled {
+			return showNext(c, tokenPanel)
+		}
 		return showNext(c, passwordConfirmPanel, passwordPanel)
 	}
 	gotoNextPage := func() error {
