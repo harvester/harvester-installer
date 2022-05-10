@@ -600,8 +600,11 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		return nil, err
 	}
 
-	err = UpdateNetworkConfig(&runtimeConfig, config.Networks, true)
-	if err != nil {
+	if err := UpdateWifiConfig(&runtimeConfig, config.OS.Wifi, true); err != nil {
+		return nil, err
+	}
+
+	if err := UpdateNetworkConfig(&runtimeConfig, config.Networks, true); err != nil {
 		return nil, err
 	}
 

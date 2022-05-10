@@ -1,6 +1,8 @@
 package config
 
 import (
+	yipSchema "github.com/mudler/yip/pkg/schema"
+	"strings"
 	"testing"
 
 	"github.com/harvester/harvester-installer/pkg/util"
@@ -112,4 +114,29 @@ func TestConvertToCos_SSHKeysInYipNetworkStage(t *testing.T) {
 
 	assert.Equal(t, yipConfig.Stages["network"][0].SSHKeys["rancher"], conf.OS.SSHAuthorizedKeys)
 	assert.Nil(t, yipConfig.Stages["initramfs"][0].SSHKeys)
+}
+
+func TestConvertToCos_InstallModeOnly(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	assert.NoError(t, err)
+
+	yipConfig, err := ConvertToCOS(conf, true)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, yipConfig.Stages["rootfs"])
+	assert.Nil(t, yipConfig.Stages["network"])
+	assert.NotNil(t, yipConfig.Stages["initramfs"])
+	assert.Equal(t, yipConfig.Stages["initramfs"][0].Users[cosLoginUser], yipSchema.User{
+		PasswordHash: conf.OS.Password,
+	})
+}
+
+func Test_GenerateRancherdConfig(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	assert.NoError(t, err)
+
+	yipConfig, err := GenerateRancherdConfig(conf)
+	assert.NoError(t, err)
+	assert.Equal(t, yipConfig.Stages["live"][0].TimeSyncd["NTP"], strings.Join(conf.OS.NTPServers, " "))
+	assert.Contains(t, yipConfig.Stages["live"][0].Commands, "wicked ifreload all")
 }

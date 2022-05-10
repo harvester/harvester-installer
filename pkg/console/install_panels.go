@@ -510,7 +510,7 @@ func addAskCreatePanel(c *Console) error {
 	askCreateV.PreShow = func() error {
 		askCreateV.Value = c.config.Install.Mode
 		if alreadyInstalled {
-			return c.setContentByName(titlePanel, "Harvester binaries already installed. Choose configuration mode")
+			return c.setContentByName(titlePanel, "Harvester already installed. Choose configuration mode")
 		}
 		return c.setContentByName(titlePanel, "Choose installation mode")
 	}
