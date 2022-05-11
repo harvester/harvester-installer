@@ -75,6 +75,7 @@ type Network struct {
 	DefaultRoute bool               `json:"-"`
 	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
 	MTU          int                `json:"mtu,omitempty"`
+	VlanID       int                `json:"vlanId,omitempty"`
 }
 
 type HTTPBasicAuth struct {
@@ -93,9 +94,9 @@ type Webhook struct {
 }
 
 type Install struct {
-	Automatic bool               `json:"automatic,omitempty"`
-	Mode      string             `json:"mode,omitempty"`
-	Networks  map[string]Network `json:"networks,omitempty"`
+	Automatic           bool    `json:"automatic,omitempty"`
+	Mode                string  `json:"mode,omitempty"`
+	ManagementInterface Network `json:"managementInterface,omitempty"`
 
 	Vip       string `json:"vip,omitempty"`
 	VipHwAddr string `json:"vipHwAddr,omitempty"`
@@ -247,21 +248,6 @@ func (c HarvesterConfig) ShouldMountDataPartition() bool {
 }
 
 func (c *HarvesterConfig) Merge(other HarvesterConfig) error {
-	// We need to manually merge the "Networks" field (map[string]Network) because Mergo won't
-	// merge the struct inside a map. See https://github.com/imdario/mergo#usage
-	updatedNetworks := make(map[string]Network, len(c.Networks))
-	for ifaceName, network := range c.Networks {
-		// Update the network struct if exist in other config
-		if otherNetwork, ok := other.Networks[ifaceName]; ok {
-			if err := mergo.Merge(&network, otherNetwork, mergo.WithAppendSlice); err != nil {
-				return err
-			}
-		}
-
-		updatedNetworks[ifaceName] = network
-	}
-	c.Networks = updatedNetworks
-
 	if err := mergo.Merge(c, other, mergo.WithAppendSlice); err != nil {
 		return err
 	}
