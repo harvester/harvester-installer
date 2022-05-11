@@ -101,7 +101,8 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	initramfs.Environment = cfg.OS.Environment
 
-	if err := UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false); err != nil {
+	mgmtName, err := UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
+	if err != nil {
 		return nil, err
 	}
 
@@ -114,7 +115,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			Group:       0,
 		})
 
-		canalHelmChartConfig, err := render(canalConfig, config)
+		canalHelmChartConfig, err := render(canalConfig, mgmtName)
 		if err != nil {
 			return nil, err
 		}
@@ -330,15 +331,15 @@ func SaveOriginalNetworkConfig() error {
 // - generates wicked interface files (`/etc/sysconfig/network/ifcfg-*` and `ifroute-*`)
 // - manipulates nameservers in `/etc/resolv.conf`.
 // - call `wicked ifreload all` if `run` flag is true.
-func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool) error {
+func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool) (string, error) {
 	if len(mgmtInterface.Interfaces) == 0 {
-		return errors.New("no slave defined for management network bond")
+		return "", errors.New("no slave defined for management network bond")
 	}
 
 	switch mgmtInterface.Method {
 	case NetworkMethodDHCP, NetworkMethodStatic, NetworkMethodNone:
 	default:
-		return fmt.Errorf("unsupported network method %s", mgmtInterface.Method)
+		return "", fmt.Errorf("unsupported network method %s", mgmtInterface.Method)
 	}
 
 	var err error
@@ -353,11 +354,11 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 		err = updateBond(stage, MgmtBondInterfaceName, &bondMgmt)
 	}
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err = updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
-		return err
+		return "", err
 	}
 
 	name := MgmtInterfaceName
@@ -386,7 +387,7 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 		stage.Commands = append(stage.Commands, "netconfig update")
 	}
 
-	return nil
+	return name, nil
 }
 
 func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
@@ -443,6 +444,13 @@ func updateBridge(stage *yipSchema.Stage, name string, bridge *Network) error {
 	}
 
 	// setup pre up script
+	stage.Directories = append(stage.Directories, yipSchema.Directory{
+		Path:        "/etc/wicked/script",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+
 	var preUpScript string
 	preUpScript, err = render("wicked-setup-bridge.sh", nil)
 	if err != nil {
