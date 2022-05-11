@@ -904,7 +904,7 @@ func addNetworkPanel(c *Console) error {
 
 	setupNetwork := func() ([]byte, error) {
 		return applyNetworks(
-			map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
+			mgmtNetwork,
 			c.config.Hostname,
 		)
 	}
@@ -916,9 +916,7 @@ func addNetworkPanel(c *Console) error {
 		}
 		logrus.Infof("Network configuration is applied: %s", output)
 
-		c.config.Networks = map[string]config.Network{
-			config.MgmtInterfaceName: mgmtNetwork,
-		}
+		c.config.ManagementInterface = mgmtNetwork
 
 		if mgmtNetwork.Method == config.NetworkMethodDHCP {
 			if addr, err := getIPThroughDHCP(config.MgmtInterfaceName); err != nil {
@@ -1501,7 +1499,7 @@ func addInstallPanel(c *Console) error {
 
 				if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
 					printToPanel(c.Gui, "Configuring network...", installPanel)
-					if _, err := applyNetworks(c.config.Networks, c.config.Hostname); err != nil {
+					if _, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
 						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
 						return
 					}
@@ -1524,19 +1522,16 @@ func addInstallPanel(c *Console) error {
 			}
 
 			// lookup MAC Address to populate device names where needed
-			for key, network := range c.config.Networks {
-				tmpInterfaces := []config.NetworkInterface{}
-				for _, iface := range network.Interfaces {
-					if err := iface.FindNetworkInterfaceName(); err != nil {
-						logrus.Error(err)
-						printToPanel(c.Gui, err.Error(), installPanel)
-						return
-					}
-					tmpInterfaces = append(tmpInterfaces, iface)
+			tmpInterfaces := []config.NetworkInterface{}
+			for _, iface := range c.config.ManagementInterface.Interfaces {
+				if err := iface.FindNetworkInterfaceName(); err != nil {
+					logrus.Error(err)
+					printToPanel(c.Gui, err.Error(), installPanel)
+					return
 				}
-				network.Interfaces = tmpInterfaces
-				c.config.Networks[key] = network
+				tmpInterfaces = append(tmpInterfaces, iface)
 			}
+			c.config.ManagementInterface.Interfaces = tmpInterfaces
 
 			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
 			c.config.ForceGPT = !c.config.ForceMBR
@@ -1547,10 +1542,7 @@ func addInstallPanel(c *Console) error {
 			}
 
 			// case insensitive for network method and vip mode
-			for key, network := range c.config.Networks {
-				network.Method = strings.ToLower(network.Method)
-				c.config.Networks[key] = network
-			}
+			c.config.ManagementInterface.Method = strings.ToLower(c.config.ManagementInterface.Method)
 
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToPanel(c.Gui, err.Error(), installPanel)

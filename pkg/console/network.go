@@ -15,7 +15,7 @@ import (
 	"github.com/harvester/harvester-installer/pkg/config"
 )
 
-func applyNetworks(networks map[string]config.Network, hostname string) ([]byte, error) {
+func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 	if err := config.RestoreOriginalNetworkConfig(); err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func applyNetworks(networks map[string]config.Network, hostname string) ([]byte,
 			},
 		},
 	}
-	err := config.UpdateNetworkConfig(&conf.Stages["live"][1], networks, true)
+	_, err := config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true)
 	if err != nil {
 		return nil, err
 	}
