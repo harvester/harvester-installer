@@ -66,7 +66,7 @@ update_rancher_deps()
   CATTLE_RANCHER_WEBHOOK_MIN_VERSION=$(bash -c "source $rancher_image_envs && echo \$CATTLE_RANCHER_WEBHOOK_MIN_VERSION")
 
   # Extract rancher-charts helm index file
-  repo_hash=$(docker run --entrypoint=/bin/bash "$rancher_image" -c "ls /var/lib/rancher-data/local-catalogs/v2/rancher-charts | head -n1")
+  repo_hash=$(docker run --rm --entrypoint=/bin/bash "$rancher_image" -c "ls /var/lib/rancher-data/local-catalogs/v2/rancher-charts | head -n1")
   docker create --cidfile="$cid_file" "$rancher_image"
   docker cp $(<$cid_file):/var/lib/rancher-data/local-catalogs/v2/rancher-charts/$repo_hash/index.yaml $repo_index
   docker rm $(<$cid_file)
