@@ -182,6 +182,9 @@ func checkNetworks(network config.Network, dnsServers []string) error {
 			return err
 		}
 	}
+
+	// TODO check VLAN ID in 0-4094 (0 is unset)
+
 	switch network.Method {
 	case config.NetworkMethodDHCP, config.NetworkMethodNone, "":
 		return nil
