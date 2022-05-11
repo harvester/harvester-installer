@@ -165,57 +165,47 @@ func checkIPList(ipList []string) error {
 	return nil
 }
 
-func checkNetworks(networks map[string]config.Network, dnsServers []string) error {
-	if len(networks) == 0 {
-		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
+func checkNetworks(network config.Network, dnsServers []string) error {
+	if len(network.Interfaces) == 0 {
+		return errors.New(ErrMsgInterfaceNotSpecifiedForMgmt)
+	}
+	method := network.Method
+	if method != config.NetworkMethodDHCP && method != config.NetworkMethodStatic {
+		return errors.New(ErrMsgMgmtInterfaceInvalidMethod)
+	}
+	if method == config.NetworkMethodStatic && len(dnsServers) == 0 {
+		return errors.New(ErrMsgMgmtInterfaceStaticNoDNS)
 	}
 
-	if mgmtNetwork, ok := networks[config.MgmtInterfaceName]; !ok {
-		return errors.New(ErrMsgMgmtInterfaceNotSpecified)
-	} else {
-		if len(mgmtNetwork.Interfaces) == 0 {
-			return errors.New(ErrMsgInterfaceNotSpecifiedForMgmt)
-		}
-		method := mgmtNetwork.Method
-		if method != config.NetworkMethodDHCP && method != config.NetworkMethodStatic {
-			return errors.New(ErrMsgMgmtInterfaceInvalidMethod)
-		}
-		if method == config.NetworkMethodStatic && len(dnsServers) == 0 {
-			return errors.New(ErrMsgMgmtInterfaceStaticNoDNS)
+	for _, iface := range network.Interfaces {
+		if err := checkInterface(iface); err != nil {
+			return err
 		}
 	}
-
-	for _, network := range networks {
-		for _, iface := range network.Interfaces {
-			if err := checkInterface(iface); err != nil {
-				return err
-			}
+	switch network.Method {
+	case config.NetworkMethodDHCP, config.NetworkMethodNone, "":
+		return nil
+	case config.NetworkMethodStatic:
+		if err := checkStaticRequiredString("ip", network.IP); err != nil {
+			return err
 		}
-		switch network.Method {
-		case config.NetworkMethodDHCP, config.NetworkMethodNone, "":
-			return nil
-		case config.NetworkMethodStatic:
-			if err := checkStaticRequiredString("ip", network.IP); err != nil {
-				return err
-			}
-			if err := checkIP(network.IP); err != nil {
-				return err
-			}
-			if err := checkStaticRequiredString("subnetMask", network.SubnetMask); err != nil {
-				return err
-			}
-			if err := checkIP(network.SubnetMask); err != nil {
-				return err
-			}
-			if err := checkStaticRequiredString("gateway", network.Gateway); err != nil {
-				return err
-			}
-			if err := checkIP(network.Gateway); err != nil {
-				return err
-			}
-		default:
-			return prettyError(ErrMsgNetworkMethodUnknown, network.Method)
+		if err := checkIP(network.IP); err != nil {
+			return err
 		}
+		if err := checkStaticRequiredString("subnetMask", network.SubnetMask); err != nil {
+			return err
+		}
+		if err := checkIP(network.SubnetMask); err != nil {
+			return err
+		}
+		if err := checkStaticRequiredString("gateway", network.Gateway); err != nil {
+			return err
+		}
+		if err := checkIP(network.Gateway); err != nil {
+			return err
+		}
+	default:
+		return prettyError(ErrMsgNetworkMethodUnknown, network.Method)
 	}
 
 	return nil
@@ -313,7 +303,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		}
 	}
 
-	if err := checkNetworks(cfg.Install.Networks, cfg.OS.DNSNameservers); err != nil {
+	if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
 		return err
 	}
 
