@@ -1,0 +1,21 @@
+STARTMODE='onboot'
+ETHERDEVICE='br-mgmt'
+VLAN_PROTOCOL='ieee802-1Q'
+VLAN_ID={{ .VlanID }}
+
+BOOTPROTO='{{ .Method }}'
+
+{{ if eq .Method "static" -}}
+IPADDR={{ .IP }}
+NETMASK={{ .SubnetMask }}
+{{- end }}
+
+{{ $defaultRoute := "no" -}}
+{{- if .DefaultRoute -}}
+  {{- $defaultRoute = "yes" -}}
+{{- end }}
+DHCLIENT_SET_DEFAULT_ROUTE='{{ $defaultRoute }}'
+
+{{ if gt .MTU 0 -}}
+MTU={{ .MTU }}
+{{- end }}

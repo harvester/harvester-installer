@@ -101,7 +101,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	initramfs.Environment = cfg.OS.Environment
 
-	if err := UpdateNetworkConfig(&initramfs, cfg.Networks, false); err != nil {
+	if err := UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false); err != nil {
 		return nil, err
 	}
 
@@ -326,49 +326,57 @@ func SaveOriginalNetworkConfig() error {
 	return err
 }
 
-// UpdateNetworkConfig updates a cOS config stage to include steps that:
+// UpdateManagementInterfaceConfig updates a cOS config stage to include steps that:
 // - generates wicked interface files (`/etc/sysconfig/network/ifcfg-*` and `ifroute-*`)
 // - manipulates nameservers in `/etc/resolv.conf`.
 // - call `wicked ifreload all` if `run` flag is true.
-func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, run bool) error {
-	mgmtNetwork, ok := networks[MgmtInterfaceName]
-	if !ok {
-		return errors.New("no management network defined")
-	}
-	if len(mgmtNetwork.Interfaces) == 0 {
+func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool) error {
+	if len(mgmtInterface.Interfaces) == 0 {
 		return errors.New("no slave defined for management network bond")
 	}
 
-	for name, network := range networks {
-		switch network.Method {
-		case NetworkMethodDHCP, NetworkMethodStatic, NetworkMethodNone:
-		default:
-			return fmt.Errorf("unsupported network method %s", network.Method)
-		}
+	switch mgmtInterface.Method {
+	case NetworkMethodDHCP, NetworkMethodStatic, NetworkMethodNone:
+	default:
+		return fmt.Errorf("unsupported network method %s", mgmtInterface.Method)
+	}
 
-		var err error
-		if len(network.Interfaces) > 0 {
-			err = updateBond(stage, name, &network)
-		} else {
-			err = updateNIC(stage, name, &network)
-		}
-		if err != nil {
-			return err
-		}
+	var err error
 
-		switch network.Method {
-		case NetworkMethodStatic:
-			// default gateway for static mode
-			stage.Files = append(stage.Files, yipSchema.File{
-				Path:        fmt.Sprintf("/etc/sysconfig/network/ifroute-%s", name),
-				Content:     fmt.Sprintf("default %s - %s\n", network.Gateway, name),
-				Permissions: 0600,
-				Owner:       0,
-				Group:       0,
-			})
-		case NetworkMethodDHCP, NetworkMethodNone:
-			stage.Commands = append(stage.Commands, fmt.Sprintf("rm -f /etc/sysconfig/network/ifroute-%s", name))
+	if len(mgmtInterface.Interfaces) > 0 {
+		bondMgmt := Network{
+			Interfaces:  mgmtInterface.Interfaces,
+			Method:      NetworkMethodNone,
+			BondOptions: mgmtInterface.BondOptions,
+			MTU:         mgmtInterface.MTU,
 		}
+		err = updateBond(stage, MgmtBondInterfaceName, &bondMgmt)
+	}
+	if err != nil {
+		return err
+	}
+
+	if err = updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
+		return err
+	}
+
+	name := MgmtInterfaceName
+	if mgmtInterface.VlanID >= 2 && mgmtInterface.VlanID <= 4094 {
+		name = fmt.Sprintf("%s.%d", name, mgmtInterface.VlanID)
+	}
+
+	switch mgmtInterface.Method {
+	case NetworkMethodStatic:
+		// default gateway for static mode
+		stage.Files = append(stage.Files, yipSchema.File{
+			Path:        fmt.Sprintf("/etc/sysconfig/network/ifroute-%s", name),
+			Content:     fmt.Sprintf("default %s - %s\n", mgmtInterface.Gateway, name),
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		})
+	case NetworkMethodDHCP, NetworkMethodNone:
+		stage.Commands = append(stage.Commands, fmt.Sprintf("rm -f /etc/sysconfig/network/ifroute-%s", name))
 	}
 
 	if run {
@@ -381,22 +389,6 @@ func UpdateNetworkConfig(stage *yipSchema.Stage, networks map[string]Network, ru
 	return nil
 }
 
-func updateNIC(stage *yipSchema.Stage, name string, network *Network) error {
-	ifcfg, err := render("wicked-ifcfg-eth", network)
-	if err != nil {
-		return err
-	}
-
-	stage.Files = append(stage.Files, yipSchema.File{
-		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", name),
-		Content:     ifcfg,
-		Permissions: 0600,
-		Owner:       0,
-		Group:       0,
-	})
-	return nil
-}
-
 func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 	// Adding default NIC bonding options if no options are provided (usually happened under PXE
 	// installation). Missing them would make bonding interfaces unusable.
@@ -406,11 +398,6 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 			"mode":   BondModeBalanceTLB,
 			"miimon": "100",
 		}
-	}
-
-	// Set default route for management bond
-	if name == MgmtInterfaceName {
-		network.DefaultRoute = true
 	}
 
 	ifcfg, err := render("wicked-ifcfg-bond-master", network)
@@ -435,6 +422,77 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 		}
 		stage.Files = append(stage.Files, yipSchema.File{
 			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", iface.Name),
+			Content:     ifcfg,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		})
+	}
+
+	return nil
+}
+
+func updateBridge(stage *yipSchema.Stage, name string, bridge *Network) error {
+	// add Bridge named MgmtInterfaceName and attach Bond named MgmtBondInterfaceName to bridge
+	var err error
+
+	needVlanInterface := false
+	// pvid is always 1, if vlan id is 1, it means untagged vlan.
+	if bridge.VlanID >= 2 && bridge.VlanID <= 4094 {
+		needVlanInterface = true
+	}
+
+	// setup pre up script
+	var preUpScript string
+	preUpScript, err = render("wicked-setup-bridge.sh", nil)
+	if err != nil {
+		return err
+	}
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/wicked/script/setup_bridge.sh",
+		Content:     preUpScript,
+		Permissions: 0755,
+		Owner:       0,
+		Group:       0,
+	})
+
+	bridgeMgmt := Network{
+		Interfaces:   bridge.Interfaces,
+		Method:       bridge.Method,
+		IP:           bridge.IP,
+		SubnetMask:   bridge.SubnetMask,
+		Gateway:      bridge.Gateway,
+		DefaultRoute: !needVlanInterface,
+		MTU:          bridge.MTU,
+	}
+
+	if needVlanInterface {
+		bridgeMgmt.Method = NetworkMethodNone
+	}
+
+	// add bridge
+	var ifcfg string
+	ifcfg, err = render("wicked-ifcfg-bridge", bridgeMgmt)
+	if err != nil {
+		return err
+	}
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", name),
+		Content:     ifcfg,
+		Permissions: 0600,
+		Owner:       0,
+		Group:       0,
+	})
+
+	// add vlan interface
+	if needVlanInterface {
+		bridge.DefaultRoute = true
+		ifcfg, err = render("wicked-ifcfg-vlan", bridge)
+		if err != nil {
+			return err
+		}
+		stage.Files = append(stage.Files, yipSchema.File{
+			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s.%d", name, bridge.VlanID),
 			Content:     ifcfg,
 			Permissions: 0600,
 			Owner:       0,

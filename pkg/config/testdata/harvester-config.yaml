@@ -28,8 +28,7 @@ os:
     https_proxy: http://myserver
 install:
   mode: create
-  networks:
-    harvester-mgmt:
+  management_interface:
       interfaces:
       - name: ens0
       - name: ens3
