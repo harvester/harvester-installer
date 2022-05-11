@@ -537,6 +537,11 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 		return nil, err
 	}
 
+	resolvedDevPath, err := filepath.EvalSymlinks(devPath)
+	if err != nil {
+		return nil, err
+	}
+
 	yipConfig := yipSchema.YipConfig{
 		Name: "Root partitioning layout",
 		Stages: map[string][]yipSchema.Stage{
@@ -545,7 +550,7 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 					Name: "Root partitioning layout",
 					Layout: yipSchema.Layout{
 						Device: &yipSchema.Device{
-							Path: devPath,
+							Path: resolvedDevPath,
 						},
 						Parts: []yipSchema.Partition{
 							{
