@@ -1,4 +1,4 @@
-bootstrapResources: {{ if not .SystemSettings -}} [] {{- else }}
+resources: {{ if not .SystemSettings -}} [] {{- else }}
 {{- range $name, $value := .SystemSettings }}
 - apiVersion: harvesterhci.io/v1beta1
   kind: Setting

@@ -1,4 +1,4 @@
-bootstrapResources:
+resources:
 # need to pre-load those VM monitoring dashboards, required to create the `cattle-dashboards` namespace upfront
 # and keep those labels and annotations to avoid conflict from the operator
 - apiVersion: v1

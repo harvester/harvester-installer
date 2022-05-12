@@ -1,4 +1,4 @@
-bootstrapResources:
+resources:
 - apiVersion: management.cattle.io/v3
   kind: ManagedChart
   metadata:
