@@ -1034,7 +1034,13 @@ func addNetworkPanel(c *Console) error {
 			case NICStateLowerDown:
 				return fmt.Sprintf("NIC %s is down\nNetwork cable isn't plugged in", iface), nil
 			}
-			interfaces = append(interfaces, config.NetworkInterface{Name: iface})
+			tmpInterface := config.NetworkInterface{
+				Name: iface,
+			}
+			if err := tmpInterface.FindNetworkInterfacHwAddr(); err != nil {
+				return "", err
+			}
+			interfaces = append(interfaces, tmpInterface)
 		}
 		mgmtNetwork.Interfaces = interfaces
 		return "", nil
@@ -1572,9 +1578,15 @@ func addInstallPanel(c *Console) error {
 			}
 
 			// lookup MAC Address to populate device names where needed
+			// lookup device name to populate MAC Address
 			tmpInterfaces := []config.NetworkInterface{}
 			for _, iface := range c.config.ManagementInterface.Interfaces {
 				if err := iface.FindNetworkInterfaceName(); err != nil {
+					logrus.Error(err)
+					printToPanel(c.Gui, err.Error(), installPanel)
+					return
+				}
+				if err := iface.FindNetworkInterfacHwAddr(); err != nil {
 					logrus.Error(err)
 					printToPanel(c.Gui, err.Error(), installPanel)
 					return
