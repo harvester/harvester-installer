@@ -18,15 +18,18 @@ source ${SCRIPTS_DIR}/version-harvester $harvester_path
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/version-monitoring
+source ${SCRIPTS_DIR}/version-rancher
 
 echo "Installer version: ${VERSION}"
 echo "Harvester version: ${HARVESTER_VERSION}"
 echo "Harvester chart version: ${HARVESTER_CHART_VERSION}"
+echo "Rancher version: ${RANCHER_VERSION}"
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 
 mkdir -p bin
 
 LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$RKE2_VERSION
+           -X github.com/harvester/harvester-installer/pkg/config.RancherVersion=$RANCHER_VERSION
            -X github.com/harvester/harvester-installer/pkg/version.Version=$VERSION
            -X github.com/harvester/harvester-installer/pkg/version.HarvesterVersion=$HARVESTER_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.HarvesterChartVersion=$HARVESTER_CHART_VERSION
