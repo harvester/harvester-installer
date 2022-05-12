@@ -16,7 +16,7 @@ type FakeValidator struct {
 }
 
 func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
-	if err := v.checkMgmtInterface(cfg.Install.Networks); err != nil {
+	if err := v.checkMgmtInterface(cfg.Install.ManagementInterface); err != nil {
 		return err
 	}
 	if err := v.checkDevice(cfg.Install.Device); err != nil {
@@ -25,8 +25,8 @@ func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
 	return nil
 }
 
-func (v FakeValidator) checkMgmtInterface(networks map[string]config.Network) error {
-	if _, ok := networks[config.MgmtInterfaceName]; ok {
+func (v FakeValidator) checkMgmtInterface(network config.Network) error {
+	if len(network.Interfaces) > 0 {
 		return nil
 	}
 	return prettyError(ErrMsgMgmtInterfaceNotSpecified, config.MgmtInterfaceName)
@@ -65,8 +65,10 @@ func TestValidateConfig(t *testing.T) {
 			},
 			Install: config.Install{
 				Mode: config.ModeCreate,
-				Networks: map[string]config.Network{
-					config.MgmtInterfaceName: {},
+				ManagementInterface: config.Network{
+					Interfaces: []config.NetworkInterface{
+						{ Name: "eth0" },
+					},
 				},
 				Device: "/dev/vda",
 			},
@@ -139,9 +141,7 @@ func TestValidateConfig(t *testing.T) {
 			name: "invalid create config: interface not found",
 			cfg:  createCreateConfig(),
 			preApply: func(c *config.HarvesterConfig) {
-				c.Install.Networks = map[string]config.Network{
-					"bond1": {},
-				}
+				c.Install.ManagementInterface.Interfaces = nil
 			},
 			errMsg: ErrMsgMgmtInterfaceNotSpecified,
 		},
