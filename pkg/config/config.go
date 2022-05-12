@@ -286,3 +286,29 @@ func (n *NetworkInterface) FindNetworkInterfaceName() error {
 	return nil
 
 }
+
+// FindNetworkInterfacHwAddr uses device name to lookup hardware address
+func (n *NetworkInterface) FindNetworkInterfacHwAddr() error {
+	if n.HwAddr != "" {
+		return nil
+	}
+
+	if n.Name != "" && n.HwAddr == "" {
+		interfaces, err := net.Interfaces()
+		if err != nil {
+			return err
+		}
+
+		for _, iface := range interfaces {
+			if iface.Name == n.Name {
+				n.HwAddr = iface.HardwareAddr.String()
+				return nil
+			}
+		}
+
+		return fmt.Errorf("no interface matching name %s found", n.Name)
+	}
+
+	// Default, there is no Name or HwAddress, do nothing. Let validation capture it
+	return nil
+}
