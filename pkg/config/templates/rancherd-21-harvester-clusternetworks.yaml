@@ -1,4 +1,4 @@
-bootstrapResources: {{ if not .ClusterNetworks -}} [] {{- else }}
+resources: {{ if not .ClusterNetworks -}} [] {{- else }}
 {{- range $name, $network := .ClusterNetworks }}
 - apiVersion: network.harvesterhci.io/v1beta1
   kind: ClusterNetwork

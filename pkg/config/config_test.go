@@ -138,8 +138,8 @@ func TestHarvesterSystemSettingsRendering(t *testing.T) {
 		assert.Nil(t, err)
 
 		// Take the first one
-		loadedConf["bootstrapResources"][0].assertNameEqual(t, testCase.settingName)
-		loadedConf["bootstrapResources"][0].assertValueEqual(t, testCase.settingValue)
+		loadedConf["resources"][0].assertNameEqual(t, testCase.settingName)
+		loadedConf["resources"][0].assertValueEqual(t, testCase.settingValue)
 	}
 }
 
@@ -158,8 +158,8 @@ func TestHarvesterSystemSettingsRendering_MultipleSettings(t *testing.T) {
 	err = yaml.Unmarshal([]byte(content), &loadedConf)
 	assert.Nil(t, err)
 
-	assert.Equal(t, 2, len(loadedConf["bootstrapResources"]))
-	for _, setting := range loadedConf["bootstrapResources"] {
+	assert.Equal(t, 2, len(loadedConf["resources"]))
+	for _, setting := range loadedConf["resources"] {
 		switch setting.Value {
 		case "bar":
 			setting.assertNameEqual(t, "foo")
@@ -185,7 +185,7 @@ func TestHarvesterSystemSettingsRendering_AsEmptyArrayIfNoSetting(t *testing.T) 
 	err = yaml.Unmarshal([]byte(content), &loadedConf)
 	assert.Nil(t, err)
 
-	bootstrapResources, ok := loadedConf["bootstrapResources"]
+	bootstrapResources, ok := loadedConf["resources"]
 	assert.True(t, ok)
 	assert.NotNil(t, bootstrapResources)
 	assert.Equal(t, 0, len(bootstrapResources))
@@ -210,8 +210,8 @@ func TestHarvesterTokenRendering(t *testing.T) {
 	for _, testCase := range testCases {
 		// Renders the config into YAML manifest, then decode the YAML manifest and verify the content
 		conf := HarvesterConfig{
-			Token: testCase.token,
-			// RuntimeVersion: "DoesNotMatter",
+			Token:          testCase.token,
+			RancherVersion: "v0.0.0-fake", // Necessary to prevent rendering failed
 		}
 		content, err := render("rancherd-config.yaml", conf)
 		assert.Nil(t, err)

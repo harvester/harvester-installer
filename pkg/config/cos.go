@@ -33,6 +33,7 @@ const (
 var (
 	// Following variables are replaced by ldflags
 	RKE2Version            = ""
+	RancherVersion         = ""
 	HarvesterChartVersion  = ""
 	MonitoringChartVersion = ""
 
@@ -159,6 +160,9 @@ func overwriteRootfsStage(config *HarvesterConfig, stage *yipSchema.Stage) error
 func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if config.RuntimeVersion == "" {
 		config.RuntimeVersion = RKE2Version
+	}
+	if config.RancherVersion == "" {
+		config.RancherVersion = RancherVersion
 	}
 	if config.HarvesterChartVersion == "" {
 		config.HarvesterChartVersion = HarvesterChartVersion
