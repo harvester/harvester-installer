@@ -807,9 +807,9 @@ func addTokenPanel(c *Console) error {
 
 func showNetworkPage(c *Console) error {
 	if mgmtNetwork.Method != config.NetworkMethodStatic {
-		return showNext(c, askInterfacePanel, askBondModePanel, askVlanIDPanel, askNetworkMethodPanel, hostNamePanel)
+		return showNext(c, askInterfacePanel, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, hostNamePanel)
 	}
-	return showNext(c, askInterfacePanel, askBondModePanel, askVlanIDPanel, askNetworkMethodPanel, addressPanel, gatewayPanel, hostNamePanel)
+	return showNext(c, askInterfacePanel, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, hostNamePanel)
 }
 
 func addNetworkPanel(c *Console) error {
