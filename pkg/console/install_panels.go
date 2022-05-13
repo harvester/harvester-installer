@@ -1037,7 +1037,7 @@ func addNetworkPanel(c *Console) error {
 			tmpInterface := config.NetworkInterface{
 				Name: iface,
 			}
-			if err := tmpInterface.FindNetworkInterfacHwAddr(); err != nil {
+			if err := tmpInterface.FindNetworkInterfaceHwAddr(); err != nil {
 				return "", err
 			}
 			interfaces = append(interfaces, tmpInterface)
@@ -1581,12 +1581,7 @@ func addInstallPanel(c *Console) error {
 			// lookup device name to populate MAC Address
 			tmpInterfaces := []config.NetworkInterface{}
 			for _, iface := range c.config.ManagementInterface.Interfaces {
-				if err := iface.FindNetworkInterfaceName(); err != nil {
-					logrus.Error(err)
-					printToPanel(c.Gui, err.Error(), installPanel)
-					return
-				}
-				if err := iface.FindNetworkInterfacHwAddr(); err != nil {
+				if err := iface.FindNetworkInterfaceNameAndHwAddr(); err != nil {
 					logrus.Error(err)
 					printToPanel(c.Gui, err.Error(), installPanel)
 					return

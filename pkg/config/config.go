@@ -255,6 +255,19 @@ func (c *HarvesterConfig) Merge(other HarvesterConfig) error {
 	return nil
 }
 
+func (n *NetworkInterface) FindNetworkInterfaceNameAndHwAddr() error {
+	if err := n.FindNetworkInterfaceName(); err != nil {
+		return err
+	}
+
+	if err := n.FindNetworkInterfaceHwAddr(); err != nil {
+		return err
+	}
+
+	// Default, there is no Name or HwAddress, do nothing. Let validation capture it
+	return nil
+}
+
 // FindNetworkInterfaceName uses MAC address to lookup interface name
 func (n *NetworkInterface) FindNetworkInterfaceName() error {
 	if n.Name != "" {
@@ -287,8 +300,8 @@ func (n *NetworkInterface) FindNetworkInterfaceName() error {
 
 }
 
-// FindNetworkInterfacHwAddr uses device name to lookup hardware address
-func (n *NetworkInterface) FindNetworkInterfacHwAddr() error {
+// FindNetworkInterfaceHwAddr uses device name to lookup hardware address
+func (n *NetworkInterface) FindNetworkInterfaceHwAddr() error {
 	if n.HwAddr != "" {
 		return nil
 	}
