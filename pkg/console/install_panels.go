@@ -39,6 +39,10 @@ const (
 	NICStateUP
 )
 
+const (
+	ErrMsgVLANShouldBeANumberInRange string = "VLAN ID should be a number 1 ~ 4094."
+)
+
 var (
 	once          sync.Once
 	userInputData = UserInputData{
@@ -1069,17 +1073,17 @@ func addNetworkPanel(c *Console) error {
 			return "", err
 		}
 		if vlanIDStr == "" {
-			c.config.ManagementInterface.VlanID = 0
+			mgmtNetwork.VlanID = 0
 			return "", nil
 		}
 		var vlanID int
 		vlanID, err = strconv.Atoi(vlanIDStr)
 		if err != nil {
-			return "VLAN ID should be a number 1 ~ 4094.", err
+			return ErrMsgVLANShouldBeANumberInRange, err
 		}
 		// 0 is unset
 		if vlanID < 0 || vlanID > 4094 {
-			return "VLAN ID should be a number 1 ~ 4094.", nil
+			return ErrMsgVLANShouldBeANumberInRange, fmt.Errorf(ErrMsgVLANShouldBeANumberInRange)
 		}
 		mgmtNetwork.VlanID = vlanID
 		return "", nil
