@@ -62,6 +62,11 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
 				c.config.Merge(cfg)
+				// setup InstallMode to ensure that during automatic install
+				// we are only copying binaries and ignoring network / rancherd setup
+				if c.config.Install.Mode == config.ModeInstall {
+					installModeOnly = true
+				}
 				initPanel = installPanel
 			}
 		}
