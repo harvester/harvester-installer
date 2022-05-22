@@ -42,11 +42,11 @@ RUN mkdir /usr/tmp && \
 COPY --from=luet /usr/bin/luet /usr/bin/luet
 COPY --from=makeiso /usr/bin/luet-makeiso /usr/bin/luet-makeiso
 
-ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS DEBUG_QCOW_INSTALL
+ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS
 ENV DAPPER_SOURCE /go/src/github.com/harvester/harvester-installer/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
-ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock -v harvester-installer-go:/root/go -v harvester-installer-cache:/root/.cache --device=/dev/kvm:/dev/kvm"
+ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock -v harvester-installer-go:/root/go -v harvester-installer-cache:/root/.cache"
 
 ENV HOME ${DAPPER_SOURCE}
 WORKDIR ${DAPPER_SOURCE}

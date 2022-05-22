@@ -72,16 +72,9 @@ xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract /rootfs.s
 
 # Build qcow image
 echo "generating harvester install mode qcow"
-if [[ -n ${DEBUG_QCOW_INSTALL} ]];
-then
-  echo "DEBUG_QCOW_INSTALL is enabled.. install will be streamed to logs"
-  TERMINAL="ttyS0"
-else
-  TERMINAL="tty1"
-fi
 qemu-img create -f qcow2 -o size=150G ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.qcow2
-qemu-system-x86_64 -nographic -m 8192 -enable-kvm -serial mon:stdio -nic none -drive file=${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.qcow2,if=virtio,cache=writeback,discard=ignore,format=qcow2 -boot d -cdrom ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.iso -kernel ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-amd64 -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.squashimg=rootfs.squashfs console=${TERMINAL} rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=password" -initrd ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-amd64 -boot once=d
-
+qemu-system-x86_64 -nographic -m 8192 -serial mon:stdio -serial file:harvester-installer.log -nic none -drive file=${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.qcow2,if=virtio,cache=writeback,discard=ignore,format=qcow2 -boot d -cdrom ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.iso -kernel ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-amd64 -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.squashimg=rootfs.squashfs console=ttyS1,115200 console=ttyS0,115200 rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=password" -initrd ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-amd64 -boot once=d
+tail -100 harvester-installer.log
 # Write checksum
 cd ${ARTIFACTS_DIR}
 CHECKSUM_FILE=${ISO_PREFIX}.sha512
