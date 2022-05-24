@@ -369,6 +369,10 @@ if [ -L "$ELEMENTAL_TARGET" ]; then
   install_device=$(readlink -f "$ELEMENTAL_TARGET")
 fi
 
+# Tear down LVM and MD devices on the system, if the installing device is occuipied, the
+# partitioning operation could fail later. Be forgiven here.
+blkdeactivate --lvmoptions wholevg,retry --dmoptions force,retry --errors || true
+
 clear_disk_label
 
 # Run elemental installer but do not let it fetch ISO and do not shutdown
