@@ -1595,6 +1595,8 @@ func addUpgradePanel(c *Console) error {
 }
 
 func addVIPPanel(c *Console) error {
+	setLocation := createVerticalLocator(c)
+
 	askVipMethodV, err := widgets.NewDropDown(c.Gui, askVipMethodPanel, askVipMethodLabel, getNetworkMethodOptions)
 	if err != nil {
 		return err
@@ -1697,19 +1699,20 @@ func addVIPPanel(c *Console) error {
 
 	askVipMethodV.PreShow = func() error {
 		c.Gui.Cursor = true
+		vipTextV.SetContent("")
 		return c.setContentByName(titlePanel, vipTitle)
 	}
 
-	maxX, maxY := c.Gui.Size()
-	askVipMethodV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8+2)
+	setLocation(askVipMethodV, 3)
 	c.AddElement(askVipMethodPanel, askVipMethodV)
 
-	vipV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+5)
+	setLocation(vipV, 3)
 	c.AddElement(vipPanel, vipV)
 
 	vipTextV.FgColor = gocui.ColorRed
 	vipTextV.Focus = false
-	vipTextV.SetLocation(maxX/8, maxY/8+6, maxX/8*7, maxY/8+8)
+	vipTextV.Wrap = true
+	setLocation(vipTextV, 0)
 	c.AddElement(vipTextPanel, vipTextV)
 
 	return nil
