@@ -1675,6 +1675,12 @@ func addVIPPanel(c *Console) error {
 			vipTextV.SetContent(fmt.Sprintf("Invalid VIP: %s", vip))
 			return nil
 		}
+
+		if vip != "" && vip == mgmtNetwork.IP {
+			vipTextV.SetContent("VIP must not be the same as management NIC's IP")
+			return nil
+		}
+
 		c.config.Vip = vip
 		c.config.VipHwAddr = ""
 
