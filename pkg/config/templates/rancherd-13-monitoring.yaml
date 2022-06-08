@@ -39,6 +39,13 @@ resources:
           type: pvc
           accessModes:
           - ReadWriteOnce
+        resources:
+          limits:
+            cpu: 200m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
       prometheus:
         prometheusSpec:
           evaluationInterval: 1m
