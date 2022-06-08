@@ -32,13 +32,6 @@ resources:
       alertmanager:
         enabled: false
       grafana:
-        persistence:
-          enabled: true
-          size: "10"
-          storageClassName: longhorn
-          type: pvc
-          accessModes:
-          - ReadWriteOnce
       prometheus:
         prometheusSpec:
           evaluationInterval: 1m
