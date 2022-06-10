@@ -69,7 +69,15 @@ func (c *Console) layoutDashboard(g *gocui.Gui) error {
 		v.Wrap = true
 		go syncManagementURL(context.Background(), g)
 	}
-	if v, err := g.SetView("status", maxX/2-40, 14, maxX/2+40, 18); err != nil {
+	if v, err := g.SetView("nodeIP", maxX/2-40, 14, maxX/2+40, 18); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Frame = false
+		v.Wrap = true
+		go syncNodeIP(context.Background(), g)
+	}
+	if v, err := g.SetView("status", maxX/2-40, 18, maxX/2+40, 22); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -247,6 +255,65 @@ func getVIP() string {
 	}
 
 	return outStr
+}
+
+func syncNodeIP(ctx context.Context, g *gocui.Gui) {
+	// sync IP at the beginning
+	doSyncNodeIP(g)
+
+	syncDuration := 30 * time.Second
+	ticker := time.NewTicker(syncDuration)
+	go func() {
+		<-ctx.Done()
+		ticker.Stop()
+	}()
+	for range ticker.C {
+		doSyncNodeIP(g)
+	}
+}
+
+func doSyncNodeIP(g *gocui.Gui) {
+	nodeIP := getNodeIP()
+	g.Update(func(g *gocui.Gui) error {
+		v, err := g.View("nodeIP")
+		if err != nil {
+			return err
+		}
+		v.Clear()
+		fmt.Fprintf(v, "Node IP: \n\n%s", nodeIP)
+		return nil
+	})
+}
+
+func getNodeIP() string {
+	var (
+		cmd     string
+		address string
+		out     []byte
+		err     error
+		device  string
+	)
+
+	// find the IP from default route
+	cmd = `ip -4 -json route show default | jq -e -j '.[0]["dev"]'`
+	out, err = exec.Command("/bin/sh", "-c", cmd).Output()
+	device = string(out)
+	if err != nil || device == "" {
+		logrus.Infof("default gateway is not existing. Fallback to harvester-mgmt")
+		// find the IP from harvester-mgmt
+		device = "harvester-mgmt"
+	}
+
+	// get device primary/first IPv4 address
+	cmd = fmt.Sprintf(`ip -4 -json address show dev %s | jq -e -j '.[0]["addr_info"][0]["local"]'`, device)
+	out, err = exec.Command("/bin/sh", "-c", cmd).Output()
+	address = string(out)
+	if err != nil || address == "" {
+		logrus.Errorf("Device %s didn't have IP address", device)
+		return ""
+	}
+
+	return address
 }
 
 func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
