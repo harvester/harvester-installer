@@ -69,15 +69,15 @@ func (c *Console) layoutDashboard(g *gocui.Gui) error {
 		v.Wrap = true
 		go syncManagementURL(context.Background(), g)
 	}
-	if v, err := g.SetView("nodeIP", maxX/2-40, 14, maxX/2+40, 18); err != nil {
+	if v, err := g.SetView("nodeInfo", maxX/2-40, 14, maxX/2+40, 19); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Frame = false
 		v.Wrap = true
-		go syncNodeIP(context.Background(), g)
+		go syncNodeInfo(context.Background(), g)
 	}
-	if v, err := g.SetView("status", maxX/2-40, 18, maxX/2+40, 22); err != nil {
+	if v, err := g.SetView("status", maxX/2-40, 19, maxX/2+40, 23); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -257,9 +257,9 @@ func getVIP() string {
 	return outStr
 }
 
-func syncNodeIP(ctx context.Context, g *gocui.Gui) {
-	// sync IP at the beginning
-	doSyncNodeIP(g)
+func syncNodeInfo(ctx context.Context, g *gocui.Gui) {
+	// sync info at the beginning
+	doSyncNodeInfo(g)
 
 	syncDuration := 30 * time.Second
 	ticker := time.NewTicker(syncDuration)
@@ -268,31 +268,41 @@ func syncNodeIP(ctx context.Context, g *gocui.Gui) {
 		ticker.Stop()
 	}()
 	for range ticker.C {
-		doSyncNodeIP(g)
+		doSyncNodeInfo(g)
 	}
 }
 
-func doSyncNodeIP(g *gocui.Gui) {
-	nodeIP := getNodeIP()
+func doSyncNodeInfo(g *gocui.Gui) {
+	nodeIP := getNodeInfo()
 	g.Update(func(g *gocui.Gui) error {
-		v, err := g.View("nodeIP")
+		v, err := g.View("nodeInfo")
 		if err != nil {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintf(v, "Node IP: \n\n%s", nodeIP)
+		fmt.Fprintf(v, "Node Info: \n\n%s", nodeIP)
 		return nil
 	})
 }
 
-func getNodeIP() string {
+func getNodeInfo() string {
 	var (
-		cmd     string
-		address string
-		out     []byte
-		err     error
-		device  string
+		cmd      string
+		address  string
+		hostname string
+		out      []byte
+		err      error
+		device   string
 	)
+
+	// find node hostname
+	cmd = `hostname | tr -d '\r\n'`
+	out, err = exec.Command("/bin/sh", "-c", cmd).Output()
+	hostname = string(out)
+	if err != nil || hostname == "" {
+		logrus.Warnf("node didn't have a hostname")
+		hostname = ""
+	}
 
 	// find the IP from default route
 	cmd = `ip -4 -json route show default | jq -e -j '.[0]["dev"]'`
@@ -309,11 +319,11 @@ func getNodeIP() string {
 	out, err = exec.Command("/bin/sh", "-c", cmd).Output()
 	address = string(out)
 	if err != nil || address == "" {
-		logrus.Errorf("Device %s didn't have IP address", device)
-		return ""
+		logrus.Warnf("Device %s didn't have IP address", device)
+		address = ""
 	}
 
-	return address
+	return fmt.Sprintf("Hostname: %s\nIP Address: %s\n", hostname, address)
 }
 
 func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
