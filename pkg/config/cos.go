@@ -21,6 +21,7 @@ const (
 	cosLoginUser         = "rancher"
 	manifestsDirectory   = "/var/lib/rancher/rke2/server/manifests/"
 	canalConfig          = "rke2-canal-config.yaml"
+	corednsConfig        = "rke2-coredns-config.yaml"
 	harvesterConfig      = "harvester-config.yaml"
 	ntpdService          = "systemd-timesyncd"
 	rancherdBootstrapDir = "/etc/rancher/rancherd/config.yaml.d/"
@@ -125,6 +126,19 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			Group:       0,
 		})
 	}
+
+	// coredns
+	corednsHelmChartConfig, err := render(corednsConfig, config)
+	if err != nil {
+		return nil, err
+	}
+	initramfs.Files = append(initramfs.Files, yipSchema.File{
+		Path:        manifestsDirectory + corednsConfig,
+		Content:     corednsHelmChartConfig,
+		Permissions: 0600,
+		Owner:       0,
+		Group:       0,
+	})
 
 	// After network is available
 	afterNetwork := yipSchema.Stage{
