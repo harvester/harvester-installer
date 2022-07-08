@@ -29,6 +29,7 @@ steps:
     ref:
       include:
         - "refs/heads/master"
+        - "refs/heads/v1.0"
     event:
       - push
       - cron
