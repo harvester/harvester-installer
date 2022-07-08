@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	yipSchema "github.com/mudler/yip/pkg/schema"
 	"io"
 	"io/ioutil"
 	"net"
@@ -18,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	yipSchema "github.com/mudler/yip/pkg/schema"
 
 	"github.com/jroimartin/gocui"
 	"github.com/pkg/errors"

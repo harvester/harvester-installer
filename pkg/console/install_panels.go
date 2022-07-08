@@ -843,9 +843,10 @@ func addTokenPanel(c *Console) error {
 			closeThisPage()
 			// booted from install mode, password was already setup as part of install mode
 			// hence we skip password change, and move straight to NTP configuration
-			if alreadyInstalled {
+			/* introducing ability to change password in install mode as well
+			if alreadyInstalled { // can be removed as we want to allow password to be reset
 				return showNext(c, ntpServersPanel)
-			}
+			} */
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
@@ -1811,10 +1812,6 @@ func addNTPServersPanel(c *Console) error {
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		userInputData.HasCheckedNTPServers = false
 		closeThisPage()
-		// suppress password change when in alreadyInstalled mode
-		if alreadyInstalled {
-			return showNext(c, tokenPanel)
-		}
 		return showNext(c, passwordConfirmPanel, passwordPanel)
 	}
 	gotoNextPage := func() error {

@@ -359,7 +359,8 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 		return prettyError(ErrMsgModeUnknown, mode)
 	}
 
-	if cfg.Install.Automatic && cfg.Install.ISOURL == "" && cfg.Install.Mode != config.ModeInstall {
+	// skip this check in alreadyInstalled Mode
+	if !alreadyInstalled && cfg.Install.Automatic && cfg.Install.ISOURL == "" && cfg.Install.Mode != config.ModeInstall {
 		return errors.New(ErrMsgISOURLNotSpecified)
 	}
 

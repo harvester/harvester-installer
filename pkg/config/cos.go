@@ -609,6 +609,10 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 	}
 
 	runtimeConfig.SSHKeys[cosLoginUser] = config.OS.SSHAuthorizedKeys
+	runtimeConfig.Users[cosLoginUser] = yipSchema.User{
+		PasswordHash: config.OS.Password,
+	}
+
 	conf := &yipSchema.YipConfig{
 		Name: "RancherD Configuration",
 		Stages: map[string][]yipSchema.Stage{
