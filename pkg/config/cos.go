@@ -33,6 +33,7 @@ const (
 var (
 	// Following variables are replaced by ldflags
 	RKE2Version            = ""
+	RancherVersion         = ""
 	HarvesterChartVersion  = ""
 	MonitoringChartVersion = ""
 
@@ -164,6 +165,9 @@ func overwriteRootfsStage(config *HarvesterConfig, stage *yipSchema.Stage) error
 func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if config.RuntimeVersion == "" {
 		config.RuntimeVersion = RKE2Version
+	}
+	if config.RancherVersion == "" {
+		config.RancherVersion = RancherVersion
 	}
 	if config.HarvesterChartVersion == "" {
 		config.HarvesterChartVersion = HarvesterChartVersion
@@ -525,6 +529,11 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 		return nil, err
 	}
 
+	resolvedDevPath, err := filepath.EvalSymlinks(devPath)
+	if err != nil {
+		return nil, err
+	}
+
 	yipConfig := yipSchema.YipConfig{
 		Name: "Root partitioning layout",
 		Stages: map[string][]yipSchema.Stage{
@@ -533,7 +542,7 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 					Name: "Root partitioning layout",
 					Layout: yipSchema.Layout{
 						Device: &yipSchema.Device{
-							Path: devPath,
+							Path: resolvedDevPath,
 						},
 						Parts: []yipSchema.Partition{
 							{

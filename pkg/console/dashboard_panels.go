@@ -71,7 +71,15 @@ func (c *Console) layoutDashboard(g *gocui.Gui) error {
 		v.Wrap = true
 		go syncManagementURL(context.Background(), g)
 	}
-	if v, err := g.SetView("status", maxX/2-40, 14, maxX/2+40, 18); err != nil {
+	if v, err := g.SetView("nodeInfo", maxX/2-40, 14, maxX/2+40, 19); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Frame = false
+		v.Wrap = true
+		go syncNodeInfo(context.Background(), g)
+	}
+	if v, err := g.SetView("status", maxX/2-40, 19, maxX/2+40, 23); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -249,6 +257,75 @@ func getVIP() string {
 	}
 
 	return outStr
+}
+
+func syncNodeInfo(ctx context.Context, g *gocui.Gui) {
+	// sync info at the beginning
+	doSyncNodeInfo(g)
+
+	syncDuration := 30 * time.Second
+	ticker := time.NewTicker(syncDuration)
+	go func() {
+		<-ctx.Done()
+		ticker.Stop()
+	}()
+	for range ticker.C {
+		doSyncNodeInfo(g)
+	}
+}
+
+func doSyncNodeInfo(g *gocui.Gui) {
+	nodeIP := getNodeInfo()
+	g.Update(func(g *gocui.Gui) error {
+		v, err := g.View("nodeInfo")
+		if err != nil {
+			return err
+		}
+		v.Clear()
+		fmt.Fprintf(v, "Node Info: \n\n%s", nodeIP)
+		return nil
+	})
+}
+
+func getNodeInfo() string {
+	var (
+		cmd      string
+		address  string
+		hostname string
+		out      []byte
+		err      error
+		device   string
+	)
+
+	// find node hostname
+	cmd = `hostname | tr -d '\r\n'`
+	out, err = exec.Command("/bin/sh", "-c", cmd).Output()
+	hostname = string(out)
+	if err != nil || hostname == "" {
+		logrus.Warnf("node didn't have a hostname")
+		hostname = ""
+	}
+
+	// find the IP from default route
+	cmd = `ip -4 -json route show default | jq -e -j '.[0]["dev"]'`
+	out, err = exec.Command("/bin/sh", "-c", cmd).Output()
+	device = string(out)
+	if err != nil || device == "" {
+		logrus.Infof("default gateway is not existing. Fallback to harvester-mgmt")
+		// find the IP from harvester-mgmt
+		device = "harvester-mgmt"
+	}
+
+	// get device primary/first IPv4 address
+	cmd = fmt.Sprintf(`ip -4 -json address show dev %s | jq -e -j '.[0]["addr_info"][0]["local"]'`, device)
+	out, err = exec.Command("/bin/sh", "-c", cmd).Output()
+	address = string(out)
+	if err != nil || address == "" {
+		logrus.Warnf("Device %s didn't have IP address", device)
+		address = ""
+	}
+
+	return fmt.Sprintf("Hostname: %s\nIP Address: %s\n", hostname, address)
 }
 
 func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
