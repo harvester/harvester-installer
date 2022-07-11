@@ -428,23 +428,16 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
 	env = append(env, fmt.Sprintf("HARVESTER_INSTALLATION_LOG=%s", defaultLogFilePath))
 
-	if hvstConfig.ShouldCreateDataPartitionOnOsDisk() {
-		// Use custom layout (which also creates Longhorn partition) when needed
-		cosPartLayout, err := config.CreateRootPartitioningLayout(hvstConfig.Install.Device)
-		if err != nil {
-			return err
-		}
-		cosPartLayoutFile, err := saveTemp(cosPartLayout, "part-layout")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(cosPartLayoutFile)
-		env = append(env, fmt.Sprintf("ELEMENTAL_PARTITION_LAYOUT=%s", cosPartLayoutFile))
+	cosPartLayoutFile, diskPartitionEnv, err := partitionDisks(hvstConfig)
+	if err != nil {
+		return err
 	}
 
-	if hvstConfig.DataDisk != "" {
-		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
+	if cosPartLayoutFile != "" {
+		defer os.Remove(cosPartLayoutFile)
 	}
+
+	env = append(env, diskPartitionEnv...)
 
 	// Apply a dummy route to ensure rke2 can extract the images
 	if installModeOnly {
@@ -833,4 +826,28 @@ func configureInstalledNode(ctx context.Context, g *gocui.Gui, hvstConfig *confi
 		printToPanel(g, fmt.Sprintf("error restarting core services: %v", err), installPanel)
 	}
 	return err
+}
+
+func partitionDisks(hvstConfig *config.HarvesterConfig) (string, []string, error) {
+	var env []string
+	var cosPartLayoutFile string
+
+	if hvstConfig.ShouldCreateDataPartitionOnOsDisk() {
+		// Use custom layout (which also creates Longhorn partition) when needed
+		cosPartLayout, err := config.CreateRootPartitioningLayout(hvstConfig.Install.Device)
+		if err != nil {
+			return cosPartLayoutFile, env, err
+		}
+		cosPartLayoutFile, err = saveTemp(cosPartLayout, "part-layout")
+		if err != nil {
+			return cosPartLayoutFile, env, err
+		}
+		env = append(env, fmt.Sprintf("ELEMENTAL_PARTITION_LAYOUT=%s", cosPartLayoutFile))
+	}
+
+	if hvstConfig.DataDisk != "" {
+		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
+	}
+
+	return cosPartLayoutFile, env, nil
 }
