@@ -402,7 +402,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	webhooks.Handle(EventInstallStarted)
 
 	// skip rancherd and network config in the cos config
-	cosConfig, cosConfigFile, hvstConfigFile, err := generateTempConfigFiles(hvstConfig)
+	_, cosConfigFile, hvstConfigFile, err := generateTempConfigFiles(hvstConfig)
 	if err != nil {
 		printToPanel(g, err.Error(), installPanel)
 		return err
@@ -410,12 +410,6 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	defer os.Remove(cosConfigFile)
 	defer os.Remove(hvstConfigFile)
-
-	// we booted in install mode only
-	// lets save rancherd and network config and update 99_custom.yaml for persisting changes
-	if alreadyInstalled {
-		return configureInstalledNode(ctx, g, hvstConfig, cosConfig)
-	}
 
 	hvstConfig.Install.ConfigURL = cosConfigFile
 
@@ -433,16 +427,13 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		return err
 	}
 
-	if cosPartLayoutFile != "" {
-		defer os.Remove(cosPartLayoutFile)
-	}
+	defer os.Remove(cosPartLayoutFile)
 
 	env = append(env, diskPartitionEnv...)
 
 	// Apply a dummy route to ensure rke2 can extract the images
 	if installModeOnly {
-		err = applyDummyRoute()
-		if err != nil {
+		if err := applyDummyRoute(); err != nil {
 			printToPanel(g, fmt.Sprintf("error applying a fake default route during installOnlyMode: %v", err), installPanel)
 			return err
 		}
@@ -812,10 +803,23 @@ func generateTempConfigFiles(hvstConfig *config.HarvesterConfig) (*yipSchema.Yip
 	return nil, cosConfigFile, hvstConfigFile, err
 }
 
-func configureInstalledNode(ctx context.Context, g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipSchema.YipConfig) error {
+func configureInstalledNode(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks RendererWebhooks) error {
 	// copy cosConfigFile
 	// copy hvstConfigFile and break execution here
-	err := applyRancherdConfig(ctx, g, hvstConfig, cosConfig)
+	ctx := context.TODO()
+	webhooks.Handle(EventInstallStarted)
+
+	// skip rancherd and network config in the cos config
+	cosConfig, cosConfigFile, hvstConfigFile, err := generateTempConfigFiles(hvstConfig)
+	if err != nil {
+		printToPanel(g, err.Error(), installPanel)
+		return err
+	}
+
+	defer os.Remove(cosConfigFile)
+	defer os.Remove(hvstConfigFile)
+
+	err = applyRancherdConfig(ctx, g, hvstConfig, cosConfig)
 	if err != nil {
 		printToPanel(g, fmt.Sprintf("error applying rancherd config :%v", err), installPanel)
 		return err

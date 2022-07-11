@@ -1633,7 +1633,11 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, fmt.Sprintf("invalid webhook: %s", err), installPanel)
 			}
 
-			doInstall(c.Gui, c.config, webhooks)
+			if alreadyInstalled {
+				configureInstalledNode(c.Gui, c.config, webhooks)
+			} else {
+				doInstall(c.Gui, c.config, webhooks)
+			}
 		}()
 		return c.setContentByName(footerPanel, "")
 	}
