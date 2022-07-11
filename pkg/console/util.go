@@ -402,39 +402,19 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	webhooks.Handle(EventInstallStarted)
 
 	// skip rancherd and network config in the cos config
-	cosConfig, err := config.ConvertToCOS(hvstConfig, installModeOnly)
+	cosConfig, cosConfigFile, hvstConfigFile, err := generateTempConfigFiles(hvstConfig)
 	if err != nil {
 		printToPanel(g, err.Error(), installPanel)
 		return err
 	}
-	cosConfigFile, err := saveTemp(cosConfig, "cos")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(cosConfigFile)
 
-	hvstConfigFile, err := saveTemp(hvstConfig, "harvester")
-	if err != nil {
-		return err
-	}
+	defer os.Remove(cosConfigFile)
 	defer os.Remove(hvstConfigFile)
 
 	// we booted in install mode only
 	// lets save rancherd and network config and update 99_custom.yaml for persisting changes
 	if alreadyInstalled {
-		// copy cosConfigFile
-		// copy hvstConfigFile and break execution here
-		err = applyRancherdConfig(ctx, g, hvstConfig, cosConfig)
-		if err != nil {
-			printToPanel(g, fmt.Sprintf("error applying rancherd config :%v", err), installPanel)
-			return err
-		}
-
-		err = restartCoreServices()
-		if err != nil {
-			printToPanel(g, fmt.Sprintf("error restarting core services: %v", err), installPanel)
-		}
-		return err
+		return configureInstalledNode(ctx, g, hvstConfig, cosConfig)
 	}
 
 	hvstConfig.Install.ConfigURL = cosConfigFile
@@ -818,5 +798,39 @@ func applyDummyRoute() error {
 func restartCoreServices() error {
 	cmd := exec.Command("/usr/sbin/harv-restart-services")
 	_, err := cmd.Output()
+	return err
+}
+
+func generateTempConfigFiles(hvstConfig *config.HarvesterConfig) (*yipSchema.YipConfig, string, string, error) {
+	cosConfig, err := config.ConvertToCOS(hvstConfig, installModeOnly)
+	if err != nil {
+		return nil, "", "", err
+	}
+	cosConfigFile, err := saveTemp(cosConfig, "cos")
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	hvstConfigFile, err := saveTemp(hvstConfig, "harvester")
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return nil, cosConfigFile, hvstConfigFile, err
+}
+
+func configureInstalledNode(ctx context.Context, g *gocui.Gui, hvstConfig *config.HarvesterConfig, cosConfig *yipSchema.YipConfig) error {
+	// copy cosConfigFile
+	// copy hvstConfigFile and break execution here
+	err := applyRancherdConfig(ctx, g, hvstConfig, cosConfig)
+	if err != nil {
+		printToPanel(g, fmt.Sprintf("error applying rancherd config :%v", err), installPanel)
+		return err
+	}
+
+	err = restartCoreServices()
+	if err != nil {
+		printToPanel(g, fmt.Sprintf("error restarting core services: %v", err), installPanel)
+	}
 	return err
 }
