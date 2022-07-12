@@ -42,7 +42,7 @@ RUN mkdir /usr/tmp && \
 COPY --from=luet /usr/bin/luet /usr/bin/luet
 COPY --from=makeiso /usr/bin/luet-makeiso /usr/bin/luet-makeiso
 
-ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS
+ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS BUILD_QCOW
 ENV DAPPER_SOURCE /go/src/github.com/harvester/harvester-installer/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
