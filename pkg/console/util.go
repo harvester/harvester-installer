@@ -95,6 +95,7 @@ func validatePingServerURL(url string) error {
 	})
 }
 
+//gocyclo:ignore
 func validateNTPServers(ntpServerList []string) error {
 	for _, ntpServer := range ntpServerList {
 		var err error
@@ -397,6 +398,7 @@ func saveTemp(obj interface{}, prefix string) (string, error) {
 	return tempFile.Name(), nil
 }
 
+//gocyclo:ignore
 func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks RendererWebhooks) error {
 	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
