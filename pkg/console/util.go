@@ -408,8 +408,10 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		return err
 	}
 
-	defer os.Remove(cosConfigFile)
-	defer os.Remove(hvstConfigFile)
+	// for debug
+	saveTemp(hvstConfig, "original")
+	//defer os.Remove(cosConfigFile)
+	//defer os.Remove(hvstConfigFile)
 
 	hvstConfig.Install.ConfigURL = cosConfigFile
 
@@ -702,7 +704,7 @@ func generateTempConfigFiles(hvstConfig *config.HarvesterConfig) (*yipSchema.Yip
 		return nil, "", "", err
 	}
 
-	return nil, cosConfigFile, hvstConfigFile, err
+	return cosConfig, cosConfigFile, hvstConfigFile, err
 }
 
 func partitionDisks(hvstConfig *config.HarvesterConfig) (string, []string, error) {

@@ -1,9 +1,10 @@
 package config
 
 import (
-	yipSchema "github.com/mudler/yip/pkg/schema"
 	"strings"
 	"testing"
+
+	yipSchema "github.com/mudler/yip/pkg/schema"
 
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/stretchr/testify/assert"
@@ -139,4 +140,39 @@ func Test_GenerateRancherdConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, yipConfig.Stages["live"][0].TimeSyncd["NTP"], strings.Join(conf.OS.NTPServers, " "))
 	assert.Contains(t, yipConfig.Stages["live"][0].Commands, "wicked ifreload all")
+}
+
+func TestConvertToCos_VerifyNetworkCreateMode(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	assert.NoError(t, err)
+	yipConfig, err := ConvertToCOS(conf, false)
+	assert.NoError(t, err)
+
+	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "sed -i 's/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS=\"8.8.8.8 1.1.1.1\"/' /etc/sysconfig/network/config")
+	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /etc/sysconfig/network/ifroute-harvester-mgmt")
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/rancher/rancherd/config.yaml"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-harvester-mgmt"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens0"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens3"))
+
+}
+
+func TestConvertToCos_VerifyNetworkInstallMode(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	assert.NoError(t, err)
+	yipConfig, err := ConvertToCOS(conf, true)
+	assert.NoError(t, err)
+	assert.NotContains(t, yipConfig.Stages["initramfs"][0].Commands, "sed -i 's/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS=\"8.8.8.8 1.1.1.1\"/' /etc/sysconfig/network/config")
+	assert.NotContains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /etc/sysconfig/network/ifroute-harvester-mgmt")
+	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens0"))
+	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens3"))
+}
+
+func containsFile(files []yipSchema.File, fileName string) bool {
+	for _, v := range files {
+		if v.Path == fileName {
+			return true
+		}
+	}
+	return false
 }

@@ -43,6 +43,11 @@ var (
 
 // ConvertToCOS converts HarvesterConfig to cOS configuration.
 func ConvertToCOS(config *HarvesterConfig, installModeOnly bool) (*yipSchema.YipConfig, error) {
+
+	cosConfig := &yipSchema.YipConfig{
+		Name:   "Harvester Configuration",
+		Stages: make(map[string][]yipSchema.Stage),
+	}
 	cfg, err := config.DeepCopy()
 	if err != nil {
 		return nil, err
@@ -82,15 +87,6 @@ func ConvertToCOS(config *HarvesterConfig, installModeOnly bool) (*yipSchema.Yip
 	}
 
 	initramfs.Environment = cfg.OS.Environment
-
-	cosConfig := &yipSchema.YipConfig{
-		Name: "Harvester Configuration",
-		Stages: map[string][]yipSchema.Stage{
-			"rootfs":    {rootfs},
-			"initramfs": {initramfs},
-			//"network":   {afterNetwork},
-		},
-	}
 
 	// if booted in installMode then we ignore this
 	// and allow configuration to be used
@@ -145,6 +141,9 @@ func ConvertToCOS(config *HarvesterConfig, installModeOnly bool) (*yipSchema.Yip
 		afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
 		cosConfig.Stages["network"] = []yipSchema.Stage{afterNetwork}
 	}
+
+	cosConfig.Stages["rootfs"] = []yipSchema.Stage{rootfs}
+	cosConfig.Stages["initramfs"] = []yipSchema.Stage{initramfs}
 
 	return cosConfig, nil
 }
