@@ -58,6 +58,15 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
+		// if already installed then lets check if cloud init allows us to provision
+		if alreadyInstalled {
+			cloudConfig, err := config.ReadUserDataConfig()
+			if err == nil && cloudConfig.Install.Automatic {
+				c.config.Merge(cloudConfig)
+				initPanel = installPanel
+			}
+		}
+
 		if cfg, err := config.ReadConfig(); err == nil {
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
@@ -961,7 +970,6 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	setupNetwork := func() ([]byte, error) {
-		//TODO: In Install Only mode, during runtime additional logic needed in this panel to ensure that the file is written to persistent config
 		return applyNetworks(
 			map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
 			c.config.Hostname,
@@ -1554,6 +1562,10 @@ func addInstallPanel(c *Console) error {
 	installV := widgets.NewPanel(c.Gui, installPanel)
 	installV.PreShow = func() error {
 		go func() {
+			// in alreadyInstalled mode and auto configuration, the network is not available
+			if alreadyInstalled && c.config.Automatic == true && c.config.Networks[config.MgmtInterfaceName].Method == "dhcp" {
+				configureInstallModeDHCP(c)
+			}
 			logrus.Info("Local config: ", c.config)
 			if c.config.Install.ConfigURL != "" {
 				printToPanel(c.Gui, fmt.Sprintf("Fetching %s...", c.config.Install.ConfigURL), installPanel)
@@ -2022,4 +2034,45 @@ func addDNSServersPanel(c *Console) error {
 	c.AddElement(dnsServersPanel, dnsServersV)
 
 	return nil
+}
+
+func configureInstallModeDHCP(c *Console) {
+	netDef := c.config.Install.Networks[config.MgmtInterfaceName]
+	// copy settings before application //
+	mgmtNetwork.Interfaces = netDef.Interfaces
+	if netDef.BondOptions == nil {
+		mgmtNetwork.BondOptions = map[string]string{
+			"mode":   config.BondModeBalanceTLB,
+			"miimon": "100",
+		}
+	} else {
+		mgmtNetwork.BondOptions = netDef.BondOptions
+	}
+	mgmtNetwork.Method = netDef.Method
+
+	_, err := applyNetworks(
+		map[string]config.Network{config.MgmtInterfaceName: mgmtNetwork},
+		c.config.Hostname,
+	)
+	if err != nil {
+		logrus.Error(err)
+		printToPanel(c.Gui, fmt.Sprintf("error applying network configuration: %s", err.Error()), installPanel)
+	}
+
+	_, err = getIPThroughDHCP(config.MgmtInterfaceName)
+	if err != nil {
+		printToPanel(c.Gui, fmt.Sprintf("error getting DHCP address: %s", err.Error()), installPanel)
+	}
+
+	// if need vip via dhcp
+	if c.config.Install.VipMode == config.NetworkMethodDHCP {
+		vip, err := getVipThroughDHCP(config.MgmtInterfaceName)
+		if err != nil {
+			printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
+			return
+		}
+		c.config.Vip = vip.ipv4Addr
+		c.config.VipHwAddr = vip.hwAddr
+	}
+
 }
