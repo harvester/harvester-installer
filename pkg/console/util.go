@@ -197,8 +197,21 @@ func enableNTPServers(ntpServerList []string) error {
 	return nil
 }
 
+func _removeDuplicateDNSEntry(dnsServerList []string) []string {
+	allKeys := make(map[string]bool)
+	var list []string
+	for _, item := range dnsServerList {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
+
 func updateDNSServersAndReloadNetConfig(dnsServerList []string) error {
-	dnsServers := strings.Join(dnsServerList, " ")
+	duplicatesRemovedDNSList := _removeDuplicateDNSEntry(dnsServerList)
+	dnsServers := strings.Join(duplicatesRemovedDNSList, " ")
 	output, err := exec.Command("sed", "-i", fmt.Sprintf(`s/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS="%s"/`, dnsServers), "/etc/sysconfig/network/config").CombinedOutput()
 	if err != nil {
 		logrus.Error(err, string(output))

@@ -181,6 +181,15 @@ func TestValidateNTPServers(t *testing.T) {
 	close(quit)
 }
 
+func TestDuplicateDNSEntriesGetRemoved(t *testing.T) {
+	dnsTestListWithDuplicates := []string{"1.1.1.1", "1.1.1.1", "8.8.8.8", "8.8.8.8", "8.8.4.4"}
+	resultWithDuplicates := _removeDuplicateDNSEntry(dnsTestListWithDuplicates)
+	assert.Equal(t, 3, len(resultWithDuplicates))
+	dnsTestListNoDuplicates := []string{"1.1.1.1", "8.8.8.8", "8.8.4.4"}
+	resultNoDuplicates := _removeDuplicateDNSEntry(dnsTestListNoDuplicates)
+	assert.Equal(t, 3, len(resultNoDuplicates))
+}
+
 func startMockNTPServers(quit chan interface{}) ([]string, error) {
 	ntpServers := []string{}
 	for i := 0; i < 2; i++ {
