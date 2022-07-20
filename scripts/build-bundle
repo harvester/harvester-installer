@@ -32,6 +32,13 @@ if [ ! -d ${harvester_path} ];then
     harvester_path=/tmp/harvester
 fi
 
+# Revert harvester chart version patch to clean dirty git status
+reset_charts() {
+  pushd ${harvester_path}
+  git checkout -- ./deploy/charts
+  popd
+}
+
 # This must be placed after cloning `harvester/harvester`` in case `make build-bundle` is run directly.
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 
@@ -55,12 +62,12 @@ tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
+# Use offline bundle cache
 if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
- cp -rf /bundle/* ${BUNDLE_DIR}/
- exit 0
+  cp -rf /bundle/* ${BUNDLE_DIR}/
+  reset_charts
+  exit 0
 fi
-
-# Offline images
 
 # Rancherd bootstrap images
 image_list_file=${RANCHERD_IMAGES_DIR}/rancherd-bootstrap-images-${VERSION}.txt
@@ -145,7 +152,4 @@ if [ "$upgrade_image_tag" != "$HARVESTER_VERSION" ]; then
   add_image_list_to_metadata "common" $BUNDLE_DIR $image_list_file "${image_archive}.zst"
 fi
 
-# Revert harvester chart version patch to clean dirty git status
-pushd ${harvester_path}
-git checkout -- ./deploy/charts
-popd
+reset_charts
