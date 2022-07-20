@@ -3,6 +3,7 @@ docker.io/rancher/fleet:v0.3.9
 docker.io/rancher/gitjob:v0.1.26
 docker.io/rancher/kubectl:v1.20.2
 docker.io/rancher/mirrored-grafana-grafana:7.5.11
+docker.io/rancher/mirrored-ingress-nginx-kube-webhook-certgen:v1.0
 docker.io/rancher/mirrored-ingress-nginx-kube-webhook-certgen:v1.1.1
 docker.io/rancher/mirrored-kiwigrid-k8s-sidecar:1.12.3
 docker.io/rancher/mirrored-kube-state-metrics-kube-state-metrics:v2.2.0
