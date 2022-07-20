@@ -151,8 +151,11 @@ preload_rke2_images()
     fi
 
     RKE2_IMAGES_DIR="/var/lib/rancher/rke2/agent/images"
+    RKE2_IMAGES_LISTS_DIR="/tmp/images-lists"
     mkdir -p $TARGET/$RKE2_IMAGES_DIR
+    mkdir -p $TARGET/$RKE2_IMAGES_LISTS_DIR
     mount --bind ${ISOMNT}/bundle/harvester/images $TARGET/$RKE2_IMAGES_DIR
+    mount --bind ${ISOMNT}/bundle/harvester/images-lists $TARGET/$RKE2_IMAGES_LISTS_DIR
 
     cd $TARGET
     mount --bind /dev dev
@@ -192,7 +195,7 @@ preload_rke2_images()
       done
 
       # make sure all preloading images are ready
-      for i in /var/lib/rancher/rke2/agent/images/*.txt; do
+      for i in /tmp/images-lists/*.txt; do
         stdbuf -oL ctr-check-images.sh $i
       done
 
@@ -212,6 +215,7 @@ EOF
     umount proc
     cd - &> /dev/null
     umount ${TARGET}/${RKE2_IMAGES_DIR}
+    umount ${TARGET}/${RKE2_IMAGES_LISTS_DIR}
 }
 
 preload_rancherd_images()

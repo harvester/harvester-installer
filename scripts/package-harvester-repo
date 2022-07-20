@@ -6,8 +6,10 @@ PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
 PACKAGE_HARVESTER_REPO_DIR="${TOP_DIR}/package/harvester-repo"
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 IMAGES_DIR="${BUNDLE_DIR}/harvester/images"
+IMAGES_LISTS_DIR="${BUNDLE_DIR}/harvester/images-lists"
 
 mkdir -p ${IMAGES_DIR}
+mkdir -p ${IMAGES_LISTS_DIR}
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/lib/image
 
@@ -16,7 +18,7 @@ cd ${PACKAGE_HARVESTER_REPO_DIR}
 CLUSTER_REPO_IMAGE=rancher/harvester-cluster-repo:${VERSION}
 docker build -t ${CLUSTER_REPO_IMAGE} .
 
-repo_image_list_file="${IMAGES_DIR}/harvester-repo-images-${VERSION}.txt"
+repo_image_list_file="${IMAGES_LISTS_DIR}/harvester-repo-images-${VERSION}.txt"
 repo_image_archive="${IMAGES_DIR}/harvester-repo-images-${VERSION}.tar"
 
 # Save the image
