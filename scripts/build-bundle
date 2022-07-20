@@ -18,10 +18,12 @@ source ${SCRIPTS_DIR}/lib/image
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 CHARTS_DIR="${PACKAGE_HARVESTER_REPO_DIR}/charts"
 IMAGES_DIR="${BUNDLE_DIR}/harvester/images"
+IMAGES_LISTS_DIR="${BUNDLE_DIR}/harvester/images-lists"
 RANCHERD_IMAGES_DIR="${BUNDLE_DIR}/rancherd/images"
 
 mkdir -p ${CHARTS_DIR}
 mkdir -p ${IMAGES_DIR}
+mkdir -p ${IMAGES_LISTS_DIR}
 mkdir -p ${RANCHERD_IMAGES_DIR}
 
 # Prepare Harvester chart
@@ -77,26 +79,21 @@ sed -i "s,\$RKE2_VERSION,${RKE2_VERSION_NORMALIZED}," ${image_list_file}
 save_image "agent" $BUNDLE_DIR ${image_list_file} ${RANCHERD_IMAGES_DIR}
 
 # Rancher images
-image_list_file=${IMAGES_DIR}/rancher-images-${RANCHER_VERSION}.txt
+image_list_file=${IMAGES_LISTS_DIR}/rancher-images-${RANCHER_VERSION}.txt
 cp ${SCRIPTS_DIR}/images/rancher-images.txt $image_list_file
 save_image "common" $BUNDLE_DIR $image_list_file ${IMAGES_DIR}
 
 # RKE2 images
 RKE2_IMAGES_URL="${RKE2_IMAGE_REPO}${RKE2_VERSION}"
-image_list_file="${IMAGES_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
+image_list_file="${IMAGES_LISTS_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
 image_archive="${IMAGES_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.tar.zst"
 get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" $image_list_file
 get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" $image_archive
 add_image_list_to_metadata "rke2" $BUNDLE_DIR $image_list_file $image_archive
 
 # exclude SR-IOV images
-image_list_file="${IMAGES_DIR}/rke2-images-multus.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
-# save_image_list "rke2-images-multus" "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.txt" ${IMAGES_DIR}/rke2-images-multus.linux-amd64.txt
-# Workaround for https://github.com/rancher/rke2/issues/2229
-cat > $image_list_file <<EOF
-docker.io/rancher/hardened-cni-plugins:v0.9.1-build20211119
-docker.io/rancher/hardened-multus-cni:v3.7.1-build20211119
-EOF
+image_list_file="${IMAGES_LISTS_DIR}/rke2-images-multus.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
+save_image_list "rke2-images-multus" "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.txt" $image_list_file
 
 save_image "rke2" $BUNDLE_DIR $image_list_file ${IMAGES_DIR}
 
@@ -135,8 +132,8 @@ awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}else if(NF=
 sort -u "${image_list_file}.tmp" | \
 grep -Ev "local-path-provisioner|library-traefik|klipper-lb|multus" >"${image_list_file}"
 
-cp ${image_list_file} ${IMAGES_DIR}
-save_image "common" $BUNDLE_DIR ${IMAGES_DIR}/${image_list_file} ${IMAGES_DIR}
+cp ${image_list_file} ${IMAGES_LISTS_DIR}
+save_image "common" $BUNDLE_DIR ${IMAGES_LISTS_DIR}/${image_list_file} ${IMAGES_DIR}
 
 # Tag harvester-upgrade:master-head to harvester-upgrade:<version> and save the image to an archive
 # This makes it possible to upgrade a cluster with a master ISO.
@@ -144,7 +141,7 @@ upgrade_image_repo=$(yq -e e '.upgrade.image.repository' $values_file)
 upgrade_image_tag=$(yq -e e '.upgrade.image.tag' $values_file)
 if [ "$upgrade_image_tag" != "$HARVESTER_VERSION" ]; then
   docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "${upgrade_image_repo}:${HARVESTER_VERSION}"
-  image_list_file="${IMAGES_DIR}/harvester-extra-${VERSION}.txt"
+  image_list_file="${IMAGES_LISTS_DIR}/harvester-extra-${VERSION}.txt"
   image_archive="${IMAGES_DIR}/harvester-extra-${VERSION}.tar"
   echo "${upgrade_image_repo}:${HARVESTER_VERSION}" | awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}}' > ${image_list_file}
   docker image save -o $image_archive $(<$image_list_file)
