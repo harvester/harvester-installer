@@ -60,9 +60,8 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 
 		// if already installed then lets check if cloud init allows us to provision
 		if alreadyInstalled {
-			cloudConfig, err := config.ReadUserDataConfig()
-			if err == nil && cloudConfig.Install.Automatic {
-				c.config.Merge(cloudConfig)
+			err = mergeCloudInit(c.config)
+			if err == nil {
 				initPanel = installPanel
 			}
 		}
@@ -2075,4 +2074,22 @@ func configureInstallModeDHCP(c *Console) {
 		c.config.VipHwAddr = vip.hwAddr
 	}
 
+}
+
+func mergeCloudInit(c *config.HarvesterConfig) error {
+	cloudConfig, err := config.ReadUserDataConfig()
+	if err != nil {
+		return err
+	}
+	if cloudConfig.Install.Automatic {
+		c.Merge(cloudConfig)
+		if cloudConfig.OS.Hostname != "" {
+			c.OS.Hostname = cloudConfig.OS.Hostname
+		}
+		if cloudConfig.OS.Password != "" {
+			c.OS.Password = cloudConfig.OS.Password
+		}
+	}
+
+	return nil
 }
