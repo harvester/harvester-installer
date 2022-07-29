@@ -6,4 +6,5 @@ rancherValues:
   features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
   bootstrapPassword: admin
+  hostPort: 0
 rancherInstallerImage: rancher/system-agent-installer-rancher:v2.6.4-harvester3
