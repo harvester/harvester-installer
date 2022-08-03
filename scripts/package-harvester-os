@@ -5,6 +5,8 @@ ARTIFACTS_DIR="${TOP_DIR}/dist/artifacts"
 SCRIPTS_DIR="${TOP_DIR}/scripts"
 PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
+IMAGES_LISTS_DIR="${BUNDLE_DIR}/harvester/images-lists"
+RANCHERD_IMAGES_DIR="${BUNDLE_DIR}/rancherd/images"
 
 mkdir -p ${ARTIFACTS_DIR}
 
@@ -99,3 +101,10 @@ spec:
   releaseDate: '${RELEASE_DATE}'
 EOF
 fi
+
+# Collect image lists to a tarball "image-lists.tar.gz"
+OUTPUT_DIR="$TOP_DIR/dist/artifacts/image-lists"
+mkdir -p $OUTPUT_DIR
+find $IMAGES_LISTS_DIR -name "*.txt" -exec cp {} $OUTPUT_DIR \;
+find $RANCHERD_IMAGES_DIR -name "*.txt" -exec cp {} $OUTPUT_DIR \;
+tar zcvf $TOP_DIR/dist/artifacts/image-lists.tar.gz -C $TOP_DIR/dist/artifacts image-lists && rm -rf $OUTPUT_DIR
