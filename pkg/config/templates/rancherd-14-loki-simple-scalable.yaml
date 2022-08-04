@@ -1,0 +1,11 @@
+resources:
+  - apiVersion: managment.cattle.io/v3
+    kind: ManagedChart
+    metadata:
+      name: loki-simple-scalable
+      namespace: cattle-monitoring-system
+    spec:
+      chart: loki-simple-scalable
+      releaseName: loki-simple-scalable
+      defaultNamespace: cattle-monitoring-system
+      repoName: harvester-charts

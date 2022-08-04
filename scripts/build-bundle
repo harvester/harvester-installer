@@ -48,6 +48,9 @@ harvester_logging_crd_chart_path=${harvester_path}/deploy/charts/harvester-loggi
 helm package ${harvester_logging_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_logging_crd_chart_path} -d ${CHARTS_DIR}
 
+loki_chart_path=${harvester_path}/deploy/charts/loki-simple-scalable
+helm package ${loki_chart_path} -d ${CHARTS_DIR}
+
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring
 helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
