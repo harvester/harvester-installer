@@ -1,5 +1,5 @@
 resources:
-  - apiVersion: managment.cattle.io/v3
+  - apiVersion: management.cattle.io/v3
     kind: ManagedChart
     metadata:
       name: loki-simple-scalable
@@ -7,5 +7,13 @@ resources:
     spec:
       chart: loki-simple-scalable
       releaseName: loki-simple-scalable
+#      we might want to add this to the cos config eventually, so we can change the version with ldflags
+      version: 1.8.5
       defaultNamespace: cattle-monitoring-system
       repoName: harvester-charts
+      targets:
+        - clusterName: local
+          clusterSelector:
+            matchExpressions:
+              - key: provisioning.cattle.io/unmanaged-system-agent
+                operator: DoesNotExist
