@@ -53,7 +53,7 @@ helm package ${harvester_logging_crd_chart_path} -d ${CHARTS_DIR}
 
 # prepare loki
 helm repo add grafana https://grafana.github.io/helm-charts
-helm pull grafana/loki-stack
+helm pull grafana/loki-stack -d ${CHARTS_DIR}
 
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring

@@ -10,7 +10,7 @@ resources:
       #      we might want to add this to the cos config eventually, so we can change the version with ldflags
       version: 2.6.5
       defaultNamespace: cattle-monitoring-system
-      repoName: grafana
+      repoName: harvester-charts
       targets:
         - clusterName: local
           clusterSelector:
