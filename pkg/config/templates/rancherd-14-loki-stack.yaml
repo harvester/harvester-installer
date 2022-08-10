@@ -17,3 +17,8 @@ resources:
             matchExpressions:
               - key: provisioning.cattle.io/unmanaged-system-agent
                 operator: DoesNotExist
+      values:
+        grafana:
+          enabled: true
+        promtail:
+          enabled: false
