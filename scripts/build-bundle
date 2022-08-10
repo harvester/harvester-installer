@@ -48,8 +48,12 @@ harvester_logging_crd_chart_path=${harvester_path}/deploy/charts/harvester-loggi
 helm package ${harvester_logging_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_logging_crd_chart_path} -d ${CHARTS_DIR}
 
-loki_chart_path=${harvester_path}/deploy/charts/loki-simple-scalable
-helm package ${loki_chart_path} -d ${CHARTS_DIR}
+#loki_chart_path=${harvester_path}/deploy/charts/loki-simple-scalable
+#helm package ${loki_chart_path} -d ${CHARTS_DIR}
+
+# prepare loki
+helm repo add grafana https://grafana.github.io/helm-charts
+helm pull grafana/loki-stack
 
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring
