@@ -11,8 +11,7 @@ cd ${TOP_DIR}
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
     echo "No existed harvester source. Pulling..."
-#    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
-    git clone --branch 'logging-chart' --single-branch --depth 1 https://github.com/joshmeranda/harvester.git ../harvester
+    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
 fi
 
 source ${SCRIPTS_DIR}/version-harvester $harvester_path
@@ -27,6 +26,7 @@ echo "Harvester version: ${HARVESTER_VERSION}"
 echo "Harvester chart version: ${HARVESTER_CHART_VERSION}"
 echo "Rancher version: ${RANCHER_VERSION}"
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
+echo "Rancher logging version: ${LOGGING_VERSION}"
 
 mkdir -p bin
 
@@ -36,7 +36,7 @@ LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$R
            -X github.com/harvester/harvester-installer/pkg/version.HarvesterVersion=$HARVESTER_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.HarvesterChartVersion=$HARVESTER_CHART_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.MonitoringChartVersion=$MONITORING_VERSION
-           -X github.com/harvester/harvester-install/pkg/config.LoggingChartVersion=$LoggingChartVersion
+           -X github.com/harvester/harvester-install/pkg/config.LoggingChartVersion=$LOGGING_VERSION
            $LINKFLAGS"
 
 if [ "$(uname)" = "Linux" ]; then

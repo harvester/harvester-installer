@@ -1,72 +1,103 @@
 resources:
-  - apiVersion: management.cattle.io/v3
-    kind: ManagedChart
-    metadata:
-      name: rancher-logging
-      namespace: fleet-local
-    spec:
-      chart: rancher-logging
-      releaseName: rancher-logging
-      version: {{ .LoggingChartVersion }}
-      defaultNamespace: cattle-monitoring-system
-      repoName: harvester-charts
-      diff:
-        comparePatches:
-          - apiVersion: admissionregistration.k8s.io/v1
-            kind: ValidatingWebhookConfiguration
-            name: rancher-logging-admission
-            operations:
-              - { "op": "remove", "path": "/webhooks" }
-          - apiVersion: admissionregistration.k8s.io/v1
-            kind: MutatingWebhookConfiguration
-            name: rancher-logging-admission
-            operations:
-              - { "op": "remove", "path": "/webhooks" }
-      targets:
-        - clusterName: local
-          clusterSelector:
-            matchExpressions:
-              - key: provisioning.cattle.io/unmanaged-system-agent
-                operator: DoesNotExist
-      values:
-        alertmanager:
-          enabled: false
-        grafana:
-          persistence:
-            enabled: true
-            size: "10"
-            storageClassName: longhorn
-            type: pvc
-            accessModes:
-              - ReadWriteOnce
-        prometheus:
-          prometheusSpec:
-            evaluationInterval: 1m
-            resources:
-              limits:
-                cpu: 1000m
-                memory: 2500Mi
-              requests:
-                cpu: 750m
-                memory: 1750Mi
-            retention: 5d
-            retentionSize: 50GiB
-            scrapeInterval: 1m
-            storageSpec:
-              volumeClaimTemplate:
-                spec:
-                  accessModes:
-                    - ReadWriteOnce
-                  resources:
-                    requests:
-                      storage: 50Gi
-                  storageClassName: longhorn
-                  volumeMode: Filesystem
-        prometheus-node-exporter:
+- apiVersion: management.cattle.io/v3
+  kind: ManagedChart
+  metadata:
+    name: rancher-logging
+    namespace: fleet-local
+  spec:
+    chart: rancher-logging
+    releaseName: rancher-logging
+    version: {{ .LoggingChartVersion }}
+    defaultNamespace: cattle-monitoring-system
+    repoName: harvester-charts
+    diff:
+      comparePatches:
+        - apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingWebhookConfiguration
+          name: rancher-logging-admission
+          operations:
+            - { "op": "remove", "path": "/webhooks" }
+        - apiVersion: admissionregistration.k8s.io/v1
+          kind: MutatingWebhookConfiguration
+          name: rancher-logging-admission
+          operations:
+            - { "op": "remove", "path": "/webhooks" }
+    targets:
+      - clusterName: local
+        clusterSelector:
+          matchExpressions:
+            - key: provisioning.cattle.io/unmanaged-system-agent
+              operator: DoesNotExist
+    values:
+      alertmanager:
+        enabled: false
+      grafana:
+        persistence:
+          enabled: true
+          size: "10"
+          storageClassName: longhorn
+          type: pvc
+          accessModes:
+            - ReadWriteOnce
+      prometheus:
+        prometheusSpec:
+          evaluationInterval: 1m
           resources:
             limits:
-              cpu: 200m
-              memory: 180Mi
+              cpu: 1000m
+              memory: 2500Mi
             requests:
-              cpu: 100m
-              memory: 30Mi
+              cpu: 750m
+              memory: 1750Mi
+          retention: 5d
+          retentionSize: 50GiB
+          scrapeInterval: 1m
+          storageSpec:
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 50Gi
+                storageClassName: longhorn
+                volumeMode: Filesystem
+      prometheus-node-exporter:
+        resources:
+          limits:
+            cpu: 200m
+            memory: 180Mi
+          requests:
+            cpu: 100m
+            memory: 30Mi
+
+- apiVersion: logging.banzaicloud.io/v1beta1
+  kind: ClusterFlow
+  metadata:
+    name: harvester-loki
+    namespace: cattle-monitoring-system
+  spec:
+    match:
+      - select: { }
+    globalOutputRefs:
+      - harvester-loki
+- apiVersion: logging.banzaicloud.io/v1beta1
+  kind: ClusterOutput
+  metadata:
+    name: harvester-loki
+    namespace: cattle-monitoring-system
+  spec:
+    loki:
+      url: http://loki-stack.cattle-monitoring-system.svc:3100
+      extra_labels:
+        logOutput: harvester-loki
+      password:
+        valueFrom:
+          secretKeyRef:
+            name: loki-stack-grafana
+            key: admin-password
+      username:
+        valueFrom:
+          secretKeyRef:
+            name: loki-stack-grafana
+            key: admin-user
