@@ -43,22 +43,22 @@ harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
 
-harvester_logging_chart_path=${harvester_path}/deploy/charts/harvester-logging
-harvester_logging_crd_chart_path=${harvester_path}/deploy/charts/harvester-logging-crd
-helm package ${harvester_logging_chart_path} -d ${CHARTS_DIR}
-helm package ${harvester_logging_crd_chart_path} -d ${CHARTS_DIR}
-
-#loki_chart_path=${harvester_path}/deploy/charts/loki-simple-scalable
-#helm package ${loki_chart_path} -d ${CHARTS_DIR}
+#harvester_logging_chart_path=${harvester_path}/deploy/charts/harvester-logging
+#harvester_logging_crd_chart_path=${harvester_path}/deploy/charts/harvester-logging-crd
+#helm package ${harvester_logging_chart_path} -d ${CHARTS_DIR}
+#helm package ${harvester_logging_crd_chart_path} -d ${CHARTS_DIR}
 
 # prepare loki
-helm repo add grafana https://grafana.github.io/helm-charts
-helm pull grafana/loki-stack -d ${CHARTS_DIR}
+helm pull --repo https://grafana.github.io/helm-charts loki-stack -d ${CHARTS_DIR}
 
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring
 helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
+
+source ${SCRIPTS_DIR}/version-logging
+helm pull https://charts.rancher.io/assets/rancher-logging-crd/rancher-logging-crd-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
+helm pull https://charts.rancher.io/assets/rancher-logging/rancher-logging-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
 
 # make chart sanity check
 tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null

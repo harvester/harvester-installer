@@ -5,9 +5,9 @@ resources:
     name: harvester-logging-crd
     namespace: fleet-local
   spec:
-    chart: harvester-logging-crd
-    releaseName: harvester-logging-crd
-    version: {{ .MonitoringChartVersion }}
+    chart: rancher-logging-crd
+    releaseName: rancher-logging-crd
+    version: {{ .LoggingChartVersion }}
     defaultNamespace: cattle-monitoring-system
     repoName: harvester-charts
     targets:

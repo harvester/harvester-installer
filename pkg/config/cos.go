@@ -36,6 +36,7 @@ var (
 	RancherVersion         = ""
 	HarvesterChartVersion  = ""
 	MonitoringChartVersion = ""
+	LoggingChartVersion    = ""
 
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
@@ -169,6 +170,10 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	}
 	if config.MonitoringChartVersion == "" {
 		config.MonitoringChartVersion = MonitoringChartVersion
+	}
+
+	if config.LoggingChartVersion == "" {
+		config.MonitoringChartVersion = LoggingChartVersion
 	}
 
 	stage.Directories = append(stage.Directories,
@@ -491,9 +496,9 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 	for _, templateName := range []string{
 		"10-harvester.yaml",
 		"11-monitoring-crd.yaml",
+
 		"13-monitoring.yaml",
 
-		//"14-loki-simple-scalable.yaml",
 		"14-loki-stack.yaml",
 
 		"14-logging-crd.yaml",

@@ -2,24 +2,24 @@ resources:
   - apiVersion: management.cattle.io/v3
     kind: ManagedChart
     metadata:
-      name: harvester-logging
+      name: rancher-logging
       namespace: fleet-local
     spec:
-      chart: harvester-logging
-      releaseName: harvester-logging
-      version: {{ .MonitoringChartVersion }}
+      chart: rancher-logging
+      releaseName: rancher-logging
+      version: {{ .LoggingChartVersion }}
       defaultNamespace: cattle-monitoring-system
       repoName: harvester-charts
       diff:
         comparePatches:
           - apiVersion: admissionregistration.k8s.io/v1
             kind: ValidatingWebhookConfiguration
-            name: harvester-logging-admission
+            name: rancher-logging-admission
             operations:
               - { "op": "remove", "path": "/webhooks" }
           - apiVersion: admissionregistration.k8s.io/v1
             kind: MutatingWebhookConfiguration
-            name: harvester-logging-admission
+            name: rancher-logging-admission
             operations:
               - { "op": "remove", "path": "/webhooks" }
       targets:

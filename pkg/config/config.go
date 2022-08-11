@@ -164,6 +164,7 @@ type HarvesterConfig struct {
 	RancherVersion         string                    `json:"rancherVersion,omitempty"`
 	HarvesterChartVersion  string                    `json:"harvesterChartVersion,omitempty"`
 	MonitoringChartVersion string                    `json:"monitoringChartVersion,omitempty"`
+	LoggingChartVersion    string                    `json:"loggingChartVersion,omitempty"`
 	SystemSettings         map[string]string         `json:"systemSettings,omitempty"`
 	ClusterNetworks        map[string]ClusterNetwork `json:"clusterNetworks,omitempty"`
 }

@@ -20,6 +20,7 @@ source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-rancher
+source ${SCRIPTS_DIR}/version-logging
 
 echo "Installer version: ${VERSION}"
 echo "Harvester version: ${HARVESTER_VERSION}"
@@ -35,6 +36,7 @@ LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$R
            -X github.com/harvester/harvester-installer/pkg/version.HarvesterVersion=$HARVESTER_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.HarvesterChartVersion=$HARVESTER_CHART_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.MonitoringChartVersion=$MONITORING_VERSION
+           -X github.com/harvester/harvester-install/pkg/config.LoggingChartVersion=$LoggingChartVersion
            $LINKFLAGS"
 
 if [ "$(uname)" = "Linux" ]; then
