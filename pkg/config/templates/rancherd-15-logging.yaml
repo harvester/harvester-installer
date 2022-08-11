@@ -29,6 +29,7 @@ resources:
             - key: provisioning.cattle.io/unmanaged-system-agent
               operator: DoesNotExist
     values:
+      debug: true
       alertmanager:
         enabled: false
       grafana:
@@ -70,7 +71,6 @@ resources:
           requests:
             cpu: 100m
             memory: 30Mi
-
 - apiVersion: logging.banzaicloud.io/v1beta1
   kind: ClusterFlow
   metadata:
@@ -91,13 +91,13 @@ resources:
       url: http://loki-stack.cattle-monitoring-system.svc:3100
       extra_labels:
         logOutput: harvester-loki
-      password:
-        valueFrom:
-          secretKeyRef:
-            name: loki-stack-grafana
-            key: admin-password
-      username:
-        valueFrom:
-          secretKeyRef:
-            name: loki-stack-grafana
-            key: admin-user
+#      password:
+#        valueFrom:
+#          secretKeyRef:
+#            name: loki-stack-grafana
+#            key: admin-password
+#      username:
+#        valueFrom:
+#          secretKeyRef:
+#            name: loki-stack-grafana
+#            key: admin-user
