@@ -40,10 +40,10 @@ ${SCRIPTS_DIR}/patch-harvester ${TOP_DIR}/../harvester
 # Package harvester chart
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
-harvester_journald_chart_path=${harvester_path}/deploy/charts/harvester-journald
+harvester_journal_chart_path=${harvester_path}/deploy/charts/harvester-journal
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
-helm package ${harvester_journald_chart_path} -d ${CHARTS_DIR}
+helm package ${harvester_journal_chart_path} -d ${CHARTS_DIR}
 
 # prepare loki
 helm pull --repo https://grafana.github.io/helm-charts loki-stack -d ${CHARTS_DIR}
