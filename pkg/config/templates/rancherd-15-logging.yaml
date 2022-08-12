@@ -91,13 +91,3 @@ resources:
       url: http://loki-stack.cattle-monitoring-system.svc:3100
       extra_labels:
         logOutput: harvester-loki
-#      password:
-#        valueFrom:
-#          secretKeyRef:
-#            name: loki-stack-grafana
-#            key: admin-password
-#      username:
-#        valueFrom:
-#          secretKeyRef:
-#            name: loki-stack-grafana
-#            key: admin-user
