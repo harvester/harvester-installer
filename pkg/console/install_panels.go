@@ -1048,7 +1048,7 @@ func addNetworkPanel(c *Console) error {
 	// askBondModeV
 	askBondModeV.PreShow = func() error {
 		if mgmtNetwork.BondOptions == nil {
-			askBondModeV.Value = config.BondModeBalanceTLB
+			askBondModeV.Value = config.BondModeActiveBackup
 		}
 		return nil
 	}
