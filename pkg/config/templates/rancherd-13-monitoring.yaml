@@ -30,7 +30,33 @@ resources:
           operator: DoesNotExist
     values:
       alertmanager:
-        enabled: false
+        enabled: true
+        config:
+          global:
+            resolve_timeout: 5m
+        service:
+          port: 9093
+        alertmanagerSpec:
+          {{- if .Vip }}
+          externalUrl: "https://{{ .Vip }}/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-alertmanager:9093/proxy/"
+          {{- end }}
+          retention: 120h
+          storage:
+            volumeClaimTemplate:
+              spec:
+                storageClassName: longhorn
+                accessModes:
+                - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 5Gi
+          resources:
+            limits:
+              memory: 600Mi
+              cpu: 1000m
+            requests:
+              memory: 100Mi
+              cpu: 100m
       grafana:
         persistence:
           enabled: true
@@ -40,6 +66,8 @@ resources:
           accessModes:
           - ReadWriteOnce
       prometheus:
+        service:
+          port: 9090
         prometheusSpec:
           evaluationInterval: 1m
           resources:
@@ -62,6 +90,9 @@ resources:
                     storage: 50Gi
                 storageClassName: longhorn
                 volumeMode: Filesystem
+          {{- if .Vip }}
+          externalUrl: "https://{{ .Vip }}/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-prometheus:9090/proxy/"
+          {{- end }}
       prometheus-node-exporter:
         resources:
           limits:
