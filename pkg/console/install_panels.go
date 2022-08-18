@@ -1049,6 +1049,10 @@ func addNetworkPanel(c *Console) error {
 	askBondModeV.PreShow = func() error {
 		if mgmtNetwork.BondOptions == nil {
 			askBondModeV.Value = config.BondModeActiveBackup
+			mgmtNetwork.BondOptions = map[string]string{
+				"mode":   config.BondModeActiveBackup,
+				"miimon": "100",
+			}
 		}
 		return nil
 	}
