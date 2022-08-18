@@ -5,7 +5,6 @@ BRIDGE_STP='off'
 BRIDGE_FORWARDDELAY='0'
 BRIDGE_PORTS='bond-mgmt'
 PRE_UP_SCRIPT="wicked:setup_bridge.sh"
-LLADDR="{{ (index .Interfaces 0).HwAddr }}"
 
 {{ if eq .Method "static" -}}
 IPADDR={{ .IP }}
