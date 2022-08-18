@@ -29,7 +29,9 @@ resources:
             - key: provisioning.cattle.io/unmanaged-system-agent
               operator: DoesNotExist
     values:
-      debug: true
+      fluentd:
+        fluentdPvcSpec:
+          storageClassName: longhorn
       alertmanager:
         enabled: false
       grafana:
