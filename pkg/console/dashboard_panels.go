@@ -27,9 +27,10 @@ const (
 	colorYellow
 	colorBlue
 
-	statusReady     = "Ready"
-	statusNotReady  = "NotReady"
-	statusSettingUp = "Setting up Harvester"
+	statusReady         = "Ready"
+	statusNotReady      = "NotReady"
+	statusSettingUpNode = "Setting up node"
+	statusSettingUpHarv = "Setting up Harvester"
 
 	logo string = `
 ██╗░░██╗░█████╗░██████╗░██╗░░░██╗███████╗░██████╗████████╗███████╗██████╗░
@@ -60,41 +61,91 @@ func (c *Console) layoutDashboard(g *gocui.Gui) error {
 		}
 		logrus.Infof("state: %+v", current)
 	})
-	maxX, maxY := g.Size()
-	if v, err := g.SetView("url", maxX/2-40, 10, maxX/2+40, 14); err != nil {
+
+	if err := clusterPanel(g); err != nil {
+		return err
+	}
+
+	if err := nodePanel(g); err != nil {
+		return err
+	}
+
+	if err := footer(g); err != nil {
+		return err
+	}
+
+	if err := logoPanel(g); err != nil {
+		return err
+	}
+	return nil
+}
+
+func clusterPanel(g *gocui.Gui) error {
+	maxX, _ := g.Size()
+	if v, err := g.SetView("clusterPanel", maxX/2-40, 10, maxX/2+35, 15); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = " Harvester Cluster "
+	}
+	if v, err := g.SetView("managementUrl", maxX/2-39, 10, maxX/2+34, 13); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Frame = false
 		v.Wrap = true
+		fmt.Fprintln(v, "* Management URL:\n  loading...")
 		go syncManagementURL(context.Background(), g)
 	}
-	if v, err := g.SetView("nodeInfo", maxX/2-40, 14, maxX/2+40, 19); err != nil {
+	if v, err := g.SetView("clusterStatus", maxX/2-39, 13, maxX/2+34, 15); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Frame = false
 		v.Wrap = true
-		go syncNodeInfo(context.Background(), g)
-	}
-	if v, err := g.SetView("status", maxX/2-40, 19, maxX/2+40, 23); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Frame = false
-		v.Wrap = true
-		fmt.Fprintf(v, "Current status: ")
+		fmt.Fprintln(v, "* Status: loading...")
 		go syncHarvesterStatus(context.Background(), g)
 	}
+	return nil
+}
+
+func nodePanel(g *gocui.Gui) error {
+	maxX, _ := g.Size()
+	if v, err := g.SetView("nodePanel", maxX/2-40, 16, maxX/2+35, 21); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = " Node "
+	}
+	if v, err := g.SetView("nodeInfo", maxX/2-39, 16, maxX/2+34, 19); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Frame = false
+		v.Wrap = true
+		fmt.Fprintln(v, "* Hostname: loading...\n* IP Address: loading...")
+		go syncNodeInfo(context.Background(), g)
+	}
+	if v, err := g.SetView("nodeStatus", maxX/2-39, 19, maxX/2+34, 21); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Frame = false
+		v.Wrap = true
+		fmt.Fprintln(v, "* Status: loading...")
+		go syncNodeStatus(context.Background(), g)
+	}
+	return nil
+}
+
+func footer(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
 	if v, err := g.SetView("footer", 0, maxY-2, maxX, maxY); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Frame = false
 		fmt.Fprintf(v, "<Use F12 to switch between Harvester console and Shell>")
-	}
-	if err := logoPanel(g); err != nil {
-		return err
 	}
 	return nil
 }
@@ -229,12 +280,12 @@ func doSyncManagementURL(g *gocui.Gui) {
 	}
 
 	g.Update(func(g *gocui.Gui) error {
-		v, err := g.View("url")
+		v, err := g.View("managementUrl")
 		if err != nil {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintf(v, "Harvester management URL: \n\n%s", managementURL)
+		fmt.Fprintf(v, "* Management URL:\n  %s", managementURL)
 		return nil
 	})
 }
@@ -280,7 +331,7 @@ func doSyncNodeInfo(g *gocui.Gui) {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintf(v, "Node Info: \n\n%s", nodeIP)
+		fmt.Fprintf(v, "%s", nodeIP)
 		return nil
 	})
 }
@@ -323,7 +374,7 @@ func getNodeInfo() string {
 		address = ""
 	}
 
-	return fmt.Sprintf("Hostname: %s\nIP Address: %s\n", hostname, address)
+	return fmt.Sprintf("* Hostname: %s\n* IP Address: %s", hostname, address)
 }
 
 func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
@@ -344,12 +395,40 @@ func syncHarvesterStatus(ctx context.Context, g *gocui.Gui) {
 func doSyncHarvesterStatus(g *gocui.Gui) {
 	status := getHarvesterStatus()
 	g.Update(func(g *gocui.Gui) error {
-		v, err := g.View("status")
+		v, err := g.View("clusterStatus")
 		if err != nil {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintln(v, "Current status: \n\n"+status)
+		fmt.Fprintf(v, "* Status: %s", status)
+		return nil
+	})
+}
+
+func syncNodeStatus(ctx context.Context, g *gocui.Gui) {
+	// sync status at the beginning
+	doSyncNodeStatus(g)
+
+	syncDuration := 30 * time.Second
+	ticker := time.NewTicker(syncDuration)
+	go func() {
+		<-ctx.Done()
+		ticker.Stop()
+	}()
+	for range ticker.C {
+		doSyncNodeStatus(g)
+	}
+}
+
+func doSyncNodeStatus(g *gocui.Gui) {
+	status := getNodeStatus()
+	g.Update(func(g *gocui.Gui) error {
+		v, err := g.View("nodeStatus")
+		if err != nil {
+			return err
+		}
+		v.Clear()
+		fmt.Fprintf(v, "* Status: %s", status)
 		return nil
 	})
 }
@@ -431,7 +510,7 @@ func nodeIsPresent() bool {
 func getHarvesterStatus() string {
 	if current.firstHost && !current.installed {
 		if !k8sIsReady() || !chartIsInstalled() {
-			return statusSettingUp
+			return statusSettingUpHarv
 		}
 		current.installed = true
 	}
@@ -447,6 +526,21 @@ func getHarvesterStatus() string {
 		return wrapColor(statusReady, colorGreen)
 	}
 	return wrapColor(statusNotReady, colorYellow)
+}
+
+func getNodeStatus() string {
+	if current.firstHost && !current.installed {
+		if !k8sIsReady() || !chartIsInstalled() {
+			return statusSettingUpNode
+		}
+		current.installed = true
+	}
+
+	if !nodeIsPresent() {
+		return wrapColor(statusNotReady, colorYellow)
+	}
+
+	return wrapColor(statusReady, colorGreen)
 }
 
 func wrapColor(s string, color int) string {
