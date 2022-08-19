@@ -36,6 +36,7 @@ var (
 	RancherVersion         = ""
 	HarvesterChartVersion  = ""
 	MonitoringChartVersion = ""
+	LoggingChartVersion    = ""
 
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
@@ -169,6 +170,10 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	}
 	if config.MonitoringChartVersion == "" {
 		config.MonitoringChartVersion = MonitoringChartVersion
+	}
+
+	if config.LoggingChartVersion == "" {
+		config.LoggingChartVersion = LoggingChartVersion
 	}
 
 	stage.Directories = append(stage.Directories,
@@ -492,6 +497,8 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		"10-harvester.yaml",
 		"11-monitoring-crd.yaml",
 		"13-monitoring.yaml",
+		"14-logging-crd.yaml",
+		"15-logging.yaml",
 		"20-harvester-settings.yaml",
 		"21-harvester-clusternetworks.yaml",
 	} {

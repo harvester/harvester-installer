@@ -1,0 +1,50 @@
+resources:
+- apiVersion: management.cattle.io/v3
+  kind: ManagedChart
+  metadata:
+    name: rancher-logging
+    namespace: fleet-local
+  spec:
+    chart: rancher-logging
+    releaseName: rancher-logging
+    version: {{ .LoggingChartVersion }}
+    defaultNamespace: cattle-logging-system
+    repoName: harvester-charts
+    targets:
+    - clusterName: local
+      clusterSelector:
+        matchExpressions:
+        - key: provisioning.cattle.io/unmanaged-system-agent
+          operator: DoesNotExist
+    values:
+      disablePvc: true
+      additionalLoggingSources:
+        kubeAudit:
+          auditFilename: ""
+          enabled: false
+          pathPrefix: ""
+          fluentbit:
+            logTag: kube-audit
+            tolerations:
+            - key: node-role.kubernetes.io/controlplane
+              value: "true"
+              effect: NoSchedule
+            - key: node-role.kubernetes.io/etcd
+              value: "true"
+              effect: NoExecute
+      fluentd:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 800Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+      fluentbit:
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
