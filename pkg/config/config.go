@@ -170,6 +170,7 @@ type HarvesterConfig struct {
 	MonitoringChartVersion string                    `json:"monitoringChartVersion,omitempty"`
 	SystemSettings         map[string]string         `json:"systemSettings,omitempty"`
 	ClusterNetworks        map[string]ClusterNetwork `json:"clusterNetworks,omitempty"`
+	LoggingChartVersion    string                    `json:"loggingChartVersion,omitempty"`
 }
 
 func NewHarvesterConfig() *HarvesterConfig {

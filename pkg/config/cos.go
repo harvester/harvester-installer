@@ -35,6 +35,7 @@ var (
 	RancherVersion         = ""
 	HarvesterChartVersion  = ""
 	MonitoringChartVersion = ""
+	LoggingChartVersion    = ""
 
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
@@ -150,6 +151,10 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		config.MonitoringChartVersion = MonitoringChartVersion
 	}
 
+	if config.LoggingChartVersion == "" {
+		config.LoggingChartVersion = LoggingChartVersion
+	}
+
 	stage.Directories = append(stage.Directories,
 		yipSchema.Directory{
 			Path:        "/etc/rancher/rke2/config.yaml.d",
@@ -216,6 +221,21 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 			},
 		)
 	}
+
+	// RKE2 settings of kube-audit
+	rke2KubeAuditConfig, err := render("rke2-92-harvester-kube-audit-policy.yaml", config)
+	if err != nil {
+		return err
+	}
+	stage.Files = append(stage.Files,
+		yipSchema.File{
+			Path:        "/etc/rancher/rke2/config.yaml.d/92-harvester-kube-audit-policy.yaml",
+			Content:     rke2KubeAuditConfig,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		},
+	)
 
 	rke2AgentConfig, err := render("rke2-90-harvester-agent.yaml", config)
 	if err != nil {
@@ -559,6 +579,8 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		"10-harvester.yaml",
 		"11-monitoring-crd.yaml",
 		"13-monitoring.yaml",
+		"14-logging-crd.yaml",
+		"15-logging.yaml",
 		"20-harvester-settings.yaml",
 		"21-harvester-clusternetworks.yaml",
 	} {

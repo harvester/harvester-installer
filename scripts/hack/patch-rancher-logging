@@ -1,0 +1,32 @@
+#!/bin/bash
+
+patch_rancher_logging_chart()
+{
+  local chart_dir=$1 #${CHARTS_DIR}
+  local logging_version=$2 #LOGGING_VERSION
+  local pkg_logging_path=$3 #${PKG_PATCH_LOGGING_PATH}
+  local cwd=$(pwd)
+
+  if [ ! -d "${pkg_logging_path}/${logging_version}" ]; then
+    echo "NOTE: there is no related path: ${pkg_logging_path}/${logging_version} to patch, SKIP"
+    return 0
+  fi
+
+  cd ${chart_dir}
+  tar zxf rancher-logging-${logging_version}.tgz
+
+  echo "patch rancher logging rke2 configmap.yaml, daemonset.yaml"
+  cp -f ${pkg_logging_path}/${logging_version}/configmap.yaml ./rancher-logging/templates/loggings/rke2/configmap.yaml
+  cp -f ${pkg_logging_path}/${logging_version}/daemonset.yaml ./rancher-logging/templates/loggings/rke2/daemonset.yaml
+  grep "harvester-patch" ./rancher-logging/templates/loggings/rke2/configmap.yaml || true
+  grep "harvester-patch" ./rancher-logging/templates/loggings/rke2/daemonset.yaml || true
+
+  # remove existing chart
+  rm ${chart_dir}/rancher-logging-${logging_version}.tgz
+
+  # helm pack new
+  helm package rancher-logging
+  echo "finish patch ranch-logging chart"
+  cd $cwd
+}
+

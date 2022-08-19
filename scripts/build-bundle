@@ -14,6 +14,7 @@ source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/lib/http
 source ${SCRIPTS_DIR}/lib/image
+source ${SCRIPTS_DIR}/hack/patch-rancher-logging
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 CHARTS_DIR="${PACKAGE_HARVESTER_REPO_DIR}/charts"
@@ -60,6 +61,22 @@ helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring
 # make chart sanity check
 tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null
 tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null
+
+# Prepare logging chart
+source ${SCRIPTS_DIR}/version-logging
+helm pull https://charts.rancher.io/assets/rancher-logging-crd/rancher-logging-crd-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
+helm pull https://charts.rancher.io/assets/rancher-logging/rancher-logging-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
+
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
+
+# patch rancher-logging chart to collect more logs"
+PKG_PATCH_LOGGING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-logging"
+patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING_PATH}
+
+# make chart sanity check again after patch
+tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
 
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
@@ -112,12 +129,10 @@ fi
 for i in "${!repositories[@]}"; do
   echo "${repositories[$i]}:${tags[$i]}">>${image_list_file}
 done
-# The following images are not included in chart or Longhorn image list
-cat <<EOF >> ${image_list_file}
-busybox:1.32.0
-alpine:3
-registry.suse.com/suse/vmdp/vmdp:2.5.3
-EOF
+
+# harvester additional images, which is not in rancher images, not in harvester images or any others
+# do not add any comment line into this file, each line should be an valid image name
+cat ${SCRIPTS_DIR}/images/harvester-additional-images.txt >> ${image_list_file}
 
 # get longhorn image list
 longhorn_version=v$(ls ${harvester_chart_path}/charts | grep longhorn| sed -e "s/^longhorn-//" -e "s/.tgz$//")
