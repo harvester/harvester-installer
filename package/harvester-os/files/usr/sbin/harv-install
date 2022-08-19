@@ -295,6 +295,13 @@ update_grub_settings()
         sed -i "s/console_params=\"console=tty1\"/console_params=\"console=${TTY} console=tty1\"/g" ${TARGET}/etc/cos/bootargs.cfg
     fi
 
+    # IOMMU system is used for PCI passthrough
+    if [[ "GenuineIntel" == $(awk < /proc/cpuinfo -F: '/vendor_id/ {print $2; exit}' |  tr -d '[:space:]') ]]; then
+        sed -i "s/iommu/intel_iommu=on/g" ${TARGET}/etc/cos/bootargs.cfg
+    else
+        sed -i "s/iommu/amd_iommu=on/g" ${TARGET}/etc/cos/bootargs.cfg
+    fi
+
     # calculate recommended crashkernel allocation size
     CRASH_KERNEL_PARAMS=$(get_crashkernel_params || true)
     if [ -n "$CRASH_KERNEL_PARAMS" ]; then
