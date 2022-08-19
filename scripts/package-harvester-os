@@ -13,6 +13,7 @@ source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/version-monitoring
+source ${SCRIPTS_DIR}/version-logging
 
 BASE_OS_IMAGE="rancher/harvester-os:20220705"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
@@ -28,6 +29,7 @@ os: ${PRETTY_NAME}
 kubernetes: ${RKE2_VERSION}
 rancher: ${RANCHER_VERSION}
 monitoringChart: ${MONITORING_VERSION}
+loggingChart: ${LOGGING_VERSION}
 kubevirt: ${HARVESTER_KUBEVIRT_VERSION}
 EOF
 
