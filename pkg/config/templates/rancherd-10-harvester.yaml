@@ -5,6 +5,10 @@ resources:
   metadata:
     name: cattle-monitoring-system
 - apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: cattle-logging-system
+- apiVersion: v1
   kind: ServiceAccount
   metadata:
     annotations:

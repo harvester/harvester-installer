@@ -8,7 +8,7 @@ resources:
     chart: rancher-logging
     releaseName: rancher-logging
     version: {{ .LoggingChartVersion }}
-    defaultNamespace: cattle-monitoring-system
+    defaultNamespace: cattle-logging-system
     repoName: harvester-charts
     diff:
       comparePatches:
@@ -77,7 +77,7 @@ resources:
   kind: ClusterFlow
   metadata:
     name: harvester-loki
-    namespace: cattle-monitoring-system
+    namespace: cattle-logging-system
   spec:
     match:
       - select: { }
@@ -87,9 +87,9 @@ resources:
   kind: ClusterOutput
   metadata:
     name: harvester-loki
-    namespace: cattle-monitoring-system
+    namespace: cattle-logging-system
   spec:
     loki:
-      url: http://loki-stack.cattle-monitoring-system.svc:3100
+      url: http://loki-stack.cattle-logging-system.svc:3100
       extra_labels:
         logOutput: harvester-loki

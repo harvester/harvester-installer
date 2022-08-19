@@ -9,7 +9,7 @@ resources:
     releaseName: harvester-journal
     version: {{ .LoggingChartVersion }}
     repoName: harvester-charts
-    defaultNamespace: cattle-monitoring-system
+    defaultNamespace: cattle-logging-system
     targets:
       - clusterName: local
         clusterSelector:

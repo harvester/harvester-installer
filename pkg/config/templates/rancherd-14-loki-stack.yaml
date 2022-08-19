@@ -9,7 +9,7 @@ resources:
       releaseName: loki-stack
       #      we might want to add this to the cos config eventually, so we can change the version with ldflags
       version: 2.7.0
-      defaultNamespace: cattle-monitoring-system
+      defaultNamespace: cattle-logging-system
       repoName: harvester-charts
       targets:
         - clusterName: local
