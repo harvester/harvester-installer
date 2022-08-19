@@ -173,7 +173,7 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	}
 
 	if config.LoggingChartVersion == "" {
-		config.MonitoringChartVersion = LoggingChartVersion
+		config.LoggingChartVersion = LoggingChartVersion
 	}
 
 	stage.Directories = append(stage.Directories,
