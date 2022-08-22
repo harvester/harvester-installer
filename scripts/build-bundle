@@ -40,10 +40,8 @@ ${SCRIPTS_DIR}/patch-harvester ${TOP_DIR}/../harvester
 # Package harvester chart
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
-harvester_journal_chart_path=${harvester_path}/deploy/charts/harvester-journal
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
-helm package ${harvester_journal_chart_path} -d ${CHARTS_DIR}
 
 # Prepare monitoring chart
 source ${SCRIPTS_DIR}/version-monitoring
@@ -63,7 +61,6 @@ tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/nu
 tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/nulld
 tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz > /dev/null
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz > /dev/null
-
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
