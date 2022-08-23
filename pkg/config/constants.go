@@ -9,8 +9,8 @@ const (
 	NetworkMethodStatic = "static"
 	NetworkMethodNone   = "none"
 
-	MgmtInterfaceName     = "br-mgmt"
-	MgmtBondInterfaceName = "bond-mgmt"
+	MgmtInterfaceName     = "mgmt-br"
+	MgmtBondInterfaceName = "mgmt-bo"
 
 	RancherdConfigFile = "/etc/rancher/rancherd/config.yaml"
 )

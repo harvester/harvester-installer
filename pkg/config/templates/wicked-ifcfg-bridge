@@ -1,22 +1,22 @@
 STARTMODE='onboot'
-BOOTPROTO='{{ .Method }}'
+BOOTPROTO='{{ .Bridge.Method }}'
 BRIDGE='yes'
 BRIDGE_STP='off'
 BRIDGE_FORWARDDELAY='0'
-BRIDGE_PORTS='bond-mgmt'
+BRIDGE_PORTS='{{ .Bond }}'
 PRE_UP_SCRIPT="wicked:setup_bridge.sh"
 
 {{ if eq .Method "static" -}}
 IPADDR={{ .IP }}
-NETMASK={{ .SubnetMask }}
+NETMASK={{ .Bridge.SubnetMask }}
 {{- end }}
 
 {{ $defaultRoute := "no" -}}
-{{- if .DefaultRoute -}}
+{{- if .Bridge.DefaultRoute -}}
   {{- $defaultRoute = "yes" -}}
 {{- end }}
 DHCLIENT_SET_DEFAULT_ROUTE='{{ $defaultRoute }}'
 
-{{ if gt .MTU 0 -}}
-MTU={{ .MTU }}
+{{ if gt .Bridge.MTU 0 -}}
+MTU={{ .Bridge.MTU }}
 {{- end }}
