@@ -433,13 +433,13 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 	return nil
 }
 
-func updateBridge(stage *yipSchema.Stage, name string, bridge *Network) error {
+func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) error {
 	// add Bridge named MgmtInterfaceName and attach Bond named MgmtBondInterfaceName to bridge
 	var err error
 
 	needVlanInterface := false
 	// pvid is always 1, if vlan id is 1, it means untagged vlan.
-	if bridge.VlanID >= 2 && bridge.VlanID <= 4094 {
+	if mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094 {
 		needVlanInterface = true
 	}
 
@@ -452,7 +452,7 @@ func updateBridge(stage *yipSchema.Stage, name string, bridge *Network) error {
 	})
 
 	var preUpScript string
-	preUpScript, err = render("wicked-setup-bridge.sh", nil)
+	preUpScript, err = render("wicked-setup-bridge.sh", MgmtBondInterfaceName)
 	if err != nil {
 		return err
 	}
@@ -465,13 +465,13 @@ func updateBridge(stage *yipSchema.Stage, name string, bridge *Network) error {
 	})
 
 	bridgeMgmt := Network{
-		Interfaces:   bridge.Interfaces,
-		Method:       bridge.Method,
-		IP:           bridge.IP,
-		SubnetMask:   bridge.SubnetMask,
-		Gateway:      bridge.Gateway,
+		Interfaces:   mgmtNetwork.Interfaces,
+		Method:       mgmtNetwork.Method,
+		IP:           mgmtNetwork.IP,
+		SubnetMask:   mgmtNetwork.SubnetMask,
+		Gateway:      mgmtNetwork.Gateway,
 		DefaultRoute: !needVlanInterface,
-		MTU:          bridge.MTU,
+		MTU:          mgmtNetwork.MTU,
 	}
 
 	if needVlanInterface {
@@ -479,8 +479,12 @@ func updateBridge(stage *yipSchema.Stage, name string, bridge *Network) error {
 	}
 
 	// add bridge
+	bridgeData := map[string]interface{}{
+		"Bridge": bridgeMgmt,
+		"Bond": MgmtBondInterfaceName,
+	}
 	var ifcfg string
-	ifcfg, err = render("wicked-ifcfg-bridge", bridgeMgmt)
+	ifcfg, err = render("wicked-ifcfg-bridge", bridgeData)
 	if err != nil {
 		return err
 	}
@@ -494,13 +498,17 @@ func updateBridge(stage *yipSchema.Stage, name string, bridge *Network) error {
 
 	// add vlan interface
 	if needVlanInterface {
-		bridge.DefaultRoute = true
-		ifcfg, err = render("wicked-ifcfg-vlan", bridge)
+		mgmtNetwork.DefaultRoute = true
+		vlanData := map[string]interface{}{
+			"BridgeName": name,
+			"Vlan": mgmtNetwork,
+		}
+		ifcfg, err = render("wicked-ifcfg-vlan", vlanData)
 		if err != nil {
 			return err
 		}
 		stage.Files = append(stage.Files, yipSchema.File{
-			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s.%d", name, bridge.VlanID),
+			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s.%d", name, mgmtNetwork.VlanID),
 			Content:     ifcfg,
 			Permissions: 0600,
 			Owner:       0,
