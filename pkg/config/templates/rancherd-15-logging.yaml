@@ -10,18 +10,6 @@ resources:
     version: {{ .LoggingChartVersion }}
     defaultNamespace: cattle-logging-system
     repoName: harvester-charts
-    diff:
-      comparePatches:
-        - apiVersion: admissionregistration.k8s.io/v1
-          kind: ValidatingWebhookConfiguration
-          name: rancher-logging-admission
-          operations:
-            - { "op": "remove", "path": "/webhooks" }
-        - apiVersion: admissionregistration.k8s.io/v1
-          kind: MutatingWebhookConfiguration
-          name: rancher-logging-admission
-          operations:
-            - { "op": "remove", "path": "/webhooks" }
     targets:
       - clusterName: local
         clusterSelector:
