@@ -499,7 +499,7 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 
 		"13-monitoring.yaml",
 
-		"14-loki-stack.yaml",
+		"16-loki-stack.yaml",
 
 		"14-logging-crd.yaml",
 		"15-logging.yaml",
