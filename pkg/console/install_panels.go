@@ -141,7 +141,7 @@ func addValidatorPanel(c *Console) error {
 func addNotePanel(c *Console) error {
 	maxX, maxY := c.Gui.Size()
 	noteV := widgets.NewPanel(c.Gui, notePanel)
-	noteV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+5)
+	noteV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+6)
 	noteV.Wrap = true
 	noteV.Focus = false
 	c.AddElement(notePanel, noteV)
@@ -1737,7 +1737,7 @@ func addNTPServersPanel(c *Console) error {
 	ntpServersV.PreShow = func() error {
 		c.Gui.Cursor = true
 		ntpServersV.Value = userInputData.NTPServers
-		if err = c.setContentByName(titlePanel, "Optional: Configure NTP Servers"); err != nil {
+		if err = c.setContentByName(titlePanel, "Configure NTP Servers"); err != nil {
 			return err
 		}
 		return c.setContentByName(notePanel, ntpServersNote)
@@ -1804,18 +1804,18 @@ func addNTPServersPanel(c *Console) error {
 				c.config.OS.NTPServers = ntpServerList
 
 				if ntpServers == "" {
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Empty NTP Server is not recommended. Press Enter to continue."))
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Empty NTP Server is not recommended. Press Enter to proceed without NTP servers configured."))
 					return
 				}
 
 				if err = validateNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("validate ntp servers: %v", err)
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to reach NTP servers: %v. Press Enter to continue or change the input to revalidate.", err))
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to reach NTP servers: %v. Press Enter to proceed without NTP servers configured, or change the value to revalidate again.", err))
 					return
 				}
 				if err = enableNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("enable ntp servers: %v", err)
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to enalbe NTP servers: %v. Press Enter to continue.", err))
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to enalbe NTP servers: %v. Press Enter to proceed.", err))
 					return
 				}
 
