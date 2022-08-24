@@ -62,7 +62,7 @@ const (
 	serverURLNote          = "Note: Input VIP/domain name of the management node"
 	proxyNote              = "Note: In the form of \"http://[[user][:pass]@]host[:port]/\"."
 	sshKeyNote             = "For example: https://github.com/<username>.keys"
-	ntpServersNote         = "Note: You can use comma to add more NTP servers."
+	ntpServersNote         = "Note: It's recommended to configure NTP servers to make sure the time is synced among all nodes. You can use comma to add more NTP servers."
 	dnsServersNote         = "Note: You can use comma to add more DNS servers. Leave blank to use default DNS."
 	bondNote               = "Note: Select one or more NICs for the Management NIC.\nUse the default value for the Bond Mode if only one NIC is selected."
 	forceMBRNote           = "Note: GPT is used by default. You can use MBR if you encountered compatibility issues."
