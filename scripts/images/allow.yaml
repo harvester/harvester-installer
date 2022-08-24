@@ -22,3 +22,8 @@ rancher:
   - docker.io/rancher/mirrored-library-nginx
   - docker.io/rancher/mirrored-kube-state-metrics-kube-state-metrics
   - docker.io/rancher/mirrored-ingress-nginx-kube-webhook-certgen
+  - docker.io/grafana/loki:2.6.1
+  - docker.io/rancher/mirrored-banzaicloud-fluentd:v1.14.6-alpine-5
+  - docker.io/rancher/mirrored-banzaicloud-logging-operator:3.17.7
+  - docker.io/rancher/mirrored-fluent-fluent-bit:1.9.3
+  - docker.io/rancher/mirrored-jimmidyson-configmap-reload:v0.4.0

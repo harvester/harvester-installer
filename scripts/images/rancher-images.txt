@@ -19,3 +19,8 @@ docker.io/rancher/shell:v0.1.16
 docker.io/rancher/shell:v0.1.8
 docker.io/rancher/system-agent:v0.2.3-suc
 docker.io/rancher/system-upgrade-controller:v0.8.1
+docker.io/grafana/loki:2.6.1
+docker.io/rancher/mirrored-banzaicloud-fluentd:v1.14.6-alpine-5
+docker.io/rancher/mirrored-banzaicloud-logging-operator:3.17.7
+docker.io/rancher/mirrored-fluent-fluent-bit:1.9.3
+docker.io/rancher/mirrored-jimmidyson-configmap-reload:v0.4.0
