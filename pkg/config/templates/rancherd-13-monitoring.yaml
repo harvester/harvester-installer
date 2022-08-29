@@ -60,7 +60,7 @@ resources:
       grafana:
         persistence:
           enabled: true
-          size: "10"
+          size: 2Gi
           storageClassName: longhorn
           type: pvc
           accessModes:
