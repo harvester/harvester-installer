@@ -504,8 +504,6 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		"14-logging-crd.yaml",
 		"15-logging.yaml",
 
-		"15-journald-aggregator.yaml",
-
 		"20-harvester-settings.yaml",
 		"21-harvester-clusternetworks.yaml",
 	} {
