@@ -1804,13 +1804,13 @@ func addNTPServersPanel(c *Console) error {
 				c.config.OS.NTPServers = ntpServerList
 
 				if ntpServers == "" {
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Empty NTP Server is not recommended. Press Enter to proceed without NTP servers configured."))
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Empty NTP Server is not recommended. Press Enter again to use current configuration anyway."))
 					return
 				}
 
 				if err = validateNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("validate ntp servers: %v", err)
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to reach NTP servers: %v. Press Enter to proceed without NTP servers configured, or change the value to revalidate again.", err))
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to reach NTP servers: %v. Press Enter again to use current configuration anyway, or change the value to revalidate.", err))
 					return
 				}
 				if err = enableNTPServers(ntpServerList); err != nil {
