@@ -127,12 +127,16 @@ fi
 for i in "${!repositories[@]}"; do
   echo "${repositories[$i]}:${tags[$i]}">>${image_list_file}
 done
+
+# harvester additional images, which is not in rancher images, not in harvester images or any others
+#
 # The following images are not included in chart or Longhorn image list
-cat <<EOF >> ${image_list_file}
-busybox:1.32.0
-alpine:3
-registry.suse.com/suse/vmdp/vmdp:2.5.3
-EOF
+#   busybox:1.32.0
+#   alpine:3
+#   registry.suse.com/suse/vmdp/vmdp:2.5.3
+# The following image is used in rancher-logging, for loki grafana, but image is not included in rancher images
+#   docker.io/grafana/loki:2.6.1
+cat ${SCRIPTS_DIR}/images/harvester-additional-images.txt >> ${image_list_file}
 
 # get longhorn image list
 longhorn_version=v$(ls ${harvester_chart_path}/charts | grep longhorn| sed -e "s/^longhorn-//" -e "s/.tgz$//")

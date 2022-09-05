@@ -1,0 +1,4 @@
+busybox:1.32.0
+alpine:3
+registry.suse.com/suse/vmdp/vmdp:2.5.3
+docker.io/grafana/loki:2.6.1

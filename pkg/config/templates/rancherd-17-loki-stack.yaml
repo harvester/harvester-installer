@@ -18,7 +18,5 @@ resources:
               - key: provisioning.cattle.io/unmanaged-system-agent
                 operator: DoesNotExist
       values:
-        grafana:
-          enabled: false
         promtail:
           enabled: false
