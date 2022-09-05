@@ -1,6 +1,7 @@
 STARTMODE='onboot'
 BONDING_MASTER='yes'
 BOOTPROTO='{{ .Method }}'
+POST_UP_SCRIPT="wicked:setup_bond.sh"
 
 {{ if eq .Method "static" -}}
 IPADDR={{ .IP }}

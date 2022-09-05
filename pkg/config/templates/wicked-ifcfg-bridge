@@ -5,6 +5,7 @@ BRIDGE_STP='off'
 BRIDGE_FORWARDDELAY='0'
 BRIDGE_PORTS='{{ .Bond }}'
 PRE_UP_SCRIPT="wicked:setup_bridge.sh"
+POST_UP_SCRIPT="wicked:setup_bridge.sh"
 
 {{ if eq .Method "static" -}}
 IPADDR={{ .IP }}

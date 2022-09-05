@@ -401,6 +401,28 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 		}
 	}
 
+	// setup post up script
+	stage.Directories = append(stage.Directories, yipSchema.Directory{
+		Path:        "/etc/wicked/scripts",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+
+	var postUpScript string
+	var err error
+	postUpScript, err = render("wicked-setup-bond.sh", MgmtBondInterfaceName)
+	if err != nil {
+		return err
+	}
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/wicked/scripts/setup_bond.sh",
+		Content:     postUpScript,
+		Permissions: 0755,
+		Owner:       0,
+		Group:       0,
+	})
+
 	ifcfg, err := render("wicked-ifcfg-bond-master", network)
 	if err != nil {
 		return err
@@ -481,7 +503,7 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 	// add bridge
 	bridgeData := map[string]interface{}{
 		"Bridge": bridgeMgmt,
-		"Bond": MgmtBondInterfaceName,
+		"Bond":   MgmtBondInterfaceName,
 	}
 	var ifcfg string
 	ifcfg, err = render("wicked-ifcfg-bridge", bridgeData)
@@ -501,7 +523,7 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 		mgmtNetwork.DefaultRoute = true
 		vlanData := map[string]interface{}{
 			"BridgeName": name,
-			"Vlan": mgmtNetwork,
+			"Vlan":       mgmtNetwork,
 		}
 		ifcfg, err = render("wicked-ifcfg-vlan", vlanData)
 		if err != nil {
