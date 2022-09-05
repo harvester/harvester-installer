@@ -499,6 +499,8 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		"13-monitoring.yaml",
 		"14-logging-crd.yaml",
 		"15-logging.yaml",
+		"16-journald-aggregator.yaml",
+		"17-loki-stack.yaml",
 		"20-harvester-settings.yaml",
 		"21-harvester-clusternetworks.yaml",
 	} {

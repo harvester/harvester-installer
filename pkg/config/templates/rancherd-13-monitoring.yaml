@@ -72,6 +72,12 @@ resources:
           requests:
             cpu: 100m
             memory: 200Mi
+        additionalDataSources:
+          - name: datasource-loki-rancher-logging-root
+            type: loki
+            access: proxy
+            isDefault: false
+            url: "http://loki-stack.cattle-logging-system:3100/"
       prometheus:
         service:
           port: 9090

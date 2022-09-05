@@ -70,6 +70,12 @@ helm pull https://charts.rancher.io/assets/rancher-logging/rancher-logging-${LOG
 tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
 
+# prepare loki
+helm pull --repo https://grafana.github.io/helm-charts loki-stack --version ${LOKI_CHART_VERSION} -d ${CHARTS_DIR}
+
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/loki-stack-${LOKI_CHART_VERSION}.tgz >/dev/null
+
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
