@@ -31,6 +31,7 @@ rancher: ${RANCHER_VERSION}
 monitoringChart: ${MONITORING_VERSION}
 loggingChart: ${LOGGING_VERSION}
 kubevirt: ${HARVESTER_KUBEVIRT_VERSION}
+minUpgradableVersion: '${HARVESTER_MIN_UPGRADABLE_VERSION}'
 EOF
 
 # Collect dependencies' versions
