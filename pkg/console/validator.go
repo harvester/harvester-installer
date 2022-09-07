@@ -151,6 +151,19 @@ func checkIP(addr string) error {
 	return nil
 }
 
+func checkMTU(mtu int) error {
+	// Treat 0 as default value
+	if mtu == 0 {
+		return nil
+	} else {
+		// RFC 791
+		if mtu < 576 || mtu > 9000 {
+			return fmt.Errorf("%d is not a valid MTU value", mtu)
+		}
+		return nil
+	}
+}
+
 func checkHwAddr(hwAddr string) error {
 	if _, err := net.ParseMAC(hwAddr); err != nil {
 		return fmt.Errorf("%s is an invalid hardware address, error: %w", hwAddr, err)
@@ -211,6 +224,9 @@ func checkNetworks(network config.Network, dnsServers []string) error {
 			return err
 		}
 		if err := checkIP(network.Gateway); err != nil {
+			return err
+		}
+		if err := checkMTU(network.MTU); err != nil {
 			return err
 		}
 	default:

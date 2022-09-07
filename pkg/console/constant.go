@@ -24,6 +24,7 @@ const (
 	hostNamePanel          = "hostname"
 	addressPanel           = "address"
 	gatewayPanel           = "gateway"
+	mtuPanel               = "mtu"
 	dnsServersPanel        = "dnsServers"
 	networkValidatorPanel  = "networkValidator"
 	diskValidatorPanel     = "diskValidator"
@@ -49,6 +50,7 @@ const (
 	hostNameLabel         = "HostName"
 	addressLabel          = "IPv4 Address"
 	gatewayLabel          = "Gateway"
+	mtuLabel              = "MTU (optional)"
 	dnsServersLabel       = "DNS Servers"
 	ntpServersLabel       = "NTP Servers"
 

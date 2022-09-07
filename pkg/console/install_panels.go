@@ -41,6 +41,7 @@ const (
 
 const (
 	ErrMsgVLANShouldBeANumberInRange string = "VLAN ID should be a number 1 ~ 4094."
+	ErrMsgMTUShouldBeANumber         string = "MTU should be a number."
 )
 
 var (
@@ -819,7 +820,7 @@ func showNetworkPage(c *Console) error {
 	if mgmtNetwork.Method != config.NetworkMethodStatic {
 		return showNext(c, askInterfacePanel, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, hostNamePanel)
 	}
-	return showNext(c, askInterfacePanel, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, hostNamePanel)
+	return showNext(c, askInterfacePanel, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, mtuPanel, hostNamePanel)
 }
 
 func addNetworkPanel(c *Console) error {
@@ -856,6 +857,11 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	gatewayV, err := widgets.NewInput(c.Gui, gatewayPanel, gatewayLabel, false)
+	if err != nil {
+		return err
+	}
+
+	mtuV, err := widgets.NewInput(c.Gui, mtuPanel, mtuLabel, false)
 	if err != nil {
 		return err
 	}
@@ -914,6 +920,7 @@ func addNetworkPanel(c *Console) error {
 			askNetworkMethodPanel,
 			addressPanel,
 			gatewayPanel,
+			mtuPanel,
 			networkValidatorPanel,
 			bondNotePanel,
 		)
@@ -944,6 +951,7 @@ func addNetworkPanel(c *Console) error {
 				mgmtNetwork.IP = ""
 				mgmtNetwork.SubnetMask = ""
 				mgmtNetwork.Gateway = ""
+				mgmtNetwork.MTU = 0
 			}
 		}
 		return "", nil
@@ -1130,7 +1138,7 @@ func addNetworkPanel(c *Console) error {
 		if mgmtNetwork.Method != config.NetworkMethodStatic {
 			return showNext(c, askNetworkMethodPanel)
 		}
-		return showNext(c, gatewayPanel, addressPanel, askNetworkMethodPanel)
+		return showNext(c, mtuPanel, gatewayPanel, addressPanel, askNetworkMethodPanel)
 	}
 	askBondModeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askVlanIDPanel}),
@@ -1149,10 +1157,10 @@ func addNetworkPanel(c *Console) error {
 		}
 		mgmtNetwork.Method = selected
 		if selected == config.NetworkMethodStatic {
-			return showNext(c, gatewayPanel, addressPanel)
+			return showNext(c, mtuPanel, gatewayPanel, addressPanel)
 		}
 
-		c.CloseElements(gatewayPanel, addressPanel)
+		c.CloseElements(mtuPanel, gatewayPanel, addressPanel)
 		return gotoNextPage(askNetworkMethodPanel)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -1221,17 +1229,7 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.Gateway = gateway
 		return "", nil
 	}
-	gatewayVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		msg, err := validateGateway()
-		if err != nil {
-			return err
-		}
-		if msg != "" {
-			return updateValidatorMessage(msg)
-		}
-
-		return gotoNextPage(gatewayPanel)
-	}
+	gatewayVConfirm := gotoNextPanel(c, []string{mtuPanel}, validateGateway)
 	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: gotoNextPanel(c, []string{addressPanel}, func() (string, error) {
 			mgmtNetwork.Gateway, err = gatewayV.GetData()
@@ -1243,6 +1241,65 @@ func addNetworkPanel(c *Console) error {
 	}
 	setLocation(gatewayV.Panel, 3)
 	c.AddElement(gatewayPanel, gatewayV)
+
+	// mtuV
+	mtuV.PreShow = func() error {
+		c.Gui.Cursor = true
+		if mgmtNetwork.MTU == 0 {
+			mtuV.Value = ""
+		} else {
+			mtuV.Value = strconv.Itoa(mgmtNetwork.MTU)
+		}
+		return nil
+	}
+	validateMTU := func() (string, error) {
+		var mtu int
+		mtuStr, err := mtuV.GetData()
+		if err != nil {
+			return "", err
+		}
+
+		if mtuStr == "" {
+			mtu = 0
+		} else {
+			mtu, err = strconv.Atoi(mtuStr)
+			if err != nil {
+				return ErrMsgMTUShouldBeANumber, nil
+			}
+		}
+
+		if err = checkMTU(mtu); err != nil {
+			return err.Error(), nil
+		}
+		mgmtNetwork.MTU = mtu
+		return "", nil
+	}
+	mtuVConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		msg, err := validateMTU()
+		if err != nil {
+			return err
+		}
+		if msg != "" {
+			return updateValidatorMessage(msg)
+		}
+
+		return gotoNextPage(mtuPanel)
+	}
+	mtuV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{gatewayPanel}, func() (string, error) {
+			mtu, err := mtuV.GetData()
+			if err != nil {
+				return "", err
+			}
+			mgmtNetwork.MTU, err = strconv.Atoi(mtu)
+			return "", err
+		}),
+		gocui.KeyArrowDown: mtuVConfirm,
+		gocui.KeyEnter:     mtuVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(mtuV.Panel, 3)
+	c.AddElement(mtuPanel, mtuV)
 
 	// bondNoteV
 	bondNoteV.Wrap = true
