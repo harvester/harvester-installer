@@ -74,6 +74,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		initramfs.Files = append(initramfs.Files, yipSchema.File{
 			Path:        ff.Path,
 			Content:     ff.Content,
+			Encoding:    ff.Encoding,
 			Permissions: uint32(perm),
 			OwnerString: ff.Owner,
 		})
