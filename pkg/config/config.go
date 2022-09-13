@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	SanitizeMask = "***"
+	SchemeVersion = 1
+	SanitizeMask  = "***"
 )
 
 type NetworkInterface struct {
@@ -156,8 +157,9 @@ type ClusterNetwork struct {
 }
 
 type HarvesterConfig struct {
-	ServerURL string `json:"serverUrl,omitempty"`
-	Token     string `json:"token,omitempty"`
+	SchemeVersion uint32 `json:"schemeVersion,omitempty"`
+	ServerURL     string `json:"serverUrl,omitempty"`
+	Token         string `json:"token,omitempty"`
 
 	OS                     `json:"os,omitempty"`
 	Install                `json:"install,omitempty"`
