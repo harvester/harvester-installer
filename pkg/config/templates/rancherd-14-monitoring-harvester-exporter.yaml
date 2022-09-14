@@ -1,0 +1,69 @@
+bootstrapResources:
+- apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
+  metadata:
+    name: exporter-harvester-webhook
+    namespace: harvester-system
+  spec:
+    endpoints:
+      - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+        honorLabels: true
+        port: https
+        relabelings:
+          - action: replace
+            regex: (.+)
+            replacement: $1
+            sourceLabels:
+              - __meta_kubernetes_pod_host_ip
+            targetLabel: host_ip
+          - action: replace
+            regex: (.+)
+            replacement: $1
+            sourceLabels:
+              - __meta_kubernetes_pod_node_name
+            targetLabel: node
+        scheme: https
+        tlsConfig:
+          caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecureSkipVerify: true
+    namespaceSelector:
+      matchNames:
+        - harvester-system
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: webhook-server
+        app.kubernetes.io/name: harvester
+- apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
+  metadata:
+    name: exporter-harvester
+    namespace: harvester-system
+  spec:
+    endpoints:
+      - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+        honorLabels: true
+        port: https
+        relabelings:
+          - action: replace
+            regex: (.+)
+            replacement: $1
+            sourceLabels:
+              - __meta_kubernetes_pod_host_ip
+            targetLabel: host_ip
+          - action: replace
+            regex: (.+)
+            replacement: $1
+            sourceLabels:
+              - __meta_kubernetes_pod_node_name
+            targetLabel: node
+        scheme: https
+        tlsConfig:
+          caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecureSkipVerify: true
+    namespaceSelector:
+      matchNames:
+        - harvester-system
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: apiserver
+        app.kubernetes.io/name: harvester
