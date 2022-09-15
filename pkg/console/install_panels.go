@@ -1079,11 +1079,11 @@ func addNetworkPanel(c *Console) error {
 		var vlanID int
 		vlanID, err = strconv.Atoi(vlanIDStr)
 		if err != nil {
-			return ErrMsgVLANShouldBeANumberInRange, err
+			return ErrMsgVLANShouldBeANumberInRange, nil
 		}
 		// 0 is unset
 		if vlanID < 0 || vlanID > 4094 {
-			return ErrMsgVLANShouldBeANumberInRange, fmt.Errorf(ErrMsgVLANShouldBeANumberInRange)
+			return ErrMsgVLANShouldBeANumberInRange, nil
 		}
 		mgmtNetwork.VlanID = vlanID
 		return "", nil
