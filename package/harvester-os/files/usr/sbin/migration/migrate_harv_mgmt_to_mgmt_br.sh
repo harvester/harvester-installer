@@ -6,9 +6,7 @@ IFCFG=
 IFROUTE=
 
 function migrate_mgmt_config () {
-	MODE=$1
-	echo "migrate $MODE config"
-
+	MODE=
 	# search all files
 	for (( i=0; ; i++ ))
 	do
@@ -29,6 +27,15 @@ function migrate_mgmt_config () {
 			echo "$IFROUTE"
 		fi
 	done
+
+	if echo "$IFCFG" | grep -q "BOOTPROTO='static'"; then
+		MODE="static"
+	elif echo "$IFCFG" | grep -q "BOOTPROTO='dhcp'"; then
+		MODE="dhcp"
+	else
+		echo "error detect bootproto mode"
+		exit 1
+	fi
 
 	# start patch
 	# remove all ifcfg and ifroute
@@ -153,9 +160,5 @@ echo "$HARV_MGMT found."
 
 # check DHCP or static
 
-if grep -q "BOOTPROTO='static'" "$HARV_CONFIG"; then
-	migrate_mgmt_config static
-elif grep -q "BOOTPROTO='dhcp'" "$HARV_CONFIG"; then
-	migrate_mgmt_config dhcp
-fi
+migrate_mgmt_config
 
