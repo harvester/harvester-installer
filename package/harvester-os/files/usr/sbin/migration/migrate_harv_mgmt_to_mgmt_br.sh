@@ -28,6 +28,7 @@ function migrate_mgmt_config () {
 		fi
 	done
 
+	# check DHCP or static
 	if echo "$IFCFG" | grep -q "BOOTPROTO='static'"; then
 		MODE="static"
 	elif echo "$IFCFG" | grep -q "BOOTPROTO='dhcp'"; then
@@ -158,7 +159,9 @@ fi
 
 echo "$HARV_MGMT found."
 
-# check DHCP or static
+# backup config with timestamp
+TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
+cp "$HARV_CONFIG" "${HARV_CONFIG}.${TIMESTAMP}"
 
 migrate_mgmt_config
 
