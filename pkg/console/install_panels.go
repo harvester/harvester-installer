@@ -1558,11 +1558,7 @@ func addInstallPanel(c *Console) error {
 						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
 						return
 					}
-					mgmtName := config.MgmtInterfaceName
-					vlanID := c.config.ManagementInterface.VlanID
-					if vlanID >= 2 && vlanID <= 4094 {
-						mgmtName = fmt.Sprintf("%s.%d", mgmtName, vlanID)
-					}
+					mgmtName := getManagementInterfaceName(c.config.ManagementInterface)
 					vip, err := getVipThroughDHCP(mgmtName)
 					if err != nil {
 						printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
@@ -1689,11 +1685,7 @@ func addVIPPanel(c *Console) error {
 			spinner := NewSpinner(c.Gui, vipTextPanel, "Requesting IP through DHCP...")
 			spinner.Start()
 			go func(g *gocui.Gui) {
-				mgmtName := config.MgmtInterfaceName
-				vlanID := mgmtNetwork.VlanID
-				if vlanID >= 2 && vlanID <= 4094 {
-					mgmtName = fmt.Sprintf("%s.%d", mgmtName, vlanID)
-				}
+				mgmtName := getManagementInterfaceName(c.config.ManagementInterface)
 				vip, err := getVipThroughDHCP(mgmtName)
 				if err != nil {
 					spinner.Stop(true, err.Error())
