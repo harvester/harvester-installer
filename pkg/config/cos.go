@@ -20,7 +20,6 @@ import (
 const (
 	cosLoginUser         = "rancher"
 	manifestsDirectory   = "/var/lib/rancher/rke2/server/manifests/"
-	canalConfig          = "rke2-canal-config.yaml"
 	harvesterConfig      = "harvester-config.yaml"
 	ntpdService          = "systemd-timesyncd"
 	rancherdBootstrapDir = "/etc/rancher/rancherd/config.yaml.d/"
@@ -104,28 +103,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
 	if err != nil {
 		return nil, err
-	}
-
-	// mgmt interface: https://docs.rke2.io/install/network_options/#canal-options
-	if cfg.Install.Mode == "create" {
-		initramfs.Directories = append(initramfs.Directories, yipSchema.Directory{
-			Path:        manifestsDirectory,
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
-
-		canalHelmChartConfig, err := render(canalConfig, nil)
-		if err != nil {
-			return nil, err
-		}
-		initramfs.Files = append(initramfs.Files, yipSchema.File{
-			Path:        manifestsDirectory + canalConfig,
-			Content:     canalHelmChartConfig,
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
 	}
 
 	// After network is available
