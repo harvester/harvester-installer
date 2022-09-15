@@ -38,7 +38,8 @@ var (
 	ErrMsgForceMBROnLargeDisk          = "disk size too large for MBR partitioning table"
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
 
-	ErrMsgNetworkMethodUnknown = "unknown network method"
+	ErrMsgNetworkMethodUnknown       = "unknown network method"
+	ErrMsgVLANShouldBeANumberInRange = "VLAN ID should be a number 1 ~ 4094."
 
 	ErrMsgSystemSettingsUnknown = "unknown system settings: %s"
 )
@@ -183,7 +184,10 @@ func checkNetworks(network config.Network, dnsServers []string) error {
 		}
 	}
 
-	// TODO check VLAN ID in 0-4094 (0 is unset)
+	// check VLAN ID in 0-4094 (0 is unset)
+	if network.VlanID < 0 || network.VlanID > 4094 {
+		return errors.New(ErrMsgVLANShouldBeANumberInRange)
+	}
 
 	switch network.Method {
 	case config.NetworkMethodDHCP, config.NetworkMethodNone, "":
