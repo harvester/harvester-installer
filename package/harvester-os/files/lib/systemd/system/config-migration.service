@@ -1,0 +1,16 @@
+[Unit]
+Description=Migrate Config to New Version
+DefaultDependencies=no
+After=initrd-fs.target
+Requires=initrd-fs.target
+Before=initrd.target cos-setup-initramfs.service
+
+[Service]
+RootDirectory=/sysroot
+BindPaths=/proc /sys /dev /run /tmp
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=-/usr/sbin/migration.sh
+
+[Install]
+RequiredBy=initrd.target cos-setup-initramfs.service
