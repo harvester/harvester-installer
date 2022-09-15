@@ -8,6 +8,8 @@ RUN chmod 0600 /system/oem/*
 
 COPY harvester-release.yaml /etc/
 
+RUN mkinitrd
+
 ARG HARVESTER_PRETTY_NAME
 RUN sed -i "s/^PRETTY_NAME.*/PRETTY_NAME=\"$HARVESTER_PRETTY_NAME\"/g" /etc/os-release && \
     echo GRUB_ENTRY_NAME="\"$HARVESTER_PRETTY_NAME\"" >> /etc/os-release
