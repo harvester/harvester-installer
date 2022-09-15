@@ -38,8 +38,7 @@ var (
 	ErrMsgForceMBROnLargeDisk          = "disk size too large for MBR partitioning table"
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
 
-	ErrMsgNetworkMethodUnknown       = "unknown network method"
-	ErrMsgVLANShouldBeANumberInRange = "VLAN ID should be a number 1 ~ 4094."
+	ErrMsgNetworkMethodUnknown = "unknown network method"
 
 	ErrMsgSystemSettingsUnknown = "unknown system settings: %s"
 )
