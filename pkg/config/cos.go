@@ -329,9 +329,9 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 			MTU:         mgmtInterface.MTU,
 		}
 		err = updateBond(stage, MgmtBondInterfaceName, &bondMgmt)
-	}
-	if err != nil {
-		return "", err
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if err = updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
@@ -386,9 +386,7 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 		Group:       0,
 	})
 
-	var postUpScript string
-	var err error
-	postUpScript, err = render("wicked-setup-bond.sh", MgmtBondInterfaceName)
+	postUpScript, err := render("wicked-setup-bond.sh", MgmtBondInterfaceName)
 	if err != nil {
 		return err
 	}
@@ -434,7 +432,6 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 
 func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) error {
 	// add Bridge named MgmtInterfaceName and attach Bond named MgmtBondInterfaceName to bridge
-	var err error
 
 	needVlanInterface := false
 	// pvid is always 1, if vlan id is 1, it means untagged vlan.
@@ -450,8 +447,7 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 		Group:       0,
 	})
 
-	var preUpScript string
-	preUpScript, err = render("wicked-setup-bridge.sh", MgmtBondInterfaceName)
+	preUpScript, err := render("wicked-setup-bridge.sh", MgmtBondInterfaceName)
 	if err != nil {
 		return err
 	}
