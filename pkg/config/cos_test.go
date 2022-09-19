@@ -3,8 +3,9 @@ package config
 import (
 	"testing"
 
-	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 func TestCalcCosPersistentPartSize(t *testing.T) {

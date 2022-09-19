@@ -480,8 +480,12 @@ func isAPIReady(managementURL, path string) bool {
 	return err == nil
 }
 
-func isPodReady(namespace, labelSelector string) bool {
-	command := fmt.Sprintf(`kubectl get po -n %s -l "%s" -o jsonpath='{range .items[*]}{range @.status.conditions[*]}{@.type}={@.status};{end}{"\n"}' | grep "Ready=True"`, namespace, labelSelector)
+func isPodReady(namespace string, labelSelectors ...string) bool {
+	var labelSelector string
+	for _, selector := range labelSelectors {
+		labelSelector += fmt.Sprintf("-l %s ", selector)
+	}
+	command := fmt.Sprintf(`kubectl get po -n %s %s -o jsonpath='{range .items[*]}{range @.status.conditions[*]}{@.type}={@.status};{end}{"\n"}' | grep "Ready=True"`, namespace, labelSelector)
 	cmd := exec.Command("/bin/sh", "-c", command)
 	cmd.Env = os.Environ()
 	_, err := cmd.CombinedOutput()
@@ -519,10 +523,11 @@ func getHarvesterStatus() string {
 		return wrapColor(statusNotReady, colorYellow)
 	}
 
-	harvesterReady := isPodReady("harvester-system", "app.kubernetes.io/name=harvester")
+	harvesterReady := isPodReady("harvester-system", "app.kubernetes.io/name=harvester", "app.kubernetes.io/component=apiserver")
+	harvesterWebhookReady := isPodReady("harvester-system", "app.kubernetes.io/name=harvester", "app.kubernetes.io/component=webhook-server")
 	rancherReady := isPodReady("cattle-system", "app=rancher")
 	harvesterAPIReady := isAPIReady(current.managementURL, "/version")
-	if harvesterReady && rancherReady && harvesterAPIReady {
+	if harvesterReady && harvesterWebhookReady && rancherReady && harvesterAPIReady {
 		return wrapColor(statusReady, colorGreen)
 	}
 	return wrapColor(statusNotReady, colorYellow)

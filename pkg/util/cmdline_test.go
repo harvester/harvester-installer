@@ -2,9 +2,10 @@ package util
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/rancher/mapper/values"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test_parseCmdLineWithPrefix(t *testing.T) {
