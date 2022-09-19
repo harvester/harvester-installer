@@ -41,6 +41,8 @@ var (
 	ErrMsgNetworkMethodUnknown = "unknown network method"
 
 	ErrMsgSystemSettingsUnknown = "unknown system settings: %s"
+
+	ErrMsgManagementInterfaceNotFound = "`networks` is deprecated, please use `management_interface` for new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/#installmanagement_interface"
 )
 
 type ValidatorInterface interface {
@@ -286,6 +288,10 @@ func checkSystemSettings(systemSettings map[string]string) error {
 }
 
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
+	if cfg.SchemeVersion != config.SchemeVersion {
+		return fmt.Errorf("Unsupported Harvester Scheme Version %d", cfg.SchemeVersion)
+	}
+
 	// check hostname
 	// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
 	if errs := validation.IsDNS1123Subdomain(cfg.OS.Hostname); len(errs) > 0 {
@@ -307,6 +313,10 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		if err := checkForceMBR(cfg.Install.Device); err != nil {
 			return err
 		}
+	}
+
+	if len(cfg.Install.ManagementInterface.Interfaces) == 0 {
+		return errors.Errorf(ErrMsgManagementInterfaceNotFound)
 	}
 
 	if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
