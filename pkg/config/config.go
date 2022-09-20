@@ -157,6 +157,7 @@ type ClusterNetwork struct {
 }
 
 type HarvesterConfig struct {
+	// Harvester will use scheme version to determine current version and migrate config to new scheme version
 	SchemeVersion uint32 `json:"schemeVersion,omitempty"`
 	ServerURL     string `json:"serverUrl,omitempty"`
 	Token         string `json:"token,omitempty"`
