@@ -17,6 +17,7 @@ func TestToHarvesterConfig(t *testing.T) {
 		{
 			input: util.LoadFixture(t, "harvester-config.yaml"),
 			expected: &HarvesterConfig{
+				SchemeVersion: SchemeVersion,
 				ServerURL: "https://someserver:6443",
 				Token:     "TOKEN_VALUE",
 				OS: OS{
