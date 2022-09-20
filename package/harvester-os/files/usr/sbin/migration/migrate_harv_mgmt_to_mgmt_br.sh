@@ -65,6 +65,8 @@ function migrate_mgmt_config () {
 
     case \$ACTION in
     	post-up)
+    		# inherit MAC address
+    		ip link set dev mgmt-br address \$(ip -json link show dev \$INTERFACE | jq -j '.[0]["address"]')
     		# accept all vlan, PVID=1 by default
     		bridge vlan add vid 2-4094 dev \$INTERFACE
     		;;
@@ -89,9 +91,6 @@ function migrate_mgmt_config () {
     		;;
 
     	post-up)
-    		# inherit MAC address from mgmt-bo
-    		ip link set dev \$INTERFACE address \$(ip -json link show dev mgmt-bo | jq -j '.[0]["address"]')
-
     		# accept all vlan, PVID=1 by default
     		bridge vlan add vid 2-4094 dev \$INTERFACE self
     		bridge vlan add vid 2-4094 dev mgmt-bo
