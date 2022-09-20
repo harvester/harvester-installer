@@ -409,9 +409,6 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		return err
 	}
 	defer os.Remove(cosConfigFile)
-	
-	// save current scheme version to harvester.config
-	hvstConfig.SchemeVersion = config.SchemeVersion
 
 	hvstConfigFile, err := saveTemp(hvstConfig, "harvester")
 	if err != nil {

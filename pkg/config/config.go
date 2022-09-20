@@ -172,7 +172,9 @@ type HarvesterConfig struct {
 }
 
 func NewHarvesterConfig() *HarvesterConfig {
-	return &HarvesterConfig{}
+	return &HarvesterConfig{
+		SchemeVersion: SchemeVersion,
+	}
 }
 
 func (c *HarvesterConfig) DeepCopy() (*HarvesterConfig, error) {

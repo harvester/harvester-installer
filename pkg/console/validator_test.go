@@ -67,7 +67,7 @@ func TestValidateConfig(t *testing.T) {
 				Mode: config.ModeCreate,
 				ManagementInterface: config.Network{
 					Interfaces: []config.NetworkInterface{
-						{ Name: "eth0" },
+						{Name: "eth0"},
 					},
 				},
 				Device: "/dev/vda",
