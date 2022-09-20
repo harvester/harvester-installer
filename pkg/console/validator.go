@@ -42,7 +42,8 @@ var (
 
 	ErrMsgSystemSettingsUnknown = "unknown system settings: %s"
 
-	ErrMsgManagementInterfaceNotFound = "`networks` is deprecated, please use `management_interface` for new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/#installmanagement_interface"
+	ErrMsgManagementInterfaceNotFound = "networks is deprecated, please use management_interface for new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/#installmanagement_interface"
+	ErrMsgUnsupportedSchemeVersion    = "Unsupported Harvester Scheme Version %d, please use new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/"
 )
 
 type ValidatorInterface interface {
@@ -289,7 +290,7 @@ func checkSystemSettings(systemSettings map[string]string) error {
 
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	if cfg.SchemeVersion != config.SchemeVersion {
-		return fmt.Errorf("Unsupported Harvester Scheme Version %d", cfg.SchemeVersion)
+		return fmt.Errorf(ErrMsgUnsupportedSchemeVersion, cfg.SchemeVersion)
 	}
 
 	// check hostname

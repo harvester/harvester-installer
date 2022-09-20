@@ -319,8 +319,6 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 		return "", fmt.Errorf("unsupported network method %s", mgmtInterface.Method)
 	}
 
-	var err error
-
 	if len(mgmtInterface.Interfaces) > 0 {
 		bondMgmt := Network{
 			Interfaces:  mgmtInterface.Interfaces,
@@ -328,13 +326,12 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 			BondOptions: mgmtInterface.BondOptions,
 			MTU:         mgmtInterface.MTU,
 		}
-		err = updateBond(stage, MgmtBondInterfaceName, &bondMgmt)
-		if err != nil {
+		if err := updateBond(stage, MgmtBondInterfaceName, &bondMgmt); err != nil {
 			return "", err
 		}
 	}
 
-	if err = updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
+	if err := updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
 		return "", err
 	}
 
@@ -386,7 +383,7 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 		Group:       0,
 	})
 
-	postUpScript, err := render("wicked-setup-bond.sh", MgmtBondInterfaceName)
+	postUpScript, err := render("wicked-setup-bond.sh", MgmtInterfaceName)
 	if err != nil {
 		return err
 	}
