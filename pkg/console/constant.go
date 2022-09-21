@@ -44,7 +44,7 @@ const (
 	networkTitle          = "Configure network connection"
 	askBondModeLabel      = "Bond Mode"
 	askInterfaceLabel     = "Management NIC"
-	askVlanIDLabel        = "VLAN ID"
+	askVlanIDLabel        = "VLAN ID (optional)"
 	askNetworkMethodLabel = "IPv4 Method"
 	hostNameLabel         = "HostName"
 	addressLabel          = "IPv4 Address"
