@@ -69,6 +69,12 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 			}
 		}
 
+		// add SchemeVersion in non-automatic mode
+		// in automatic mode, SchemeVersion should be from config.yaml directly
+		if !c.config.Install.Automatic {
+			c.config.SchemeVersion = config.SchemeVersion
+		}
+
 		initElements := []string{
 			titlePanel,
 			validatorPanel,
