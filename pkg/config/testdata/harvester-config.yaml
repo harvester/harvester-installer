@@ -1,3 +1,4 @@
+scheme_version: 1
 server_url: https://someserver:6443
 token: TOKEN_VALUE
 os:
