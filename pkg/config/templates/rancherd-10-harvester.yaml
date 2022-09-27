@@ -76,6 +76,29 @@ resources:
     releaseName: harvester
     version: {{ .HarvesterChartVersion }}
     defaultNamespace: harvester-system
+    diff:
+      comparePatches:
+      - apiVersion: apiextensions.k8s.io/v1
+        jsonPointers:
+        - /status/acceptedNames
+        - /status/conditions
+        - /status/storedVersions
+        kind: CustomResourceDefinition
+        name: engineimages.longhorn.io
+      - apiVersion: apiextensions.k8s.io/v1
+        jsonPointers:
+        - /status/acceptedNames
+        - /status/conditions
+        - /status/storedVersions
+        kind: CustomResourceDefinition
+        name: nodes.longhorn.io
+      - apiVersion: apiextensions.k8s.io/v1
+        jsonPointers:
+        - /status/acceptedNames
+        - /status/conditions
+        - /status/storedVersions
+        kind: CustomResourceDefinition
+        name: volumes.longhorn.io
     repoName: harvester-charts
     targets:
     - clusterName: local
