@@ -21,7 +21,8 @@ CHARTS_DIR="${PACKAGE_HARVESTER_REPO_DIR}/charts"
 IMAGES_DIR="${BUNDLE_DIR}/harvester/images"
 IMAGES_LISTS_DIR="${BUNDLE_DIR}/harvester/images-lists"
 RANCHERD_IMAGES_DIR="${BUNDLE_DIR}/rancherd/images"
-
+VM_IMPORT_CONTROLLER_CHART_VERSION="0.1.1-rc1"
+VM_IMPORT_CONTROLLER_IMAGE="rancher/harvester-vm-import-controller:v0.1.0"
 mkdir -p ${CHARTS_DIR}
 mkdir -p ${IMAGES_DIR}
 mkdir -p ${IMAGES_LISTS_DIR}
@@ -78,6 +79,11 @@ patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING
 # make chart sanity check again after patch
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
 
+# Prepare vm-import-controller-chart
+helm pull https://github.com/harvester/charts/releases/download/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz >/dev/null
+
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
@@ -129,6 +135,9 @@ fi
 for i in "${!repositories[@]}"; do
   echo "${repositories[$i]}:${tags[$i]}">>${image_list_file}
 done
+
+# vm-import-controller: get images from values.yaml
+echo ${VM_IMPORT_CONTROLLER_IMAGE} >>  ${image_list_file}
 
 # harvester additional images, which is not in rancher images, not in harvester images or any others
 # do not add any comment line into this file, each line should be an valid image name
