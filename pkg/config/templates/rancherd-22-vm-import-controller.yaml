@@ -5,7 +5,7 @@ resources:
       name: vm-import-controller
       namespace: harvester-system
     spec:
-      repo: http://harvester-cluster-repo.cattle-system/charts
+      repo: http://harvester-cluster-repo.cattle-system.svc/charts
       version: "0.1.1-rc1"
       chart: harvester-vm-import-controller
       enabled: false
