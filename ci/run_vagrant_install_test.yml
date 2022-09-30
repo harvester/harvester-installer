@@ -53,6 +53,7 @@
     - name: Clone ipxe-examples repo
       git:
         repo: https://github.com/harvester/ipxe-examples.git
+        version: main
         dest: "{{ WORKSPACE }}/ipxe-examples"
 
     - name: Check to see if "/usr/share/qemu/OVMF.fd" exist
