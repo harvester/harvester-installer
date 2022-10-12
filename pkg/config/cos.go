@@ -595,7 +595,7 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 
 	for _, templateName := range []string{
 		"12-monitoring-dashboard.yaml",
-		"22-vm-import-controller.yaml",
+		"22-addons.yaml",
 	} {
 		templBytes, err := templFS.ReadFile(filepath.Join(templateFolder, "rancherd-"+templateName))
 		if err != nil {
