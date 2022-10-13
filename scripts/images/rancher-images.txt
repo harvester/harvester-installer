@@ -17,10 +17,10 @@ docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.50.0
 docker.io/rancher/mirrored-prometheus-prometheus:v2.28.1
 docker.io/rancher/mirrored-prometheus-alertmanager:v0.22.2
 docker.io/rancher/rancher-webhook:v0.2.7-rc4
-docker.io/rancher/rancher:v2.6.9-rc3
+docker.io/rancher/rancher:v2.6.9-rc4
 docker.io/rancher/shell:v0.1.8
 docker.io/rancher/shell:v0.1.18
-docker.io/rancher/system-agent:v0.2.11-suc
+docker.io/rancher/system-agent:v0.2.13-suc
 docker.io/rancher/system-upgrade-controller:v0.9.1
 docker.io/rancher/mirrored-banzaicloud-fluentd:v1.14.6-alpine-5
 docker.io/rancher/mirrored-banzaicloud-logging-operator:3.17.7
