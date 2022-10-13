@@ -39,7 +39,7 @@ spec:
             - mountPath: /etc/machine-id
               name: machine-id
               readOnly: true
-            - mountPath: "/var/log/audit/audit.log" #harvester-patch
+            - mountPath: "/var/log/audit/audit.log" # harvester-patch
               name: rke2-audit
               readOnly: true
       {{- with .Values.tolerations }}

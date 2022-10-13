@@ -13,7 +13,7 @@ patch_rancher_logging_chart()
   fi
 
   cd ${chart_dir}
-  tar zxf rancher-logging-${logging_version}.tgz
+  tar zxf rancher-logging-${logging_version}.tgz --warning=no-timestamp
 
   echo "patch rancher logging rke2 configmap.yaml, daemonset.yaml"
   cp -f ${pkg_logging_path}/${logging_version}/configmap.yaml ./rancher-logging/templates/loggings/rke2/configmap.yaml
