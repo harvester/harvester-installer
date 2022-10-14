@@ -117,10 +117,21 @@ save_image "common" $BUNDLE_DIR $image_list_file ${IMAGES_DIR}
 # RKE2 images
 RKE2_IMAGES_URL="${RKE2_IMAGE_REPO}${RKE2_VERSION}"
 image_list_file="${IMAGES_LISTS_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
-image_archive="${IMAGES_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.tar.zst"
 get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" $image_list_file
-get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" $image_archive
-add_image_list_to_metadata "rke2" $BUNDLE_DIR $image_list_file $image_archive
+
+# Workaround for https://github.com/rancher/rke2/issues/3425
+# RKE2 PR: https://github.com/rancher/rke2/issues/3429
+# Replace rke2-runtime image with a patched one.
+sed -i '/^docker.io\/rancher\/rke2-runtime.*/d' $image_list_file
+save_image "rke2" $BUNDLE_DIR $image_list_file ${IMAGES_DIR}
+
+image_list_file="${IMAGES_LISTS_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}-hack.txt"
+image_archive="${IMAGES_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}-hack.tar"
+echo "docker.io/rancher/rke2-runtime:${RKE2_VERSION_NORMALIZED}" > $image_list_file
+cd "${TOP_DIR}/package/rke2" && docker build . -t rancher/rke2-runtime:${RKE2_VERSION_NORMALIZED} && cd -
+docker save rancher/rke2-runtime:${RKE2_VERSION_NORMALIZED} -o $image_archive
+zstd --rm $image_archive
+add_image_list_to_metadata "rke2" $BUNDLE_DIR $image_list_file "${image_archive}.zst"
 
 # exclude SR-IOV images
 image_list_file="${IMAGES_LISTS_DIR}/rke2-images-multus.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
