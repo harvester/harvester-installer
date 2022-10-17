@@ -38,7 +38,7 @@ func Test_parseCmdLineWithoutPrefix(t *testing.T) {
 
 func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 
-	cmdline := `harvester.os.sshAuthorizedKeys=a  harvester.install.networks.harvester-mgmt.method=dhcp harvester.install.networks.harvester-mgmt.bond_options.mode=balance-tlb harvester.install.networks.harvester-mgmt.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.networks.harvester-mgmt.interfaces="hwAddr: ab:cd:ef:gh" harvester.install.networks.harvester-mgmt.interfaces="hwAddr:   de:fg:hi:jk"`
+	cmdline := `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="hwAddr: ab:cd:ef:gh" harvester.install.management_interface.interfaces="hwAddr:   de:fg:hi:jk"`
 
 	m, err := parseCmdLine(cmdline, "harvester")
 	if err != nil {
@@ -54,10 +54,22 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 		},
 	}
 
-	have, ok := values.GetValue(m, "install", "networks", "harvester-mgmt", "interfaces")
+	have, ok := values.GetValue(m, "install", "management_interface", "interfaces")
 	if !ok {
 		t.Fatal(fmt.Errorf("no network interfaces found"))
 	}
 
 	assert.Equal(t, want, have)
+}
+
+func Test_parseCmdLineWithSchemeVersion(t *testing.T) {
+	cmdline := `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="hwAddr: ab:cd:ef:gh" harvester.install.management_interface.interfaces="hwAddr:   de:fg:hi:jk" harvester.scheme_version=1`
+
+	m, err := parseCmdLine(cmdline, "harvester")
+	assert.NoError(t, err, "expected no error while parsing arguments")
+
+	val, ok := m["scheme_version"]
+	assert.True(t, ok, "expected to find key scheme_version")
+	var tmp uint64
+	assert.IsType(t, tmp, val, "expected to find scheme_version to be type uint")
 }
