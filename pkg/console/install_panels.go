@@ -68,6 +68,8 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 				c.config.Merge(cfg)
 				initPanel = installPanel
 			}
+		} else {
+			logrus.Errorf("automatic install failed: %v\n", err)
 		}
 
 		// add SchemeVersion in non-automatic mode

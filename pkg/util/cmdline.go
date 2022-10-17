@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/rancher/mapper/values"
@@ -47,6 +48,10 @@ func parseCmdLine(cmdline string, prefix string) (map[string]interface{}, error)
 	}
 
 	err = toNetworkInterfaces(data)
+	if err != nil {
+		return data, err
+	}
+	err = toSchemeVersion(data)
 	return data, err
 }
 
@@ -63,7 +68,7 @@ func ReadCmdline(prefix string) (map[string]interface{}, error) {
 
 // parse kernel arguments and process network interfaces as a struct
 func toNetworkInterfaces(data map[string]interface{}) error {
-	networkInterfaces, ok := values.GetValue(data, "install", "networks", "harvester-mgmt", "interfaces")
+	networkInterfaces, ok := values.GetValue(data, "install", "management_interface", "interfaces")
 	if !ok {
 		return nil
 	}
@@ -86,6 +91,20 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 		outDetails = append(outDetails, n)
 	}
 
-	values.PutValue(data, outDetails, "install", "networks", "harvester-mgmt", "interfaces")
+	values.PutValue(data, outDetails, "install", "management_interface", "interfaces")
+	return nil
+}
+
+func toSchemeVersion(data map[string]interface{}) error {
+	schemeVersion, ok := values.GetValue(data, "scheme_version")
+	if !ok {
+		return nil
+	}
+
+	schemeVersionUint, err := strconv.ParseUint(schemeVersion.(string), 10, 32)
+	if err != nil {
+		return err
+	}
+	values.PutValue(data, schemeVersionUint, "scheme_version")
 	return nil
 }
