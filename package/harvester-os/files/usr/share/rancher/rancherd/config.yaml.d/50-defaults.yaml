@@ -1,10 +1,10 @@
 rancherValues:
   rancherImagePullPolicy: IfNotPresent
   rancherImage: rancher/rancher
-  rancherImageTag: v2.6.9-rc5
+  rancherImageTag: v2.6.9
   noDefaultAdmin: false
   features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
   bootstrapPassword: admin
   hostPort: 0
-rancherInstallerImage: rancher/system-agent-installer-rancher:v2.6.9-rc5
+rancherInstallerImage: rancher/system-agent-installer-rancher:v2.6.9
