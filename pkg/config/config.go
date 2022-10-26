@@ -150,13 +150,6 @@ type OS struct {
 	Labels         map[string]string `json:"labels,omitempty"`
 }
 
-type ClusterNetwork struct {
-	// by default: false
-	Enable      bool              `json:"enable,omitempty"`
-	Description string            `json:"description,omitempty"`
-	Config      map[string]string `json:"config,omitempty"`
-}
-
 type HarvesterConfig struct {
 	// Harvester will use scheme version to determine current version and migrate config to new scheme version
 	SchemeVersion uint32 `json:"schemeVersion,omitempty"`
@@ -170,7 +163,6 @@ type HarvesterConfig struct {
 	HarvesterChartVersion  string                    `json:"harvesterChartVersion,omitempty"`
 	MonitoringChartVersion string                    `json:"monitoringChartVersion,omitempty"`
 	SystemSettings         map[string]string         `json:"systemSettings,omitempty"`
-	ClusterNetworks        map[string]ClusterNetwork `json:"clusterNetworks,omitempty"`
 	LoggingChartVersion    string                    `json:"loggingChartVersion,omitempty"`
 }
 

@@ -5,33 +5,21 @@ HARV_MGMT="harvester-mgmt"
 IFCFG=
 IFROUTE=
 
+function detect_mgmt () {
+	yq -e '.stages.initramfs[0].files[] | select(.path == "/etc/sysconfig/network/ifcfg-'${HARV_MGMT}'") | .content' "$HARV_CONFIG" > /dev/null
+}
+
 function migrate_mgmt_config () {
 	MODE=
-	# search all files
-	for (( i=0; ; i++ ))
-	do
-		if ! yq -e ".stages.initramfs[0].files[$i]" "$HARV_CONFIG" > /dev/null 2>&1; then
-			echo "end files"
-			break
-		fi
-
-		if yq ".stages.initramfs[0].files[$i].path" "$HARV_CONFIG" | grep -q "/etc/sysconfig/network/ifcfg-${HARV_MGMT}"; then
-			# save config
-			IFCFG=$(yq ".stages.initramfs[0].files[$i].content" "$HARV_CONFIG")
-			echo "$IFCFG"
-		fi
-
-		if yq ".stages.initramfs[0].files[$i].path" "$HARV_CONFIG" | grep -q "/etc/sysconfig/network/ifroute-${HARV_MGMT}"; then
-			# save config
-			IFROUTE=$(yq ".stages.initramfs[0].files[$i].content" "$HARV_CONFIG")
-			echo "$IFROUTE"
-		fi
-	done
+	IFCFG=$(yq '.stages.initramfs[0].files[] | select(.path == "/etc/sysconfig/network/ifcfg-'${HARV_MGMT}'") | .content' "$HARV_CONFIG")
+	IFROUTE=$(yq '.stages.initramfs[0].files[] | select(.path == "/etc/sysconfig/network/ifroute-'${HARV_MGMT}'") | .content' "$HARV_CONFIG")
+	printf "%s\n" "$IFCFG"
+	printf "%s\n" "$IFROUTE"
 
 	# check DHCP or static
-	if echo "$IFCFG" | grep -q "BOOTPROTO='static'"; then
+	if printf "%s\n" "$IFCFG" | grep -q "BOOTPROTO='static'"; then
 		MODE="static"
-	elif echo "$IFCFG" | grep -q "BOOTPROTO='dhcp'"; then
+	elif printf "%s\n" "$IFCFG" | grep -q "BOOTPROTO='dhcp'"; then
 		MODE="dhcp"
 	else
 		echo "error detect bootproto mode"
@@ -39,6 +27,9 @@ function migrate_mgmt_config () {
 	fi
 
 	# start patch
+	# remove cluster network
+	yq -i 'del( .stages.initramfs[0].files[] | select(.path == "*21-harvester-clusternetworks.yaml*"))' "$HARV_CONFIG"
+
 	# remove all ifcfg and ifroute
 	if [ $MODE == "dhcp" ]; then
 		yq -i 'del( .stages.initramfs[0].commands[] | select(. == "rm -f /etc/sysconfig/network/ifroute-harvester-mgmt"))' "$HARV_CONFIG"
@@ -113,10 +104,10 @@ function migrate_mgmt_config () {
     PRE_UP_SCRIPT="wicked:setup_bridge.sh"
     POST_UP_SCRIPT="wicked:setup_bridge.sh"
 
-    $(echo "$IFCFG" | grep "IPADDR")
-    $(echo "$IFCFG" | grep "NETMASK")
-    $(echo "$IFCFG" | grep "DHCLIENT_SET_DEFAULT_ROUTE")
-    $(echo "$IFCFG" | grep "MTU")
+    $(printf "%s\n" "$IFCFG" | grep "IPADDR")
+    $(printf "%s\n" "$IFCFG" | grep "NETMASK")
+    $(printf "%s\n" "$IFCFG" | grep "DHCLIENT_SET_DEFAULT_ROUTE")
+    $(printf "%s\n" "$IFCFG" | grep "MTU")
   encoding: ""
   ownerstring: ""
 
@@ -129,10 +120,10 @@ function migrate_mgmt_config () {
     BONDING_MASTER='yes'
     BOOTPROTO='none'
     POST_UP_SCRIPT="wicked:setup_bond.sh"
-    $(echo "$IFCFG" | grep "BONDING_SLAVE_")
-    $(echo "$IFCFG" | grep "BONDING_MODULE_OPTS")
+$(printf "%s\n" "$IFCFG" | grep "BONDING_SLAVE_" | sed 's/^/    /')
+    $(printf "%s\n" "$IFCFG" | grep "BONDING_MODULE_OPTS")
 
-    $(echo "$IFCFG" | grep "MTU")
+    $(printf "%s\n" "$IFCFG" | grep "MTU")
   encoding: ""
   ownerstring: ""
 EOF
@@ -144,7 +135,7 @@ EOF
   owner: 0
   group: 0
   content: |
-    $(echo "$IFROUTE" | sed "s/$HARV_MGMT/mgmt-br/g")
+    $(printf "%s\n" "$IFROUTE" | sed "s/$HARV_MGMT/mgmt-br/g")
   encoding: ""
   ownerstring: ""
 EOF
@@ -153,6 +144,11 @@ EOF
 
 if ! grep -q "$HARV_MGMT" "$HARV_CONFIG"; then
 	echo "$HARV_MGMT not found. Skipping."
+	exit 0
+fi
+
+if ! detect_mgmt; then
+	echo "ifcfg-${HARV_MGMT} not found. Skipping."
 	exit 0
 fi
 
