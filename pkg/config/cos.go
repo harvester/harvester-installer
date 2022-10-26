@@ -582,7 +582,6 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		"14-logging-crd.yaml",
 		"15-logging.yaml",
 		"20-harvester-settings.yaml",
-		"21-harvester-clusternetworks.yaml",
 	} {
 		rendered, err := render("rancherd-"+templateName, config)
 		if err != nil {
