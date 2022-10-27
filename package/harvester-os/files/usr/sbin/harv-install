@@ -6,11 +6,8 @@ TARGET=/run/cos/target
 DATA_DISK_FSLABEL="HARV_LH_DEFAULT"
 
 # Update environment variables
-export ELEMENTAL_TARGET=$ELEMENTAL_DEVICE
-export ELEMENTAL_ISO=$ELEMENTAL_ISO_URL
-export ELEMENTAL_CLOUD_INIT=$ELEMENTAL_CONFIG_URL
-export QUIET=${ELEMENTAL_SILENT:+"--quiet"}
-export DEBUG=${ELEMENTAL_DEBUG:+"--debug"}
+export QUIET=${HARVESTER_SILENT:+"--quiet"}
+export DEBUG=${HARVESTER_DEBUG:+"--debug"}
 
 clear_disk_label()
 {
@@ -41,7 +38,7 @@ umount_target() {
 cleanup2()
 {
     sync
-    [ -n "$ELEMENTAL_ISO" ] && umount "$ISOMNT" || true
+    [ -n "$HARVESTER_ISO_URL" ] && umount "$ISOMNT" || true
     [ -n "$ISOTEMP" ] && rm -f "$ISOTEMP"
     umount_target || true
     umount ${STATEDIR}
@@ -96,19 +93,19 @@ get_url()
 }
 
 check_iso(){
-    if [ -n "$ELEMENTAL_ISO" ]; then
+    if [ -n "$HARVESTER_ISO_URL" ]; then
         echo "Checking ISO URL.."
-        check_url "$ELEMENTAL_ISO"
+        check_url "$HARVESTER_ISO_URL"
     fi
 }
 
 get_iso()
 {
-    if [ -n "$ELEMENTAL_ISO" ]; then
+    if [ -n "$HARVESTER_ISO_URL" ]; then
         echo "Downloading ISO.."
         ISOMNT=$(mktemp -d -p /tmp cos.XXXXXXXX.isomnt)
         ISOTEMP=$(mktemp -p ${TARGET}/usr/local cos.XXXXXXXX.iso)
-        get_url ${ELEMENTAL_ISO} ${ISOTEMP}
+        get_url ${HARVESTER_ISO_URL} ${ISOTEMP}
         ISO_DEVICE=$(losetup --show -f $ISOTEMP)
         mount -o ro ${ISO_DEVICE} ${ISOMNT}
     fi
@@ -285,10 +282,10 @@ EOF
 
 update_grub_settings()
 {
-    if [ -z "${ELEMENTAL_TTY}" ]; then
+    if [ -z "${HARVESTER_TTY}" ]; then
         TTY=$(tty | sed 's!/dev/!!')
     else
-        TTY=$ELEMENTAL_TTY
+        TTY=$HARVESTER_TTY
     fi
 
     if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
@@ -333,8 +330,8 @@ save_configs()
         cp $HARVESTER_CONFIG $save_dir/harvester.config
     fi
 
-    if [ -e "$ELEMENTAL_PARTITION_LAYOUT" ]; then
-        cp $ELEMENTAL_PARTITION_LAYOUT $save_dir/part-layout.config
+    if [ -e "$ELEMENTAL_CONFIG" ]; then
+        cp $ELEMENTAL_CONFIG $save_dir/elemental.config
     fi
 }
 
@@ -378,12 +375,6 @@ trap cleanup exit
 
 check_iso
 
-# Follow the symbolic link to the real device
-install_device="$ELEMENTAL_TARGET"
-if [ -L "$ELEMENTAL_TARGET" ]; then
-  install_device=$(readlink -f "$ELEMENTAL_TARGET")
-fi
-
 # Tear down LVM and MD devices on the system, if the installing device is occuipied, the
 # partitioning operation could fail later. Be forgiven here.
 blkdeactivate --lvmoptions wholevg,retry --dmoptions force,retry --errors || true
@@ -391,7 +382,7 @@ blkdeactivate --lvmoptions wholevg,retry --dmoptions force,retry --errors || tru
 clear_disk_label
 
 # Run elemental installer but do not let it fetch ISO and do not shutdown
-ELEMENTAL_ISO="" ELEMENTAL_TARGET="$install_device" ELEMENTAL_POWEROFF="" elemental ${QUIET} ${DEBUG} install
+elemental install --config-dir ${ELEMENTAL_CONFIG_DIR} ${QUIET} ${DEBUG}
 
 # Format the data disk if needed
 do_data_disk_format
