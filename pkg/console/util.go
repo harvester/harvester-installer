@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,6 +45,9 @@ You can see the full installation log by:
   - Run the command: less %s.
 `
 	https = "https://"
+
+	ElementalConfigDir  = "/tmp/elemental"
+	ElementalConfigFile = "config.yaml"
 )
 
 func newProxyClient() http.Client {
@@ -399,6 +403,26 @@ func printToPanelAndLog(g *gocui.Gui, panel string, logPrefix string, reader io.
 	}
 }
 
+func saveElementalConfig(obj interface{}) (string, string, error) {
+	err := os.MkdirAll(ElementalConfigDir, os.ModePerm)
+	if err != nil {
+		return "", "", err
+	}
+
+	bytes, err := yaml.Marshal(obj)
+	if err != nil {
+		return "", "", err
+	}
+
+	elementalConfigFile := filepath.Join(ElementalConfigDir, ElementalConfigFile)
+	err = ioutil.WriteFile(elementalConfigFile, bytes, os.ModePerm)
+	if err != nil {
+		return "", "", err
+	}
+
+	return ElementalConfigDir, elementalConfigFile, nil
+}
+
 func saveTemp(obj interface{}, prefix string) (string, error) {
 	tempFile, err := ioutil.TempFile("/tmp", fmt.Sprintf("%s.", prefix))
 	if err != nil {
@@ -443,33 +467,38 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	defer os.Remove(hvstConfigFile)
 
 	hvstConfig.Install.ConfigURL = cosConfigFile
+	elementalConfig, err := config.ConvertToElementalConfig(hvstConfig)
+	if err != nil {
+		return err
+	}
 
+	// provide HARVESTER_ISO_URL, DEBUG, SILENT
 	ev, err := hvstConfig.ToCosInstallEnv()
 	if err != nil {
 		return nil
 	}
-
 	env := append(os.Environ(), ev...)
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
 	env = append(env, fmt.Sprintf("HARVESTER_INSTALLATION_LOG=%s", defaultLogFilePath))
 
 	if hvstConfig.ShouldCreateDataPartitionOnOsDisk() {
 		// Use custom layout (which also creates Longhorn partition) when needed
-		cosPartLayout, err := config.CreateRootPartitioningLayout(hvstConfig.Install.Device)
+		elementalConfig, err = config.CreateRootPartitioningLayout(elementalConfig, hvstConfig.Install.Device)
 		if err != nil {
 			return err
 		}
-		cosPartLayoutFile, err := saveTemp(cosPartLayout, "part-layout")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(cosPartLayoutFile)
-		env = append(env, fmt.Sprintf("ELEMENTAL_PARTITION_LAYOUT=%s", cosPartLayoutFile))
 	}
 
 	if hvstConfig.DataDisk != "" {
 		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
 	}
+
+	elementalConfigDir, elementalConfigFile, err := saveElementalConfig(elementalConfig)
+	if err != nil {
+		return nil
+	}
+	env = append(env, fmt.Sprintf("ELEMENTAL_CONFIG=%s", elementalConfigFile))
+	env = append(env, fmt.Sprintf("ELEMENTAL_CONFIG_DIR=%s", elementalConfigDir))
 
 	if err := execute(ctx, g, env, "/usr/sbin/harv-install"); err != nil {
 		webhooks.Handle(EventInstallFailed)
