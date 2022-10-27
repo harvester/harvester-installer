@@ -41,6 +41,61 @@ var (
 	saveOriginalNetworkConfigOnce sync.Once
 )
 
+// refer: https://github.com/rancher/elemental-cli/blob/v0.1.0/config.yaml.example
+type ElementalConfig struct {
+	Install ElementalInstallSpec `yaml:"install,omitempty"`
+}
+
+type ElementalInstallSpec struct {
+	Target          string                     `yaml:"target,omitempty"`
+	Firmware        string                     `yaml:"firmware,omitempty"`
+	PartTable       string                     `yaml:"part-table,omitempty"`
+	Partitions      *ElementalDefaultPartition `yaml:"partitions,omitempty"`
+	ExtraPartitions []ElementalPartition       `yaml:"extra-partitions,omitempty"`
+	CloudInit       string                     `yaml:"cloud-init,omitempty"`
+	Tty             string                     `yaml:"tty,omitempty"`
+}
+
+type ElementalDefaultPartition struct {
+	OEM        *ElementalPartition `yaml:"oem,omitempty"`
+	State      *ElementalPartition `yaml:"state,omitempty"`
+	Recovery   *ElementalPartition `yaml:"recovery,omitempty"`
+	Persistent *ElementalPartition `yaml:"persistent,omitempty"`
+}
+
+type ElementalPartition struct {
+	FilesystemLabel string `yaml:"label,omitempty"`
+	Size            uint   `yaml:"size,omitempty"`
+	FS              string `yaml:"fs,omitempty"`
+}
+
+func NewElementalConfig() *ElementalConfig {
+	return &ElementalConfig{}
+}
+
+func ConvertToElementalConfig(config *HarvesterConfig) (*ElementalConfig, error) {
+	elementalConfig := NewElementalConfig()
+
+	if config.Install.ForceEFI {
+		elementalConfig.Install.Firmware = "efi"
+	}
+
+	elementalConfig.Install.PartTable = "gpt"
+	if !config.Install.ForceGPT {
+		elementalConfig.Install.PartTable = "mbr"
+	}
+
+	resolvedDevPath, err := filepath.EvalSymlinks(config.Install.Device)
+	if err != nil {
+		return nil, err
+	}
+	elementalConfig.Install.Target = resolvedDevPath
+	elementalConfig.Install.CloudInit = config.Install.ConfigURL
+	elementalConfig.Install.Tty = config.Install.TTY
+
+	return elementalConfig, nil
+}
+
 // ConvertToCOS converts HarvesterConfig to cOS configuration.
 func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	cfg, err := config.DeepCopy()
@@ -567,7 +622,7 @@ func getAddStaticDNSServersCmd(servers []string) string {
 }
 
 func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {
-	return ToEnv("ELEMENTAL_", c.Install)
+	return ToEnv("HARVESTER_", c.Install)
 }
 
 // Returns Rancherd bootstrap resources
@@ -623,7 +678,7 @@ func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
 	}
 }
 
-func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) {
+func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, devPath string) (*ElementalConfig, error) {
 	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
 	if err != nil {
 		return nil, err
@@ -634,58 +689,36 @@ func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) 
 		return nil, err
 	}
 
-	resolvedDevPath, err := filepath.EvalSymlinks(devPath)
-	if err != nil {
-		return nil, err
-	}
-
-	yipConfig := yipSchema.YipConfig{
-		Name: "Root partitioning layout",
-		Stages: map[string][]yipSchema.Stage{
-			"partitioning": {
-				yipSchema.Stage{
-					Name: "Root partitioning layout",
-					Layout: yipSchema.Layout{
-						Device: &yipSchema.Device{
-							Path: resolvedDevPath,
-						},
-						Parts: []yipSchema.Partition{
-							{
-								FSLabel:    "COS_OEM",
-								PLabel:     "oem",
-								Size:       50,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_STATE",
-								PLabel:     "state",
-								Size:       15360,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_RECOVERY",
-								PLabel:     "recovery",
-								Size:       8192,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_PERSISTENT",
-								PLabel:     "persistent",
-								Size:       uint(cosPersistentSizeGiB << 10),
-								FileSystem: "ext4",
-							},
-							{
-								// Do not specify PLabel because it's hard to remove!
-								FSLabel:    "HARV_LH_DEFAULT",
-								Size:       0,
-								FileSystem: "ext4",
-							},
-						},
-					},
-				},
-			},
+	elementalConfig.Install.Partitions = &ElementalDefaultPartition{
+		OEM: &ElementalPartition{
+			FilesystemLabel: "COS_OEM",
+			Size:            50,
+			FS:              "ext4",
+		},
+		State: &ElementalPartition{
+			FilesystemLabel: "COS_STATE",
+			Size:            15360,
+			FS:              "ext4",
+		},
+		Recovery: &ElementalPartition{
+			FilesystemLabel: "COS_RECOVERY",
+			Size:            8192,
+			FS:              "ext4",
+		},
+		Persistent: &ElementalPartition{
+			FilesystemLabel: "COS_PERSISTENT",
+			Size:            uint(cosPersistentSizeGiB << 10),
+			FS:              "ext4",
 		},
 	}
 
-	return &yipConfig, nil
+	elementalConfig.Install.ExtraPartitions = []ElementalPartition{
+		ElementalPartition{
+			FilesystemLabel: "HARV_LH_DEFAULT",
+			Size:            0,
+			FS:              "ext4",
+		},
+	}
+
+	return elementalConfig, nil
 }
