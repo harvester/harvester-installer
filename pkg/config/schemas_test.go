@@ -18,8 +18,8 @@ func TestToHarvesterConfig(t *testing.T) {
 			input: util.LoadFixture(t, "harvester-config.yaml"),
 			expected: &HarvesterConfig{
 				SchemeVersion: SchemeVersion,
-				ServerURL: "https://someserver:6443",
-				Token:     "TOKEN_VALUE",
+				ServerURL:     "https://someserver:6443",
+				Token:         "TOKEN_VALUE",
 				OS: OS{
 					SSHAuthorizedKeys: []string{
 						"ssh-rsa AAAAB3NzaC1yc2EAAAADAQAB...",
