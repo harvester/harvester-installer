@@ -108,6 +108,7 @@ func setPanels(c *Console) error {
 		addAskCreatePanel,
 		addDiskPanel,
 		addDataDiskPanel,
+		addHostnamePanel,
 		addNetworkPanel,
 		addVIPPanel,
 		addDNSServersPanel,
@@ -281,7 +282,7 @@ func addDiskPanel(c *Console) error {
 		} else if canChoose {
 			return showDataDiskPage(c)
 		} else {
-			return showNetworkPage(c)
+			return showHostnamePage(c)
 		}
 	}
 
@@ -425,7 +426,7 @@ func addDataDiskPanel(c *Console) error {
 
 	gotoNextPage := func() error {
 		closeThisPage()
-		return showNetworkPage(c)
+		return showHostnamePage(c)
 	}
 
 	gotoPrevPage := func() error {
@@ -820,18 +821,103 @@ func addTokenPanel(c *Console) error {
 
 func showNetworkPage(c *Console) error {
 	if mgmtNetwork.Method != config.NetworkMethodStatic {
-		return showNext(c, askInterfacePanel, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, hostNamePanel)
+		return showNext(c, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, askInterfacePanel)
 	}
-	return showNext(c, askInterfacePanel, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, mtuPanel, hostNamePanel)
+	return showNext(c, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, mtuPanel, askInterfacePanel)
+}
+
+func showHostnamePage(c *Console) error {
+	setLocation := createVerticalLocatorWithName(c)
+
+	if err := setLocation(hostnamePanel, 3); err != nil {
+		return err
+	}
+
+	if err := setLocation(hostnameValidatorPanel, 0); err != nil {
+		return err
+	}
+	return showNext(c, hostnamePanel)
+}
+
+func addHostnamePanel(c *Console) error {
+	hostnameV, err := widgets.NewInput(c.Gui, hostnamePanel, hostNameLabel, false)
+	if err != nil {
+		return err
+	}
+
+	validatorV := widgets.NewPanel(c.Gui, hostnameValidatorPanel)
+	validatorV.FgColor = gocui.ColorRed
+	validatorV.Focus = false
+	
+	maxX, _ := c.Gui.Size()
+	validatorV.X1 = maxX / 8 * 6
+
+	updateValidateMessage := func(message string) error {
+		return c.setContentByName(hostnameValidatorPanel, message)
+	}
+
+	next := func() error {
+		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
+		return showNetworkPage(c)
+	}
+
+	prev := func() error {
+		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
+		if canChoose, err := canChooseDataDisk(); err != nil {
+			return err
+		} else if canChoose {
+			return showDataDiskPage(c)
+		} else {
+			return showDiskPage(c)
+		}
+	}
+
+	validate := func() (string, error) {
+		hostname, err := hostnameV.GetData()
+		if err != nil {
+			return "", err
+		}
+
+		if hostname == "" {
+			return "Must specify hostname.", nil
+		}
+
+		if errs := validation.IsDNS1123Subdomain(hostname); len(errs) > 0 {
+			return "Invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.", nil
+		}
+		c.config.Hostname = hostname
+		return "", nil
+	}
+
+	hostnameV.PreShow = func() error {
+		c.Gui.Cursor = true
+		hostnameV.Value = c.config.Hostname
+		return c.setContentByName(titlePanel, hostnameTitle)
+	}
+	hostnameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			message, err := validate()
+			if err != nil {
+				return err
+			}
+
+			if message != "" {
+				return updateValidateMessage(message)
+			}
+			return next()
+		},
+		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+			return prev()
+		},
+	}
+
+	c.AddElement(hostnamePanel, hostnameV)
+	c.AddElement(hostnameValidatorPanel, validatorV)
+	return nil
 }
 
 func addNetworkPanel(c *Console) error {
 	setLocation := createVerticalLocator(c)
-
-	hostNameV, err := widgets.NewInput(c.Gui, hostNamePanel, hostNameLabel, false)
-	if err != nil {
-		return err
-	}
 
 	askInterfaceV, err := widgets.NewDropDown(c.Gui, askInterfacePanel, askInterfaceLabel, getNetworkInterfaceOptions)
 	if err != nil {
@@ -915,7 +1001,6 @@ func addNetworkPanel(c *Console) error {
 
 	closeThisPage := func() {
 		c.CloseElements(
-			hostNamePanel,
 			askInterfacePanel,
 			askVlanIDPanel,
 			askBondModePanel,
@@ -998,47 +1083,13 @@ func addNetworkPanel(c *Console) error {
 
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
-		if canChoose, err := canChooseDataDisk(); err != nil {
-			return err
-		} else if canChoose {
-			return showDataDiskPage(c)
-		} else {
-			return showDiskPage(c)
-		}
+		return showHostnamePage(c)
 	}
-
-	// hostNameV
-	hostNameV.PreShow = func() error {
-		c.Gui.Cursor = true
-		hostNameV.Value = c.config.Hostname
+	// askInterfaceV
+	askInterfaceV.PreShow = func() error {
+		askInterfaceV.Focus = true
 		return c.setContentByName(titlePanel, networkTitle)
 	}
-	validateHostName := func() (string, error) {
-		hostName, err := hostNameV.GetData()
-		if err != nil {
-			return "", err
-		}
-		if hostName == "" {
-			return "must specify hostname", nil
-		}
-		// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
-		if errs := validation.IsDNS1123Subdomain(hostName); len(errs) > 0 {
-			// TODO: show regexp for validation to users
-			return "Invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.", nil
-		}
-		c.config.Hostname = hostName
-		return "", nil
-	}
-	hostNameVConfirm := gotoNextPanel(c, []string{askInterfacePanel}, validateHostName)
-	hostNameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowDown: hostNameVConfirm,
-		gocui.KeyEnter:     hostNameVConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
-	setLocation(hostNameV.Panel, 3)
-	c.AddElement(hostNamePanel, hostNameV)
-
-	// askInterfaceV
 	validateInterface := func() (string, error) {
 		ifaces := askInterfaceV.GetMultiData()
 		if len(ifaces) == 0 {
@@ -1068,7 +1119,7 @@ func addNetworkPanel(c *Console) error {
 	interfaceVConfirm := gotoNextPanel(c, []string{askVlanIDPanel}, validateInterface)
 	askInterfaceV.SetMulti(true)
 	askInterfaceV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{hostNamePanel}),
+		gocui.KeyArrowUp:   gotoNextPanel(c, []string{hostnamePanel}),
 		gocui.KeyArrowDown: interfaceVConfirm,
 		gocui.KeyEnter:     interfaceVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -1078,6 +1129,7 @@ func addNetworkPanel(c *Console) error {
 
 	// askVlanIDV
 	askVlanIDV.PreShow = func() error {
+		c.Gui.Cursor = true
 		if mgmtNetwork.VlanID != 0 {
 			askVlanIDV.Value = strconv.Itoa(mgmtNetwork.VlanID)
 		}
