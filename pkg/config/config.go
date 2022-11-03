@@ -64,6 +64,10 @@ func GetSystemSettingsAllowList() []string {
 		"overcommit-config",
 		"vip-pools",
 		"auto-disk-provision-paths",
+		"csi-driver-config",
+		"containerd-registry",
+		"storage-network",
+		"harvester-csi-ccm-versions",
 	}
 }
 
