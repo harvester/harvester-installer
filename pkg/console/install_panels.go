@@ -848,7 +848,7 @@ func addHostnamePanel(c *Console) error {
 	validatorV := widgets.NewPanel(c.Gui, hostnameValidatorPanel)
 	validatorV.FgColor = gocui.ColorRed
 	validatorV.Focus = false
-	
+
 	maxX, _ := c.Gui.Size()
 	validatorV.X1 = maxX / 8 * 6
 
@@ -861,7 +861,7 @@ func addHostnamePanel(c *Console) error {
 		return showNetworkPage(c)
 	}
 
-	prev := func() error {
+	prev := func(g *gocui.Gui, v *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
 		if canChoose, err := canChooseDataDisk(); err != nil {
 			return err
@@ -895,6 +895,7 @@ func addHostnamePanel(c *Console) error {
 		return c.setContentByName(titlePanel, hostnameTitle)
 	}
 	hostnameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: prev,
 		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
 			message, err := validate()
 			if err != nil {
@@ -906,9 +907,7 @@ func addHostnamePanel(c *Console) error {
 			}
 			return next()
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			return prev()
-		},
+		gocui.KeyEsc: prev,
 	}
 
 	c.AddElement(hostnamePanel, hostnameV)
@@ -1119,7 +1118,7 @@ func addNetworkPanel(c *Console) error {
 	interfaceVConfirm := gotoNextPanel(c, []string{askVlanIDPanel}, validateInterface)
 	askInterfaceV.SetMulti(true)
 	askInterfaceV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{hostnamePanel}),
+		gocui.KeyArrowUp:   gotoPrevPage,
 		gocui.KeyArrowDown: interfaceVConfirm,
 		gocui.KeyEnter:     interfaceVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -1340,14 +1339,7 @@ func addNetworkPanel(c *Console) error {
 		return gotoNextPage(mtuPanel)
 	}
 	mtuV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, []string{gatewayPanel}, func() (string, error) {
-			mtu, err := mtuV.GetData()
-			if err != nil {
-				return "", err
-			}
-			mgmtNetwork.MTU, err = strconv.Atoi(mtu)
-			return "", err
-		}),
+		gocui.KeyArrowUp:   gotoNextPanel(c, []string{gatewayPanel}, validateMTU),
 		gocui.KeyArrowDown: mtuVConfirm,
 		gocui.KeyEnter:     mtuVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
