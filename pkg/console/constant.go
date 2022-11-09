@@ -44,7 +44,7 @@ const (
 	ntpServersPanel        = "ntpServersPanel"
 
 	hostnameTitle         = "Configure hostname for this instance"
-	networkTitle          = "Configure network connection"
+	networkTitle          = "Configure network"
 	askBondModeLabel      = "Bond Mode"
 	askInterfaceLabel     = "Management NIC"
 	askVlanIDLabel        = "VLAN ID (optional)"
