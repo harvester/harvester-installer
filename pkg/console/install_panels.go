@@ -1131,6 +1131,8 @@ func addNetworkPanel(c *Console) error {
 		c.Gui.Cursor = true
 		if mgmtNetwork.VlanID != 0 {
 			askVlanIDV.Value = strconv.Itoa(mgmtNetwork.VlanID)
+		} else {
+			askVlanIDV.Value = ""
 		}
 		return nil
 	}
@@ -1157,7 +1159,7 @@ func addNetworkPanel(c *Console) error {
 	}
 	askVlanIDVConfirm := gotoNextPanel(c, []string{askBondModePanel}, validateVlanID)
 	askVlanIDV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askInterfacePanel}),
+		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askInterfacePanel}, validateVlanID),
 		gocui.KeyArrowDown: askVlanIDVConfirm,
 		gocui.KeyEnter:     askVlanIDVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
