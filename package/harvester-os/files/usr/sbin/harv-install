@@ -316,6 +316,17 @@ update_grub_settings()
     sed -i "s/search.fs_uuid /search --no-floppy --fs-uuid /" "$GRUB_CFG"
     sed -i -E 's/^(\s*search\b)(.*)root$/\1 --set=root\2/' "$GRUB_CFG"
 
+    # For some firmware (e.g., Dell BOSS adapter 3022), users may get
+    # stuck on the grub file search for about 30 minutes, this can be
+    # mitigated by adding the `grubenv` file.
+    #
+    # PATCH: add /oem/grubenv if it does not exist
+    oem_dir=${TARGET}/oem
+    GRUBENV_FILE="${oem_dir}/grubenv"
+    if ! [ -f ${GRUBENV_FILE} ]; then
+        grub2-editenv ${GRUBENV_FILE} create
+    fi
+
     add_debug_grub_entry
 }
 
