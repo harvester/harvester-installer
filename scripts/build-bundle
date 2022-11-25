@@ -174,10 +174,10 @@ save_image "common" $BUNDLE_DIR ${IMAGES_LISTS_DIR}/${image_list_file} ${IMAGES_
 upgrade_image_repo=$(yq -e e '.upgrade.image.repository' $values_file)
 upgrade_image_tag=$(yq -e e '.upgrade.image.tag' $values_file)
 if [ "$upgrade_image_tag" != "$HARVESTER_VERSION" ]; then
-  docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "${upgrade_image_repo}:${HARVESTER_VERSION}"
+  docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "rancher/harvester-upgrade:${HARVESTER_VERSION}"
   image_list_file="${IMAGES_LISTS_DIR}/harvester-extra-${VERSION}.txt"
   image_archive="${IMAGES_DIR}/harvester-extra-${VERSION}.tar"
-  echo "${upgrade_image_repo}:${HARVESTER_VERSION}" | awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}}' > ${image_list_file}
+  echo "docker.io/rancher/harvester-upgrade:${HARVESTER_VERSION}" > ${image_list_file}
   docker image save -o $image_archive $(<$image_list_file)
   zstd --rm $image_archive -o "${image_archive}.zst"
   add_image_list_to_metadata "common" $BUNDLE_DIR $image_list_file "${image_archive}.zst"
