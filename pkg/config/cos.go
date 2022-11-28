@@ -635,15 +635,14 @@ func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {
 // Returns Rancherd bootstrap resources
 // map: fileName -> fileContent
 func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
-	bootstrapConfs := make(map[string]string, 4)
+	bootstrapConfs := make(map[string]string, 6)
 
 	for _, templateName := range []string{
 		"10-harvester.yaml",
 		"11-monitoring-crd.yaml",
-		"13-monitoring.yaml",
 		"14-logging-crd.yaml",
-		"15-logging.yaml",
 		"20-harvester-settings.yaml",
+		"22-addons.yaml",
 	} {
 		rendered, err := render("rancherd-"+templateName, config)
 		if err != nil {
@@ -656,12 +655,12 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 
 	for _, templateName := range []string{
 		"12-monitoring-dashboard.yaml",
-		"22-addons.yaml",
 	} {
 		templBytes, err := templFS.ReadFile(filepath.Join(templateFolder, "rancherd-"+templateName))
 		if err != nil {
 			return nil, err
 		}
+
 		bootstrapConfs[templateName] = string(templBytes)
 	}
 

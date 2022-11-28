@@ -95,6 +95,11 @@ type Webhook struct {
 	BasicAuth HTTPBasicAuth       `json:"basicAuth,omitempty"`
 }
 
+type Addon struct {
+	Enabled       bool   `json:"enabled,omitempty"`
+	ValuesContent string `json:"valuesContent,omitempty"`
+}
+
 type Install struct {
 	Automatic           bool    `json:"automatic,omitempty"`
 	Mode                string  `json:"mode,omitempty"`
@@ -119,7 +124,8 @@ type Install struct {
 	ForceMBR bool   `json:"forceMbr,omitempty"`
 	DataDisk string `json:"dataDisk,omitempty"`
 
-	Webhooks []Webhook `json:"webhooks,omitempty"`
+	Webhooks []Webhook        `json:"webhooks,omitempty"`
+	Addons   map[string]Addon `json:"addons,omitempty"`
 }
 
 type Wifi struct {

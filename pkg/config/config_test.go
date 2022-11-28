@@ -366,3 +366,21 @@ func TestHarvesterConfigMerge_OtherField(t *testing.T) {
 	assert.Equal(t, []string{"1.1.1.1", "8.8.8.8"}, conf.DNSNameservers, "Slice shoule be appended")
 	assert.Equal(t, "TokenValue", conf.Token, "New field should be added")
 }
+
+func TestHarvesterConfigMerge_Addons(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.Hostname = "hellofoo"
+
+	otherConf := NewHarvesterConfig()
+	otherConf.Addons = map[string]Addon{
+		"rancher-logging":    {true, "the value to overwrite original"},
+		"rancher-monitoring": {false, ""},
+	}
+
+	err := conf.Merge(*otherConf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, true, conf.Addons["rancher-logging"].Enabled, "Addons Enabled true should be be merged")
+	assert.Equal(t, "the value to overwrite original", conf.Addons["rancher-logging"].ValuesContent, "Addons ValuesContent should be merged")
+	assert.Equal(t, false, conf.Addons["rancher-monitoring"].Enabled, "Addons Enabled false  should be be merged")
+}
