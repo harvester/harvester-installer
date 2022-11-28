@@ -410,3 +410,21 @@ func TestHarvesterAfterInstallChrootRendering(t *testing.T) {
 		tc.assertion(t, &afterInstallChroot)
 	}
 }
+
+func TestHarvesterConfigMerge_Addons(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.Hostname = "hellofoo"
+
+	otherConf := NewHarvesterConfig()
+	otherConf.Addons = map[string]Addon{
+		"rancher-logging":    {true, "the value to overwrite original"},
+		"rancher-monitoring": {false, ""},
+	}
+
+	err := conf.Merge(*otherConf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, true, conf.Addons["rancher-logging"].Enabled, "Addons Enabled true should be merged")
+	assert.Equal(t, "the value to overwrite original", conf.Addons["rancher-logging"].ValuesContent, "Addons ValuesContent should be merged")
+	assert.Equal(t, false, conf.Addons["rancher-monitoring"].Enabled, "Addons Enabled false should be merged")
+}
