@@ -1687,6 +1687,14 @@ func addInstallPanel(c *Console) error {
 			if c.config.TTY == "" {
 				c.config.TTY = getFirstConsoleTTY()
 			}
+			if c.config.ServerURL != "" {
+				formatted, err := getFormattedServerURL(c.config.ServerURL)
+				if err != nil {
+					printToPanel(c.Gui, fmt.Sprintf("server url invalid: %s", err), installPanel)
+					return
+				}
+				c.config.ServerURL = formatted
+			}
 
 			// lookup MAC Address to populate device names where needed
 			// lookup device name to populate MAC Address
