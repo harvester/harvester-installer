@@ -80,16 +80,34 @@ func TestGetFormattedServerURL(t *testing.T) {
 			err:    nil,
 		},
 		{
-			Name:   "invalid ip",
-			input:  "1.2.3.4/",
-			output: "",
-			err:    errors.New("1.2.3.4/ is not a valid ip/domain"),
+			Name:   "ip without port and scheme",
+			input:  "1.1.1.1",
+			output: "https://1.1.1.1:443",
+			err:    nil,
 		},
 		{
-			Name:   "invalid domain",
-			input:  "example.org/",
+			Name:   "domain without port and scheme",
+			input:  "abc.org",
+			output: "https://abc.org:443",
+			err:    nil,
+		},
+		{
+			Name:   "custom port",
+			input:  "1.2.3.4:555",
 			output: "",
-			err:    errors.New("example.org/ is not a valid ip/domain"),
+			err:    errors.New("currently non-443 port are not allowed"),
+		},
+		{
+			Name:   "ip with path",
+			input:  "1.2.3.4/",
+			output: "",
+			err:    errors.New("path is not allowed in management address: /"),
+		},
+		{
+			Name:   "domain with path",
+			input:  "abc.org/test/abc",
+			output: "",
+			err:    errors.New("path is not allowed in management address: /test/abc"),
 		},
 	}
 	for _, testCase := range testCases {

@@ -43,6 +43,7 @@ You can see the full installation log by:
   - Login with user "rancher" (password is "rancher").
   - Run the command: less %s.
 `
+	https = "https://"
 )
 
 func newProxyClient() http.Client {
@@ -277,12 +278,37 @@ func getRemoteSSHKeys(url string) ([]string, error) {
 }
 
 func getFormattedServerURL(addr string) (string, error) {
-	ipErr := checkIP(addr)
-	domainErr := checkDomain(addr)
-	if ipErr != nil && domainErr != nil {
+	if addr == "" {
+		return "", errors.New("management address cannot be empty")
+	}
+	addr = strings.TrimSpace(addr)
+
+	realAddr := addr
+	if !strings.HasPrefix(addr, https) {
+		realAddr = https + addr
+	}
+	parsedUrl, err := url.ParseRequestURI(realAddr)
+	if err != nil {
+		return "", fmt.Errorf("%s is invalid", addr)
+	}
+
+	host := parsedUrl.Hostname()
+	if checkIP(host) != nil && checkDomain(host) != nil {
 		return "", fmt.Errorf("%s is not a valid ip/domain", addr)
 	}
-	return fmt.Sprintf("https://%s:%s", addr, rancherManagementPort), nil
+
+	if parsedUrl.Path != "" {
+		return "", fmt.Errorf("path is not allowed in management address: %s", parsedUrl.Path)
+	}
+
+	port := parsedUrl.Port()
+	if port == "" {
+		parsedUrl.Host += ":443"
+	} else if port != "443" {
+		return "", fmt.Errorf("currently non-443 port are not allowed")
+	}
+
+	return parsedUrl.String(), nil
 }
 
 func getServerURLFromRancherdConfig(data []byte) (string, error) {
