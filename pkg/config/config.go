@@ -34,6 +34,7 @@ const (
 	HardMinDiskSizeGiB   = 60
 	MinCosPartSizeGiB    = 25
 	NormalCosPartSizeGiB = 50
+	MaxPods              = 200
 )
 
 // refer: https://github.com/harvester/harvester/blob/master/pkg/settings/settings.go
@@ -158,12 +159,12 @@ type HarvesterConfig struct {
 
 	OS                     `json:"os,omitempty"`
 	Install                `json:"install,omitempty"`
-	RuntimeVersion         string                    `json:"runtimeVersion,omitempty"`
-	RancherVersion         string                    `json:"rancherVersion,omitempty"`
-	HarvesterChartVersion  string                    `json:"harvesterChartVersion,omitempty"`
-	MonitoringChartVersion string                    `json:"monitoringChartVersion,omitempty"`
-	SystemSettings         map[string]string         `json:"systemSettings,omitempty"`
-	LoggingChartVersion    string                    `json:"loggingChartVersion,omitempty"`
+	RuntimeVersion         string            `json:"runtimeVersion,omitempty"`
+	RancherVersion         string            `json:"rancherVersion,omitempty"`
+	HarvesterChartVersion  string            `json:"harvesterChartVersion,omitempty"`
+	MonitoringChartVersion string            `json:"monitoringChartVersion,omitempty"`
+	SystemSettings         map[string]string `json:"systemSettings,omitempty"`
+	LoggingChartVersion    string            `json:"loggingChartVersion,omitempty"`
 }
 
 func NewHarvesterConfig() *HarvesterConfig {
@@ -205,6 +206,7 @@ func (c *HarvesterConfig) String() string {
 
 func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	// node-labels=key1=val1,key2=val2
+	// max-pods=200 https://github.com/harvester/harvester/issues/2707
 	labelStrs := make([]string, 0, len(c.Labels))
 	for labelName, labelValue := range c.Labels {
 		if errs := validation.IsQualifiedName(labelName); len(errs) > 0 {
@@ -219,13 +221,17 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 		labelStrs = append(labelStrs, fmt.Sprintf("%s=%s", labelName, labelValue))
 	}
 
-	if len(labelStrs) > 0 {
-		return []string{
-			fmt.Sprintf("node-labels=%s", strings.Join(labelStrs, ",")),
-		}, nil
+	var args []string = []string{
+		fmt.Sprintf("max-pods=%d", MaxPods),
 	}
 
-	return []string{}, nil
+	if len(labelStrs) > 0 {
+		args = append(args,
+			fmt.Sprintf("node-labels=%s", strings.Join(labelStrs, ",")),
+		)
+	}
+
+	return args, nil
 }
 
 func (c HarvesterConfig) ShouldCreateDataPartitionOnOsDisk() bool {
