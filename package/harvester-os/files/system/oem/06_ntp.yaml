@@ -1,7 +1,0 @@
-name: "Enable Systemd Time Wait Sync"
-stages:
-  initramfs:
-    - name: "enable systemd-time-wait-sync.service"
-      if: 'grep -q root=LABEL=COS_ACTIVE /proc/cmdline && [ -n "$(blkid -L COS_ACTIVE)" ]'
-      commands:
-        - systemctl enable systemd-time-wait-sync.service
