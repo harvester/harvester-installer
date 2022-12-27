@@ -22,6 +22,7 @@ const (
 	manifestsDirectory   = "/var/lib/rancher/rke2/server/manifests/"
 	harvesterConfig      = "harvester-config.yaml"
 	ntpdService          = "systemd-timesyncd"
+	timeWaitSyncService  = "systemd-time-wait-sync"
 	rancherdBootstrapDir = "/etc/rancher/rancherd/config.yaml.d/"
 
 	networkConfigDirectory = "/etc/sysconfig/network/"
@@ -86,6 +87,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	if len(cfg.OS.NTPServers) > 0 {
 		initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
 		initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
+		initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
 	}
 	if len(cfg.OS.DNSNameservers) > 0 {
 		initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
