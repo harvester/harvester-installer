@@ -1,4 +1,4 @@
-FROM registry.suse.com/bci/bci-base:15.3
+FROM registry.suse.com/bci/bci-base:15.4
 
 RUN zypper -n rm container-suseconnect && \
     zypper -n in nginx && \
