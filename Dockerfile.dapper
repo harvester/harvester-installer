@@ -1,7 +1,7 @@
 FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
 FROM quay.io/costoolkit/releases-green:luet-makeiso-toolchain-0.4.0 as makeiso
 
-FROM registry.suse.com/bci/bci-base:15.3
+FROM registry.suse.com/bci/bci-base:15.4
 
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
