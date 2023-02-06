@@ -198,7 +198,7 @@ func toShell(g *gocui.Gui, v *gocui.View) error {
 			if err := validatorV.Show(); err != nil {
 				return err
 			}
-			validatorV.SetContent("Invalid credential")
+			validatorV.SetContent("Invalid credential or password hash algorithm not supported.")
 			return nil
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {

@@ -667,7 +667,7 @@ func addPasswordPanels(c *Console) error {
 			}
 			passwordV.Close()
 			passwordConfirmV.Close()
-			encrypted, err := util.GetEncrptedPasswd(userInputData.Password)
+			encrypted, err := util.GetEncryptedPasswd(userInputData.Password)
 			if err != nil {
 				return err
 			}
