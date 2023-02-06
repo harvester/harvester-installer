@@ -13,7 +13,7 @@ trigger:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.5.8
   commands:
   - dapper ci
   volumes:
