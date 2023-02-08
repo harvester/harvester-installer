@@ -137,7 +137,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	initramfs.Hostname = cfg.OS.Hostname
-	initramfs.Modules = cfg.OS.Modules
 	initramfs.Sysctl = cfg.OS.Sysctls
 	if len(cfg.OS.NTPServers) > 0 {
 		initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
@@ -157,6 +156,11 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	initramfs.Environment = cfg.OS.Environment
+
+	// Use modprobe to load modules as a temporary solution
+	for _, module := range cfg.OS.Modules {
+		initramfs.Commands = append(initramfs.Commands, "modprobe "+module)
+	}
 
 	_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
 	if err != nil {
