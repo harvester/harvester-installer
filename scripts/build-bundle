@@ -171,13 +171,34 @@ save_image "common" $BUNDLE_DIR ${IMAGES_LISTS_DIR}/${image_list_file} ${IMAGES_
 
 # Tag harvester-upgrade:master-head to harvester-upgrade:<version> and save the image to an archive
 # This makes it possible to upgrade a cluster with a master ISO.
+image_list_file="${IMAGES_LISTS_DIR}/harvester-extra-${VERSION}.txt"
+image_archive="${IMAGES_DIR}/harvester-extra-${VERSION}.tar"
+has_extra="false"
 upgrade_image_repo=$(yq -e e '.upgrade.image.repository' $values_file)
 upgrade_image_tag=$(yq -e e '.upgrade.image.tag' $values_file)
 if [ "$upgrade_image_tag" != "$HARVESTER_VERSION" ]; then
+  has_extra="true"
   docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "rancher/harvester-upgrade:${HARVESTER_VERSION}"
-  image_list_file="${IMAGES_LISTS_DIR}/harvester-extra-${VERSION}.txt"
-  image_archive="${IMAGES_DIR}/harvester-extra-${VERSION}.tar"
   echo "docker.io/rancher/harvester-upgrade:${HARVESTER_VERSION}" > ${image_list_file}
+fi
+
+upgradelog_downloader_image_repo=$(yq -e e '.upgradelog-downloader.image.repository' $values_file)
+upgradelog_downloader_image_tag=$(yq -e e '.upgradelog-downloader.image.tag' $values_file)
+if [ "$upgradelog_downloader_image_tag" != "$HARVESTER_VERSION" ]; then
+  has_extra="true"
+  docker tag "${upgradelog_downloader_image_repo}:${upgrade_image_tag}" "rancher/harvester-upgradelog-downloader:${HARVESTER_VERSION}"
+  echo "docker.io/rancher/harvester-upgradelog-downloader:${HARVESTER_VERSION}" >> ${image_list_file}
+fi
+
+upgradelog_packager_image_repo=$(yq -e e '.upgradelog-packager.image.repository' $values_file)
+upgradelog_packager_image_tag=$(yq -e e '.upgradelog-packager.image.tag' $values_file)
+if [ "$upgradelog_packager_image_tag" != "$HARVESTER_VERSION" ]; then
+  has_extra="true"
+  docker tag "${upgradelog_packager_image_repo}:${upgrade_image_tag}" "rancher/harvester-upgradelog-packager:${HARVESTER_VERSION}"
+  echo "docker.io/rancher/harvester-upgradelog-packager:${HARVESTER_VERSION}" >> ${image_list_file}
+fi
+
+if [ "$has_extra" == "true" ]; then
   docker image save -o $image_archive $(<$image_list_file)
   zstd --rm $image_archive -o "${image_archive}.zst"
   add_image_list_to_metadata "common" $BUNDLE_DIR $image_list_file "${image_archive}.zst"

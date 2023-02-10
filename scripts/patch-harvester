@@ -32,8 +32,12 @@ echo "Replace the Harvester image tag to ${IMAGE_PUSH_TAG}"
 yq e -i '.containers.apiserver.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
 yq e -i '.webhook.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
 yq e -i '.upgrade.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
+yq e -i '.upgradelog-downloader.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
+yq e -i '.upgradelog-packager.image.tag = "'"${IMAGE_PUSH_TAG}"'"' ./deploy/charts/harvester/values.yaml
 
 echo "Replace the Harvester image repo to ${REPO}"
 replace_harvester_image_repo '.containers.apiserver.image.repository'
 replace_harvester_image_repo '.webhook.image.repository'
 replace_harvester_image_repo '.upgrade.image.repository'
+replace_harvester_image_repo '.upgradelog-downloader.image.repository'
+replace_harvester_image_repo '.upgradelog-packager.image.repository'
