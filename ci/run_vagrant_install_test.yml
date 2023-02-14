@@ -120,6 +120,19 @@
       debug:
         msg: "{{ setup_harvester_result.stdout_lines }}"
 
+    - name: Enable software-emulation in KubeVirt
+      register: kubevirt_result
+      vars:
+        settings_file: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+      shell: >
+        ./enable_soft_emulation.sh {{ settings_file }}
+      args:
+        chdir: "{{ WORKSPACE }}/harvester-installer/ci/terraform"
+
+    - name: Print Enable software-emulation in KubeVirt output
+      debug:
+        msg: "{{ kubevirt_result.stdout_lines }}"
+
     - name: Clear the previous temp file
       shell: >
         ./cleanup_test_files.sh
