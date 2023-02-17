@@ -191,7 +191,7 @@ func prepareWebhook(h config.Webhook, context map[string]string) (*RenderedWebho
 }
 
 func PrepareWebhooks(hooks []config.Webhook, context map[string]string) (RendererWebhooks, error) {
-	var result RendererWebhooks
+	result := make(RendererWebhooks, 0, len(hooks))
 	for _, h := range hooks {
 		logrus.Debugf("preparing webhook %+v", h)
 		p, err := prepareWebhook(h, context)

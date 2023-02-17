@@ -72,8 +72,7 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 	if !ok {
 		return nil
 	}
-	var ifDetails []string
-	var outDetails []interface{}
+	ifDetails := make([]string, 0)
 
 	switch networkInterfaces.(type) {
 	case string:
@@ -81,6 +80,8 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 	case []string:
 		ifDetails = networkInterfaces.([]string)
 	}
+
+	outDetails := make([]interface{}, 0, len(ifDetails))
 	for _, v := range ifDetails {
 		tmpStrings := strings.SplitN(v, ":", 2)
 		n := make(map[string]interface{})

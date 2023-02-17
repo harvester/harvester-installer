@@ -59,7 +59,7 @@ func (s *Select) Show() error {
 		v.Wrap = true
 
 		if s.multi {
-			// Intialize multiselect view
+			// Initialize multiselect view
 			if len(s.selectedIndexes) == 0 {
 				s.selectedIndexes = make([]bool, len(s.options))
 			}
@@ -167,9 +167,8 @@ func (s *Select) SetData(data string) error {
 	if err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
-		} else {
-			return nil
 		}
+		return nil
 	}
 
 	ox, oy := ov.Origin()

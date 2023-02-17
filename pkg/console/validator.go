@@ -155,13 +155,12 @@ func checkMTU(mtu int) error {
 	// Treat 0 as default value
 	if mtu == 0 {
 		return nil
-	} else {
-		// RFC 791
-		if mtu < 576 || mtu > 9000 {
-			return fmt.Errorf("%d is not a valid MTU value", mtu)
-		}
-		return nil
 	}
+	// RFC 791
+	if mtu < 576 || mtu > 9000 {
+		return fmt.Errorf("%d is not a valid MTU value", mtu)
+	}
+	return nil
 }
 
 func checkHwAddr(hwAddr string) error {
@@ -313,7 +312,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
 	if errs := validation.IsDNS1123Subdomain(cfg.OS.Hostname); len(errs) > 0 {
 		// TODO: show regexp for validation to users
-		return errors.Errorf("Invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.")
+		return errors.Errorf("invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'")
 	}
 
 	if err := checkDevice(cfg.Install.Device); err != nil {
