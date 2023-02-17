@@ -366,11 +366,11 @@ func SaveOriginalNetworkConfig() error {
 				return err
 			}
 			for _, path := range filepaths {
-				if bytes, err := ioutil.ReadFile(path); err != nil {
+				bytes, err := ioutil.ReadFile(path)
+				if err != nil {
 					return err
-				} else {
-					originalNetworkConfigs[filepath.Base(path)] = bytes
 				}
+				originalNetworkConfigs[filepath.Base(path)] = bytes
 			}
 			return nil
 		}
@@ -597,7 +597,7 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 		return nil
 	}
 
-	var interfaces []string
+	interfaces := make([]string, len(wifis))
 	for i, wifi := range wifis {
 		iface := fmt.Sprintf("wlan%d", i)
 
@@ -672,7 +672,7 @@ func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
 	case diskSizeGiB < HardMinDiskSizeGiB:
 		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, HardMinDiskSizeGiB)
 	case diskSizeGiB < SoftMinDiskSizeGiB:
-		var d float64 = MinCosPartSizeGiB / float64(SoftMinDiskSizeGiB-HardMinDiskSizeGiB)
+		d := MinCosPartSizeGiB / float64(SoftMinDiskSizeGiB-HardMinDiskSizeGiB)
 		partSizeGiB := MinCosPartSizeGiB + float64(diskSizeGiB-HardMinDiskSizeGiB)*d
 		return uint64(partSizeGiB), nil
 	default:
@@ -719,7 +719,7 @@ func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, devPath stri
 	}
 
 	elementalConfig.Install.ExtraPartitions = []ElementalPartition{
-		ElementalPartition{
+		{
 			FilesystemLabel: "HARV_LH_DEFAULT",
 			Size:            0,
 			FS:              "ext4",

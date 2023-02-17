@@ -1029,16 +1029,16 @@ func addNetworkPanel(c *Console) error {
 		c.config.ManagementInterface = mgmtNetwork
 
 		if mgmtNetwork.Method == config.NetworkMethodDHCP {
-			if addr, err := getIPThroughDHCP(config.MgmtInterfaceName); err != nil {
+			addr, err := getIPThroughDHCP(config.MgmtInterfaceName)
+			if err != nil {
 				return fmt.Sprintf("Requesting IP through DHCP failed: %s", err.Error()), nil
-			} else {
-				logrus.Infof("DHCP test passed. Got IP: %s", addr)
-				userInputData.Address = ""
-				mgmtNetwork.IP = ""
-				mgmtNetwork.SubnetMask = ""
-				mgmtNetwork.Gateway = ""
-				mgmtNetwork.MTU = 0
 			}
+			logrus.Infof("DHCP test passed. Got IP: %s", addr)
+			userInputData.Address = ""
+			mgmtNetwork.IP = ""
+			mgmtNetwork.SubnetMask = ""
+			mgmtNetwork.Gateway = ""
+			mgmtNetwork.MTU = 0
 		}
 		return "", nil
 	}
