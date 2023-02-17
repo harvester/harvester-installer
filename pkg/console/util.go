@@ -263,8 +263,8 @@ func getRemoteSSHKeys(url string) ([]string, error) {
 		return nil, err
 	}
 
-	var keys []string
 	lines := strings.Split(string(b), "\n")
+	keys := make([]string, 0, len(lines))
 	for i, line := range lines {
 		if line == "" {
 			continue
@@ -291,28 +291,28 @@ func getFormattedServerURL(addr string) (string, error) {
 	if !strings.HasPrefix(addr, https) {
 		realAddr = https + addr
 	}
-	parsedUrl, err := url.ParseRequestURI(realAddr)
+	parsedURL, err := url.ParseRequestURI(realAddr)
 	if err != nil {
 		return "", fmt.Errorf("%s is invalid", addr)
 	}
 
-	host := parsedUrl.Hostname()
+	host := parsedURL.Hostname()
 	if checkIP(host) != nil && checkDomain(host) != nil {
 		return "", fmt.Errorf("%s is not a valid ip/domain", addr)
 	}
 
-	if parsedUrl.Path != "" {
-		return "", fmt.Errorf("path is not allowed in management address: %s", parsedUrl.Path)
+	if parsedURL.Path != "" {
+		return "", fmt.Errorf("path is not allowed in management address: %s", parsedURL.Path)
 	}
 
-	port := parsedUrl.Port()
+	port := parsedURL.Port()
 	if port == "" {
-		parsedUrl.Host += ":443"
+		parsedURL.Host += ":443"
 	} else if port != "443" {
 		return "", fmt.Errorf("currently non-443 port are not allowed")
 	}
 
-	return parsedUrl.String(), nil
+	return parsedURL.String(), nil
 }
 
 func getServerURLFromRancherdConfig(data []byte) (string, error) {

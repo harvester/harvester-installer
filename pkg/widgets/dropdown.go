@@ -158,8 +158,8 @@ func (d *DropDown) GetData() (string, error) {
 	return d.Value, nil
 }
 
-func (s *DropDown) GetMultiData() []string {
-	return s.Select.GetMultiData()
+func (d *DropDown) GetMultiData() []string {
+	return d.Select.GetMultiData()
 }
 
 func (d *DropDown) SetData(data string) error {
