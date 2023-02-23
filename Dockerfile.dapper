@@ -35,7 +35,7 @@ COPY --from=luet /usr/bin/luet /usr/bin/luet
 COPY --from=makeiso /usr/bin/luet-makeiso /usr/bin/luet-makeiso
 
 # You cloud defined your own rke2 url by setup `RKE2_IMAGE_REPO`
-ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS RKE2_IMAGE_REPO
+ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS RKE2_IMAGE_REPO USE_LOCAL_IMAGES
 ENV DAPPER_SOURCE /go/src/github.com/harvester/harvester-installer/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
