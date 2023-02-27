@@ -122,11 +122,12 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	// OS
 	for _, ff := range cfg.OS.WriteFiles {
-		perm, err := strconv.ParseUint(ff.RawFilePermissions, 8, 0)
+		perm, err := strconv.ParseUint(ff.RawFilePermissions, 8, 32)
 		if err != nil {
 			logrus.Warnf("fail to parse permission %s, use default permission.", err)
 			perm = 0600
 		}
+
 		initramfs.Files = append(initramfs.Files, yipSchema.File{
 			Path:        ff.Path,
 			Content:     ff.Content,

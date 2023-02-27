@@ -72,19 +72,22 @@ github.com/rancher/mapper/convert
 github.com/rancher/mapper/definition
 github.com/rancher/mapper/mappers
 github.com/rancher/mapper/values
-# github.com/rancher/wrangler v0.0.0-20190426050201-5946f0eaed19
-## explicit; go 1.12
+# github.com/rancher/wrangler v0.0.0-20190426050201-5946f0eaed19 => github.com/rancher/wrangler v1.1.0
+## explicit; go 1.19
 github.com/rancher/wrangler/pkg/name
 # github.com/sirupsen/logrus v1.8.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/stretchr/testify v1.7.0
+# github.com/stretchr/testify v1.8.1
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 # github.com/tredoe/osutil v1.3.6
 ## explicit; go 1.16
 github.com/tredoe/osutil/user/crypt
+github.com/tredoe/osutil/user/crypt/apr1_crypt
 github.com/tredoe/osutil/user/crypt/common
+github.com/tredoe/osutil/user/crypt/md5_crypt
+github.com/tredoe/osutil/user/crypt/sha256_crypt
 github.com/tredoe/osutil/user/crypt/sha512_crypt
 # github.com/twpayne/go-vfs v1.5.0
 ## explicit; go 1.13
@@ -101,31 +104,30 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 ## explicit; go 1.12
 github.com/vishvananda/netns
-# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+# golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
 ## explicit; go 1.17
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/curve25519/internal/field
 golang.org/x/crypto/ed25519
-golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
-# golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+# golang.org/x/net v0.7.0
 ## explicit; go 1.17
 golang.org/x/net/bpf
 golang.org/x/net/http/httpproxy
 golang.org/x/net/idna
-# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+# golang.org/x/sys v0.5.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.6
-## explicit; go 1.11
+# golang.org/x/text v0.7.0 => golang.org/x/text v0.3.8
+## explicit; go 1.17
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
@@ -136,10 +138,10 @@ gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+# gopkg.in/yaml.v3 v3.0.1 => gopkg.in/yaml.v3 v3.0.0-20220521103104-8f96da9f5d5e
 ## explicit
 gopkg.in/yaml.v3
-# k8s.io/apimachinery v0.18.8 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
+# k8s.io/apimachinery v0.25.4 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
 ## explicit; go 1.15
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/rand
@@ -147,6 +149,9 @@ k8s.io/apimachinery/pkg/util/sets
 k8s.io/apimachinery/pkg/util/validation
 k8s.io/apimachinery/pkg/util/validation/field
 # github.com/nsf/termbox-go => github.com/Harvester/termbox-go v1.1.1-0.20210318083914-8ab92204a400
+# github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.0
+# golang.org/x/text => golang.org/x/text v0.3.8
+# gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-20220521103104-8f96da9f5d5e
 # k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.19.3-k3s1
 # k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
 # k8s.io/client-go => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.19.3-k3s1
