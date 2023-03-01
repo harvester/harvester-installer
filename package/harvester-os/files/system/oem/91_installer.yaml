@@ -3,6 +3,7 @@ stages:
   boot:
     - commands:
       - setup-installer.sh
+      # reference: https://github.com/harvester/harvester/issues/2663, thanks @Ernad's enhancement
       if: '! grep -q "harvester.installer.disable=true" /proc/cmdline'
   initramfs:
     - environment_file: "/etc/rancher/installer/env"
