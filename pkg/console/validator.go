@@ -351,28 +351,22 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		return errors.Errorf("invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'")
 	}
 
-	if err := checkDevice(cfg.Install.Device, false); err != nil {
+	if err := diskChecks(cfg); err != nil {
 		return err
 	}
 
-	if cfg.Install.DataDisk != "" {
-		if err := checkDevice(cfg.Install.DataDisk, true); err != nil {
+	if cfg.Install.Mode != config.ModeInstall {
+		if len(cfg.Install.ManagementInterface.Interfaces) == 0 {
+			return errors.Errorf(ErrMsgManagementInterfaceNotFound)
+		}
+
+		if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
 			return err
 		}
-	}
 
-	if cfg.ForceMBR {
-		if err := checkForceMBR(cfg.Install.Device); err != nil {
+		if err := checkToken(cfg.Token); err != nil {
 			return err
 		}
-	}
-
-	if len(cfg.Install.ManagementInterface.Interfaces) == 0 {
-		return errors.Errorf(ErrMsgManagementInterfaceNotFound)
-	}
-
-	if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
-		return err
 	}
 
 	if cfg.Install.Mode == config.ModeCreate {
@@ -389,17 +383,13 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		return err
 	}
 
-	if err := checkToken(cfg.Token); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func commonCheck(cfg *config.HarvesterConfig) error {
 	// modes
 	switch mode := cfg.Install.Mode; mode {
-	case config.ModeUpgrade:
+	case config.ModeUpgrade, config.ModeInstall:
 		return nil
 	case config.ModeCreate:
 		if cfg.ServerURL != "" {
@@ -413,11 +403,11 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 		return prettyError(ErrMsgModeUnknown, mode)
 	}
 
-	if cfg.Install.Automatic && cfg.Install.ISOURL == "" {
+	if !alreadyInstalled && cfg.Install.Mode != config.ModeInstall && cfg.Install.Automatic && cfg.Install.ISOURL == "" {
 		return errors.New(ErrMsgISOURLNotSpecified)
 	}
 
-	if cfg.Token == "" {
+	if cfg.Install.Mode != config.ModeInstall && cfg.Token == "" {
 		return errors.New(ErrMsgTokenNotSpecified)
 	}
 
@@ -434,4 +424,24 @@ func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
 		return err
 	}
 	return v.Validate(cfg)
+}
+
+func diskChecks(cfg *config.HarvesterConfig) error {
+	if err := checkDevice(cfg.Install.Device, false); err != nil {
+		return err
+	}
+
+	if cfg.Install.DataDisk != "" {
+		if err := checkDevice(cfg.Install.DataDisk, true); err != nil {
+			return err
+		}
+	}
+
+	if cfg.ForceMBR {
+		if err := checkForceMBR(cfg.Install.Device); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

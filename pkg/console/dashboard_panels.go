@@ -18,6 +18,7 @@ import (
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/version"
 	"github.com/harvester/harvester-installer/pkg/widgets"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -27,10 +28,11 @@ const (
 	colorYellow
 	colorBlue
 
-	statusReady         = "Ready"
-	statusNotReady      = "NotReady"
-	statusSettingUpNode = "Setting up node"
-	statusSettingUpHarv = "Setting up Harvester"
+	statusReady            = "Ready"
+	statusNotReady         = "NotReady"
+	statusSettingUpNode    = "Setting up node"
+	statusSettingUpHarv    = "Setting up Harvester"
+	defaultHarvesterConfig = "/oem/harvester.config"
 
 	logo string = `
 ██╗░░██╗░█████╗░██████╗░██╗░░░██╗███████╗░██████╗████████╗███████╗██████╗░
@@ -550,4 +552,17 @@ func getNodeStatus() string {
 
 func wrapColor(s string, color int) string {
 	return fmt.Sprintf("\033[3%d;7m%s\033[0m", color, s)
+}
+
+func (c *Console) getHarvesterConfig() error {
+	content, err := ioutil.ReadFile(defaultHarvesterConfig)
+	if err != nil {
+		if os.IsNotExist(err) {
+			logrus.Info("no existing harvester config detected in /oem/harvester.config")
+			return nil
+		}
+		return fmt.Errorf("unable to read default harvester.config file %s: %v", defaultHarvesterConfig, err)
+	}
+
+	return yaml.Unmarshal(content, c.config)
 }
