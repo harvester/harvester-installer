@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/imdario/mergo"
+	yipSchema "github.com/mudler/yip/pkg/schema"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -148,11 +149,11 @@ type Install struct {
 	ForceMBR bool   `json:"forceMbr,omitempty"`
 	DataDisk string `json:"dataDisk,omitempty"`
 
-	Webhooks  []Webhook            `json:"webhooks,omitempty"`
-	Addons    map[string]Addon     `json:"addons,omitempty"`
-	Harvester HarvesterChartValues `json:"harvester,omitempty"`
-
-	PersistentPartitionSize string `json:"persistentPartitionSize,omitempty"`
+	Webhooks                []Webhook            `json:"webhooks,omitempty"`
+	Addons                  map[string]Addon     `json:"addons,omitempty"`
+	Harvester               HarvesterChartValues `json:"harvester,omitempty"`
+	RawDiskImagePath        string               `json:"rawDiskImagePath,omitempty"`
+	PersistentPartitionSize string               `json:"persistentPartitionSize,omitempty"`
 }
 
 type Wifi struct {
@@ -361,4 +362,53 @@ func (n *NetworkInterface) FindNetworkInterfaceHwAddr() error {
 
 	// Default, there is no Name or HwAddress, do nothing. Let validation capture it
 	return nil
+}
+
+func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
+
+	runtimeConfig := yipSchema.Stage{
+		Users:            make(map[string]yipSchema.User),
+		TimeSyncd:        make(map[string]string),
+		SSHKeys:          make(map[string][]string),
+		Sysctl:           make(map[string]string),
+		Environment:      make(map[string]string),
+		SystemdFirstBoot: make(map[string]string),
+	}
+
+	runtimeConfig.Hostname = config.OS.Hostname
+	if len(config.OS.NTPServers) > 0 {
+		runtimeConfig.TimeSyncd["NTP"] = strings.Join(config.OS.NTPServers, " ")
+		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, ntpdService)
+	}
+	if len(config.OS.DNSNameservers) > 0 {
+		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
+	}
+	err := initRancherdStage(config, &runtimeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := UpdateWifiConfig(&runtimeConfig, config.OS.Wifi, true); err != nil {
+		return nil, err
+	}
+
+	if _, err := UpdateManagementInterfaceConfig(&runtimeConfig, config.ManagementInterface, true); err != nil {
+		return nil, err
+	}
+
+	runtimeConfig.SSHKeys[cosLoginUser] = config.OS.SSHAuthorizedKeys
+	runtimeConfig.Users[cosLoginUser] = yipSchema.User{
+		PasswordHash: config.OS.Password,
+	}
+
+	conf := &yipSchema.YipConfig{
+		Name: "RancherD Configuration",
+		Stages: map[string][]yipSchema.Stage{
+			"live": {
+				runtimeConfig,
+			},
+		},
+	}
+
+	return conf, nil
 }

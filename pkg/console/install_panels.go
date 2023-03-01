@@ -53,6 +53,8 @@ var (
 	mgmtNetwork = config.Network{
 		DefaultRoute: true,
 	}
+	alreadyInstalled bool
+	installModeOnly  bool
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -63,10 +65,30 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
+		// if already installed then lets check if cloud init allows us to provision
+		if alreadyInstalled {
+			err = mergeCloudInit(c.config)
+			if err != nil {
+				logrus.Errorf("error merging cloud-config")
+			}
+			logrus.Infof("already install value post config merge: %v", c.config.Automatic)
+			// if already installed and automatic installation is set to true
+			// configure node directly
+			if alreadyInstalled && c.config.Automatic {
+				initPanel = installPanel
+			}
+		}
+
 		if cfg, err := config.ReadConfig(); err == nil {
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
 				c.config.Merge(cfg)
+				// setup InstallMode to ensure that during automatic install
+				// we are only copying binaries and ignoring network / rancherd setup
+				// needed for generating pre-installed qcow2 image
+				if c.config.Install.Mode == config.ModeInstall && !alreadyInstalled {
+					installModeOnly = true
+				}
 				initPanel = installPanel
 			}
 		} else {
@@ -338,6 +360,11 @@ func addDiskPanel(c *Console) error {
 		} else if canChoose {
 			return showDataDiskPage(c)
 		} else {
+			//TODO: When Install modeonly.. we need to decide that this
+			// network page is not shown and skip straight to the password page
+			if installModeOnly {
+				return showNext(c, passwordConfirmPanel, passwordPanel)
+			}
 			return showHostnamePage(c)
 		}
 	}
@@ -696,6 +723,16 @@ func addAskCreatePanel(c *Console) error {
 				Text:  "Upgrade Harvester",
 			})
 		}
+
+		// layoutInstall is now called from layoutDashboard due to the addition
+		// of the new config.ModeInstall. config will be setup by layoutDashboard before passing control here
+		// this extra option should only show up if that is not the case
+		if !alreadyInstalled {
+			options = append(options, widgets.Option{
+				Value: config.ModeInstall,
+				Text:  "Install Harvester binaries only",
+			})
+		}
 		return options, nil
 	}
 	// new cluster or join existing cluster
@@ -706,6 +743,9 @@ func addAskCreatePanel(c *Console) error {
 	askCreateV.FirstPage = true
 	askCreateV.PreShow = func() error {
 		askCreateV.Value = c.config.Install.Mode
+		if alreadyInstalled {
+			return c.setContentByName(titlePanel, "Harvester already installed. Choose configuration mode")
+		}
 		return c.setContentByName(titlePanel, "Choose installation mode")
 	}
 	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -714,7 +754,19 @@ func addAskCreatePanel(c *Console) error {
 			if err != nil {
 				return err
 			}
+
+			if alreadyInstalled {
+				// need to wipe the Mode value before we set panel
+				// needed to ensure that value lookup fails as install
+				// is not available in the option in this case
+				c.config.Install.Mode = ""
+			}
+
 			c.config.Install.Mode = selected
+			if selected == config.ModeInstall {
+				installModeOnly = true
+			}
+
 			askCreateV.Close()
 
 			if selected == config.ModeCreate {
@@ -722,6 +774,12 @@ func addAskCreatePanel(c *Console) error {
 				userInputData.ServerURL = ""
 			} else if selected == config.ModeUpgrade {
 				return showNext(c, confirmUpgradePanel)
+			}
+
+			// all packages are already install
+			// configure hostname and network
+			if alreadyInstalled {
+				return showHostnamePage(c)
 			}
 			return showDiskPage(c)
 		},
@@ -817,81 +875,38 @@ func addPasswordPanels(c *Console) error {
 		return err
 	}
 
-	passwordV.PreShow = func() error {
+	pw := &passwordWrapper{
+		c:                c,
+		passwordV:        passwordV,
+		passwordConfirmV: passwordConfirmV,
+	}
+
+	pw.passwordV.PreShow = func() error {
 		passwordV.Value = userInputData.Password
 		return nil
 	}
 
-	passwordVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		password1V, err := c.GetElement(passwordPanel)
-		if err != nil {
-			return err
-		}
-		userInputData.Password, err = password1V.GetData()
-		if err != nil {
-			return err
-		}
-		if userInputData.Password == "" {
-			return c.setContentByName(validatorPanel, "Password is required")
-		}
-		return showNext(c, passwordConfirmPanel)
+	pw.passwordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter:     pw.passwordVConfirmKeyBinding,
+		gocui.KeyArrowDown: pw.passwordVConfirmKeyBinding,
+		gocui.KeyEsc:       pw.passwordVEscapeKeyBinding,
 	}
-	passwordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter:     passwordVConfirm,
-		gocui.KeyArrowDown: passwordVConfirm,
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			passwordV.Close()
-			passwordConfirmV.Close()
-			if err := c.setContentByName(notePanel, ""); err != nil {
-				return err
-			}
-			return showNext(c, tokenPanel)
-		},
-	}
-	passwordV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8+2)
-	c.AddElement(passwordPanel, passwordV)
 
-	passwordConfirmV.PreShow = func() error {
+	pw.passwordV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8+2)
+	c.AddElement(passwordPanel, pw.passwordV)
+
+	pw.passwordConfirmV.PreShow = func() error {
 		c.Gui.Cursor = true
 		passwordConfirmV.Value = userInputData.PasswordConfirm
 		c.setContentByName(notePanel, "")
 		return c.setContentByName(titlePanel, "Configure the password to access the node")
 	}
-	passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.PasswordConfirm, err = passwordConfirmV.GetData()
-			if err != nil {
-				return err
-			}
-			return showNext(c, passwordPanel)
-		},
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.PasswordConfirm, err = passwordConfirmV.GetData()
-			if err != nil {
-				return err
-			}
-			if userInputData.Password != userInputData.PasswordConfirm {
-				return c.setContentByName(validatorPanel, "Password mismatching")
-			}
-			passwordV.Close()
-			passwordConfirmV.Close()
-			encrypted, err := util.GetEncryptedPasswd(userInputData.Password)
-			if err != nil {
-				return err
-			}
-			c.config.Password = encrypted
-			return showNext(c, ntpServersPanel)
-		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			passwordV.Close()
-			passwordConfirmV.Close()
-			if err := c.setContentByName(notePanel, ""); err != nil {
-				return err
-			}
-			return showNext(c, tokenPanel)
-		},
+	pw.passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: pw.passwordConfirmVArrowUpKeyBinding,
+		gocui.KeyEnter:   pw.passwordConfirmVKeyEnter,
+		gocui.KeyEsc:     pw.passwordConfirmVKeyEscape,
 	}
-	passwordConfirmV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+5)
+	pw.passwordConfirmV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+5)
 	c.AddElement(passwordConfirmPanel, passwordConfirmV)
 
 	return nil
@@ -1071,6 +1086,10 @@ func addHostnamePanel(c *Console) error {
 
 	prev := func(g *gocui.Gui, v *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
+		if alreadyInstalled {
+			return showNext(c, askCreatePanel)
+		}
+
 		if canChoose, err := canChooseDataDisk(); err != nil {
 			return err
 		} else if canChoose {
@@ -1779,8 +1798,16 @@ func addConfirmInstallPanel(c *Console) error {
 		options += string(installBytes)
 		logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))
 		if !c.config.Install.Silent {
-			confirmV.SetContent(options +
-				"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+			if alreadyInstalled {
+				confirmV.SetContent(options +
+					"\nHarvester is already installed. It will be configured with \nthe above configuration.\n Continue?\n")
+			} else if installModeOnly {
+				confirmV.SetContent(options +
+					"\nHarvester will be copied to local disk.\n No configuration will be performed.\n Continue?\n")
+			} else {
+				confirmV.SetContent(options +
+					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+			}
 		}
 		c.Gui.Cursor = false
 		return c.setContentByName(titlePanel, "Confirm installation options")
@@ -1803,6 +1830,9 @@ func addConfirmInstallPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			confirmV.Close()
+			if installModeOnly {
+				return showNext(c, passwordConfirmPanel, passwordPanel)
+			}
 			return showNext(c, cloudInitPanel)
 		},
 	}
@@ -1855,6 +1885,10 @@ func addInstallPanel(c *Console) error {
 	installV := widgets.NewPanel(c.Gui, installPanel)
 	installV.PreShow = func() error {
 		go func() {
+			// in alreadyInstalled mode and auto configuration, the network is not available
+			if alreadyInstalled && c.config.Automatic == true && c.config.ManagementInterface.Method == "dhcp" {
+				configureInstallModeDHCP(c)
+			}
 			logrus.Info("Local config: ", c.config)
 			if c.config.Install.ConfigURL != "" {
 				printToPanel(c.Gui, fmt.Sprintf("Fetching %s...", c.config.Install.ConfigURL), installPanel)
@@ -1938,7 +1972,11 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, fmt.Sprintf("invalid webhook: %s", err), installPanel)
 			}
 
-			doInstall(c.Gui, c.config, webhooks)
+			if alreadyInstalled {
+				configureInstalledNode(c.Gui, c.config, webhooks)
+			} else {
+				doInstall(c.Gui, c.config, webhooks)
+			}
 		}()
 		return c.setContentByName(footerPanel, "")
 	}
@@ -2322,6 +2360,65 @@ func addDNSServersPanel(c *Console) error {
 		return asyncTaskV.Close()
 	}
 	c.AddElement(dnsServersPanel, dnsServersV)
+
+	return nil
+}
+
+func configureInstallModeDHCP(c *Console) {
+	netDef := c.config.Install.ManagementInterface
+	// copy settings before application //
+	mgmtNetwork.Interfaces = netDef.Interfaces
+	if netDef.BondOptions == nil {
+		mgmtNetwork.BondOptions = map[string]string{
+			"mode":   config.BondModeBalanceTLB,
+			"miimon": "100",
+		}
+	} else {
+		mgmtNetwork.BondOptions = netDef.BondOptions
+	}
+	mgmtNetwork.Method = netDef.Method
+
+	_, err := applyNetworks(
+		mgmtNetwork,
+		c.config.Hostname,
+	)
+	if err != nil {
+		logrus.Error(err)
+		printToPanel(c.Gui, fmt.Sprintf("error applying network configuration: %s", err.Error()), installPanel)
+	}
+
+	_, err = getIPThroughDHCP(config.MgmtInterfaceName)
+	if err != nil {
+		printToPanel(c.Gui, fmt.Sprintf("error getting DHCP address: %s", err.Error()), installPanel)
+	}
+
+	// if need vip via dhcp
+	if c.config.Install.VipMode == config.NetworkMethodDHCP {
+		vip, err := getVipThroughDHCP(config.MgmtInterfaceName)
+		if err != nil {
+			printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
+			return
+		}
+		c.config.Vip = vip.ipv4Addr
+		c.config.VipHwAddr = vip.hwAddr
+	}
+
+}
+
+func mergeCloudInit(c *config.HarvesterConfig) error {
+	cloudConfig, err := config.ReadUserDataConfig()
+	if err != nil {
+		return err
+	}
+	if cloudConfig.Install.Automatic {
+		c.Merge(cloudConfig)
+		if cloudConfig.OS.Hostname != "" {
+			c.OS.Hostname = cloudConfig.OS.Hostname
+		}
+		if cloudConfig.OS.Password != "" {
+			c.OS.Password = cloudConfig.OS.Password
+		}
+	}
 
 	return nil
 }

@@ -120,10 +120,21 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		TimeSyncd: make(map[string]string),
 	}
 
-	// TOP
-	if err := initRancherdStage(config, &initramfs); err != nil {
-		return nil, err
+	afterNetwork := yipSchema.Stage{
+		SSHKeys: make(map[string][]string),
 	}
+
+	initramfs.Users[cosLoginUser] = yipSchema.User{
+		PasswordHash: cfg.OS.Password,
+	}
+
+	// Use modprobe to load modules as a temporary solution
+	for _, module := range cfg.OS.Modules {
+		initramfs.Commands = append(initramfs.Commands, "modprobe "+module)
+	}
+
+	initramfs.Sysctl = cfg.OS.Sysctls
+	initramfs.Environment = cfg.OS.Environment
 
 	// OS
 	for _, ff := range cfg.OS.WriteFiles {
@@ -132,7 +143,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			logrus.Warnf("fail to parse permission %s, use default permission.", err)
 			perm = 0600
 		}
-
 		initramfs.Files = append(initramfs.Files, yipSchema.File{
 			Path:        ff.Path,
 			Content:     ff.Content,
@@ -142,42 +152,34 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		})
 	}
 
-	initramfs.Hostname = cfg.OS.Hostname
-	initramfs.Sysctl = cfg.OS.Sysctls
-	if len(cfg.OS.NTPServers) > 0 {
-		initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
-		initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
-		initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
-	}
-	if len(cfg.OS.DNSNameservers) > 0 {
-		initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
-	}
+	// TOP
+	if cfg.Mode != ModeInstall {
+		if err := initRancherdStage(config, &initramfs); err != nil {
+			return nil, err
+		}
 
-	if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
-		return nil, err
-	}
+		initramfs.Hostname = cfg.OS.Hostname
 
-	initramfs.Users[cosLoginUser] = yipSchema.User{
-		PasswordHash: cfg.OS.Password,
-	}
+		if len(cfg.OS.NTPServers) > 0 {
+			initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
+			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
+			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
+		}
+		if len(cfg.OS.DNSNameservers) > 0 {
+			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
+		}
 
-	initramfs.Environment = cfg.OS.Environment
+		if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
+			return nil, err
+		}
 
-	// Use modprobe to load modules as a temporary solution
-	for _, module := range cfg.OS.Modules {
-		initramfs.Commands = append(initramfs.Commands, "modprobe "+module)
-	}
+		_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
+		if err != nil {
+			return nil, err
+		}
 
-	_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
-	if err != nil {
-		return nil, err
+		afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
 	}
-
-	// After network is available
-	afterNetwork := yipSchema.Stage{
-		SSHKeys: make(map[string][]string),
-	}
-	afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
 
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
@@ -280,15 +282,6 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	)
 
 	if config.Install.Mode == "create" {
-		stage.Directories = append(stage.Directories,
-			yipSchema.Directory{
-				Path:        rancherdBootstrapDir,
-				Permissions: 0600,
-				Owner:       0,
-				Group:       0,
-			},
-		)
-
 		bootstrapResources, err := genBootstrapResources(config)
 		if err != nil {
 			return err
@@ -412,6 +405,7 @@ func SaveOriginalNetworkConfig() error {
 					return err
 				}
 				originalNetworkConfigs[filepath.Base(path)] = bytes
+
 			}
 			return nil
 		}
@@ -638,7 +632,7 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 		return nil
 	}
 
-	interfaces := make([]string, len(wifis))
+	var interfaces []string
 	for i, wifi := range wifis {
 		iface := fmt.Sprintf("wlan%d", i)
 
@@ -755,7 +749,7 @@ func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, hvstConfig *
 	}
 
 	elementalConfig.Install.ExtraPartitions = []ElementalPartition{
-		{
+		ElementalPartition{
 			FilesystemLabel: "HARV_LH_DEFAULT",
 			Size:            0,
 			FS:              "ext4",
