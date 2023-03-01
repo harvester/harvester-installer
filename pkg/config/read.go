@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/rancher/mapper/convert"
@@ -10,7 +12,8 @@ import (
 )
 
 const (
-	kernelParamPrefix = "harvester"
+	kernelParamPrefix   = "harvester"
+	defaultUserDataFile = "/oem/userdata.yaml"
 )
 
 // ReadConfig constructs a config by reading various sources
@@ -45,4 +48,44 @@ func mapToEnv(prefix string, data map[string]interface{}) []string {
 		}
 	}
 	return result
+}
+
+// ReadUserDataConfig constructs a config from userdata
+func ReadUserDataConfig() (HarvesterConfig, error) {
+	return readUserData(defaultUserDataFile)
+}
+
+func readUserData(fileName string) (HarvesterConfig, error) {
+	result := NewHarvesterConfig()
+	_, err := os.Stat(fileName)
+
+	if os.IsNotExist(err) {
+		return *result, nil
+	} else if err != nil {
+		return *result, err
+	}
+
+	contents, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return *result, err
+	}
+
+	tidyContents, err := cleanupFile(contents)
+	if err != nil {
+		return *result, err
+	}
+	result, err = LoadHarvesterConfig(tidyContents)
+	return *result, err
+}
+
+func cleanupFile(content []byte) ([]byte, error) {
+	lines := strings.Split(string(content), "\n")
+	var config []string
+	for _, v := range lines {
+		if v != "#cloud-config" && v != "#!cloud-config" {
+			config = append(config, v)
+		}
+	}
+
+	return []byte(strings.Join(config, "\n")), nil
 }
