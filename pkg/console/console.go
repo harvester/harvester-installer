@@ -134,11 +134,25 @@ func (c *Console) CloseElements(names ...string) {
 func (c *Console) doRun() error {
 	defer c.Close()
 
+	dashboard := c.layoutInstall
+
 	if hd, _ := os.LookupEnv("HARVESTER_DASHBOARD"); hd == "true" {
-		c.SetManagerFunc(c.layoutDashboard)
-	} else {
-		c.SetManagerFunc(c.layoutInstall)
+		if err := c.getHarvesterConfig(); err != nil {
+			return err
+		}
+		if c.config.Install.Mode == config.ModeCreate || c.config.Install.Mode == config.ModeJoin {
+			dashboard = c.layoutDashboard
+		}
 	}
+
+	// installModeBoot is used to control options in layoutInstall
+	if c.config.Install.Mode == config.ModeInstall {
+		logrus.Info("harvester already installed")
+		alreadyInstalled = true
+		c.config.Install.Mode = ""
+	}
+
+	c.SetManagerFunc(dashboard)
 
 	if err := setGlobalKeyBindings(c.Gui); err != nil {
 		return err
