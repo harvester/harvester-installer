@@ -139,6 +139,14 @@
       args:
         chdir: "{{ WORKSPACE }}/harvester-installer/ci/terraform"
 
+    - name: Testing services status
+      vars:
+        settings_file: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+      shell: >
+        ./check_services_status.sh {{ settings_file}}
+      args:
+        chdir: "{{ WORKSPACE }}/harvester-installer/ci/terraform"
+
     - name: Testing basic operations with terraform
       register: terraform_test
       vars:
