@@ -1,5 +1,5 @@
 FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
-FROM quay.io/costoolkit/releases-green:luet-makeiso-toolchain-0.4.0 as makeiso
+FROM quay.io/costoolkit/elemental-cli:v0.2.5 as elemental
 
 FROM registry.suse.com/bci/bci-base:15.4
 
@@ -18,7 +18,7 @@ ENV ARCH $DAPPER_HOST_ARCH
 
 # mtools and dosfstools are requirements for luet-makeiso >= 0.4.0 to build hybrid ISO.
 RUN zypper -n rm container-suseconnect && \
-    zypper -n install go1.18 git curl docker gzip tar wget zstd squashfs xorriso awk jq mtools dosfstools
+    zypper -n install go1.18 git curl docker gzip tar wget zstd squashfs xorriso awk jq mtools dosfstools rsync
 RUN curl -sfL https://github.com/mikefarah/yq/releases/download/v4.21.1/yq_linux_${ARCH} -o /usr/bin/yq && chmod +x /usr/bin/yq
 RUN if [ "${ARCH}" == "amd64" ]; then \
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.49.0; \
@@ -30,9 +30,9 @@ RUN mkdir /usr/tmp && \
     curl ${HELM_URL} | tar xvzf - --strip-components=1 -C /usr/tmp/ && \
     mv /usr/tmp/helm /usr/bin/helm
 
-# luet & makeiso
+# luet & elemental
 COPY --from=luet /usr/bin/luet /usr/bin/luet
-COPY --from=makeiso /usr/bin/luet-makeiso /usr/bin/luet-makeiso
+COPY --from=elemental /usr/bin/elemental /usr/bin/elemental
 
 # You cloud defined your own rke2 url by setup `RKE2_IMAGE_REPO`
 ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS RKE2_IMAGE_REPO
