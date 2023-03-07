@@ -73,6 +73,7 @@ resources:
     namespace: fleet-local
   spec:
     chart: harvester
+    force: true
     releaseName: harvester
     version: {{ .HarvesterChartVersion }}
     defaultNamespace: harvester-system
