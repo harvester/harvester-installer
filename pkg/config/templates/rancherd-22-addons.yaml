@@ -6,12 +6,12 @@ resources:
       namespace: harvester-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.1.2"
+      version: "0.1.3"
       chart: harvester-vm-import-controller
       enabled: false
       valuesContent: |
         image:
-          tag: v0.1.2
+          tag: v0.1.3
         fullnameOverride: harvester-vm-import-controller
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
