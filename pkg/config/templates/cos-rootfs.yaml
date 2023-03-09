@@ -22,6 +22,7 @@ environment:
     /var/lib/kubelet
     /var/lib/wicked
     /var/lib/cni
+    /var/lib/third-party
     /var/crash
     /var/lib/longhorn
     {{- if not .ShouldMountDataPartition }}
