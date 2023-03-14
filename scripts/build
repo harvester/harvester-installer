@@ -11,7 +11,7 @@ cd ${TOP_DIR}
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
     echo "No existed harvester source. Pulling..."
-    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
+    git clone --branch v1.1 --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
 fi
 
 source ${SCRIPTS_DIR}/version-harvester $harvester_path
