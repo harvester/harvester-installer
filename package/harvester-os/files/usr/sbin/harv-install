@@ -151,14 +151,16 @@ preload_rke2_images()
     RKE2_IMAGES_LISTS_DIR="/tmp/images-lists"
     mkdir -p $TARGET/$RKE2_IMAGES_DIR
     mkdir -p $TARGET/$RKE2_IMAGES_LISTS_DIR
-    mount --bind ${ISOMNT}/bundle/harvester/images $TARGET/$RKE2_IMAGES_DIR
     mount --bind ${ISOMNT}/bundle/harvester/images-lists $TARGET/$RKE2_IMAGES_LISTS_DIR
+
+    echo "Copying RKE2 images to the target location..."
+    rsync -ah --progress ${ISOMNT}/bundle/harvester/images/rke2-images.*.tar.zst $TARGET/$RKE2_IMAGES_DIR
 
     cd $TARGET
     mount --bind /dev dev
     mount --bind /proc proc
 
-    echo "Loading images. This may take a few minutes..."
+    echo "Bringing up RKE2 server to extract essential binaries..."
     chroot . /bin/bash <<"EOF"
       set -e
       # update the nameserver
@@ -182,13 +184,43 @@ preload_rke2_images()
 
       $rke2_tmp/bin/rke2 server &> /rke2.log &
 
+      until [ -f "/var/lib/rancher/rke2/bin/containerd" ] && [ -f "/var/lib/rancher/rke2/agent/etc/containerd/config.toml" ]
+      do
+        sleep 1
+      done
+
+      echo "Stop rke2 and remove tmporary rke2 files..."
+      pkill rke2
+      rm /rke2.log
+      rm /etc/rancher/rke2/rke2.yaml
+      rm -rf /var/lib/rancher/rke2/server
+      rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
+EOF
+
+    echo "Copying remaining images to the target location..."
+    rsync -ah --progress ${ISOMNT}/bundle/harvester/images/ $TARGET/$RKE2_IMAGES_DIR
+
+    echo "Loading images. This may take a few minutes..."
+    chroot . /bin/bash <<"EOF"
+
       export PATH=/var/lib/rancher/rke2/bin:$PATH
       export CONTAINERD_ADDRESS=/run/k3s/containerd/containerd.sock
+
+      echo "Start containerd..."
+      containerd -c /var/lib/rancher/rke2/agent/etc/containerd/config.toml -a $CONTAINERD_ADDRESS --state /run/k3s/containerd --root /var/lib/rancher/rke2/agent/containerd &> /containerd.log &
 
       # wait for containerd to be ready
       until ctr --connect-timeout 1s version&>/dev/null
       do
         sleep 1
+      done
+
+      # load images
+      for i in /var/lib/rancher/rke2/agent/images/*.tar.zst; do
+        echo "Load images from $i"
+        zstd -d $i -o /usr/local/images.tar
+        ctr -n k8s.io images import /usr/local/images.tar
+        rm /usr/local/images.tar
       done
 
       # make sure all preloading images are ready
@@ -197,12 +229,9 @@ preload_rke2_images()
       done
 
       # stop containerd
-      pkill rke2
-      rm /rke2.log
-      rm /etc/rancher/rke2/rke2.yaml
-
-      rm -rf /var/lib/rancher/rke2/server
-      rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
+      echo "Stop containerd..."
+      pkill containerd
+      rm /containerd.log
 EOF
 
     until umount dev&>/dev/null
@@ -211,8 +240,9 @@ EOF
     done
     umount proc
     cd - &> /dev/null
-    umount ${TARGET}/${RKE2_IMAGES_DIR}
     umount ${TARGET}/${RKE2_IMAGES_LISTS_DIR}
+
+    rm -f ${TARGET}/${RKE2_IMAGES_DIR}/*
 }
 
 preload_rancherd_images()
