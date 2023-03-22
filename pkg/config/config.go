@@ -149,6 +149,8 @@ type OS struct {
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
+
+	PersistentStatePaths []string `json:"persistentStatePaths,omitempty"`
 }
 
 type HarvesterConfig struct {

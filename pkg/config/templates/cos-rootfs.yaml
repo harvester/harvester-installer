@@ -25,6 +25,11 @@ environment:
     /var/lib/third-party
     /var/crash
     /var/lib/longhorn
+    {{- if .OS.PersistentStatePaths }}
+    {{- range $path := .OS.PersistentStatePaths }}
+    {{ $path }}
+    {{- end }}
+    {{- end }}
     {{- if not .ShouldMountDataPartition }}
     /var/lib/harvester/defaultdisk
     {{- end }}
