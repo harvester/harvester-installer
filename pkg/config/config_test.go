@@ -276,6 +276,23 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/harvester/defaultdisk")
 			},
 		},
+		{
+			name: "Test additional persistent state paths",
+			harvConfig: HarvesterConfig{
+				OS: OS{
+					PersistentStatePaths: []string{
+						"/path1",
+						"/path2",
+					},
+				},
+			},
+			assertion: func(t *testing.T, rootfs *Rootfs) {
+				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/harvester/defaultdisk")
+				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/harvester/defaultdisk")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/path1")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/path2")
+			},
+		},
 	}
 
 	for _, tc := range testCases {
