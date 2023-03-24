@@ -219,7 +219,7 @@ EOF
       for i in /var/lib/rancher/rke2/agent/images/*.tar.zst; do
         echo "Load images from $i"
         zstd -d $i -o /usr/local/images.tar
-        ctr -n k8s.io images import /usr/local/images.tar
+        ctr -n k8s.io images import --no-unpack /usr/local/images.tar
         rm /usr/local/images.tar
       done
 
