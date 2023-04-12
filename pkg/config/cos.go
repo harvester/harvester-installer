@@ -29,7 +29,10 @@ const (
 	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
 	ifrouteGlobPattern     = networkConfigDirectory + "ifroute-*"
 
-	bootstrapConfigCount = 6
+	bootstrapConfigCount               = 6
+	defaultReplicaCount                = 3
+	defaultGuaranteedEngineManagerCPU  = 12 // means percentage 12%
+	defaultGuaranteedReplicaManagerCPU = 12 // means percentage 12%
 )
 
 var (
@@ -219,7 +222,7 @@ func overwriteRootfsStage(config *HarvesterConfig, stage *yipSchema.Stage) error
 	return nil
 }
 
-func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+func setConfigDefaultValues(config *HarvesterConfig) {
 	if config.RuntimeVersion == "" {
 		config.RuntimeVersion = RKE2Version
 	}
@@ -236,6 +239,23 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if config.LoggingChartVersion == "" {
 		config.LoggingChartVersion = LoggingChartVersion
 	}
+
+	// 0 is invalid and skipped from yaml to strut, no need to check
+	if config.Harvester.StorageClass.ReplicaCount > defaultReplicaCount {
+		config.Harvester.StorageClass.ReplicaCount = defaultReplicaCount
+	}
+
+	if config.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU != nil && *config.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU > defaultGuaranteedEngineManagerCPU {
+		*config.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU = defaultGuaranteedEngineManagerCPU
+	}
+
+	if config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU != nil && *config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU > defaultGuaranteedReplicaManagerCPU {
+		*config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU = defaultGuaranteedReplicaManagerCPU
+	}
+}
+
+func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+	setConfigDefaultValues(config)
 
 	stage.Directories = append(stage.Directories,
 		yipSchema.Directory{
