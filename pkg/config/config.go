@@ -100,6 +100,26 @@ type Addon struct {
 	ValuesContent string `json:"valuesContent,omitempty"`
 }
 
+type LHDefaultSettings struct {
+	// 0 is valid, means not setting CPU resources, use pointer to check if it is set
+	GuaranteedEngineManagerCPU  *uint32 `json:"guaranteedEngineManagerCPU,omitempty"`
+	GuaranteedReplicaManagerCPU *uint32 `json:"guaranteedReplicaManagerCPU,omitempty"`
+}
+
+type LonghornChartValues struct {
+	DefaultSettings LHDefaultSettings `json:"defaultSettings,omitempty"`
+}
+
+type StorageClass struct {
+	// 0 is invalid, will be omitted
+	ReplicaCount uint32 `json:"replicaCount,omitempty"`
+}
+
+type HarvesterChartValues struct {
+	StorageClass StorageClass        `json:"storageClass,omitempty"`
+	Longhorn     LonghornChartValues `json:"longhorn,omitempty"`
+}
+
 type Install struct {
 	Automatic           bool    `json:"automatic,omitempty"`
 	Mode                string  `json:"mode,omitempty"`
@@ -124,8 +144,9 @@ type Install struct {
 	ForceMBR bool   `json:"forceMbr,omitempty"`
 	DataDisk string `json:"dataDisk,omitempty"`
 
-	Webhooks []Webhook        `json:"webhooks,omitempty"`
-	Addons   map[string]Addon `json:"addons,omitempty"`
+	Webhooks  []Webhook            `json:"webhooks,omitempty"`
+	Addons    map[string]Addon     `json:"addons,omitempty"`
+	Harvester HarvesterChartValues `json:"harvester,omitempty"`
 }
 
 type Wifi struct {
