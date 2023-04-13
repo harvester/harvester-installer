@@ -136,9 +136,10 @@ type File struct {
 }
 
 type OS struct {
-	SSHAuthorizedKeys []string `json:"sshAuthorizedKeys,omitempty"`
-	WriteFiles        []File   `json:"writeFiles,omitempty"`
-	Hostname          string   `json:"hostname,omitempty"`
+	AfterInstallChrootCommands []string `json:"afterInstallChrootCommands,omitempty"`
+	SSHAuthorizedKeys          []string `json:"sshAuthorizedKeys,omitempty"`
+	WriteFiles                 []File   `json:"writeFiles,omitempty"`
+	Hostname                   string   `json:"hostname,omitempty"`
 
 	Modules        []string          `json:"modules,omitempty"`
 	Sysctls        map[string]string `json:"sysctls,omitempty"`

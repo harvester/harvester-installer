@@ -366,3 +366,47 @@ func TestHarvesterConfigMerge_OtherField(t *testing.T) {
 	assert.Equal(t, []string{"1.1.1.1", "8.8.8.8"}, conf.DNSNameservers, "Slice shoule be appended")
 	assert.Equal(t, "TokenValue", conf.Token, "New field should be added")
 }
+
+func TestHarvesterAfterInstallChrootRendering(t *testing.T) {
+	type HarvesterAfterInstallChroot struct {
+		Commands []string `yaml:"commands,omitempty"`
+	}
+
+	testCases := []struct {
+		name       string
+		harvConfig HarvesterConfig
+		assertion  func(t *testing.T, afterInstallChroot *HarvesterAfterInstallChroot)
+	}{
+
+		{
+			name: "Test after-install-chroot-command",
+			harvConfig: HarvesterConfig{
+				OS: OS{
+					AfterInstallChrootCommands: []string{
+						`echo "hello"`,
+						`echo "world"`,
+					},
+				},
+			},
+			assertion: func(t *testing.T, afterInstallChroot *HarvesterAfterInstallChroot) {
+				assert.Contains(t, afterInstallChroot.Commands, `echo "hello"`)
+				assert.Contains(t, afterInstallChroot.Commands, `echo "world"`)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		content, err := render("cos-after-install-chroot.yaml", tc.harvConfig)
+		assert.NoError(t, err)
+		t.Log("Rendered content:")
+		t.Log(content)
+
+		afterInstallChroot := HarvesterAfterInstallChroot{}
+		err = yaml.Unmarshal([]byte(content), &afterInstallChroot)
+		assert.NoError(t, err)
+		t.Log("Loaded Config:")
+		t.Log(afterInstallChroot)
+
+		tc.assertion(t, &afterInstallChroot)
+	}
+}
