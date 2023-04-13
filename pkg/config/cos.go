@@ -183,7 +183,25 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		},
 	}
 
+	// Add after-install-chroot stage
+	if len(config.OS.AfterInstallChrootCommands) > 0 {
+		afterInstallChroot := yipSchema.Stage{}
+		if err := overwriteAfterInstallChrootStage(config, &afterInstallChroot); err != nil {
+			return nil, err
+		}
+		cosConfig.Stages["after-install-chroot"] = []yipSchema.Stage{afterInstallChroot}
+	}
+
 	return cosConfig, nil
+}
+
+func overwriteAfterInstallChrootStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+	content, err := render("cos-after-install-chroot.yaml", config)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal([]byte(content), stage)
 }
 
 func overwriteRootfsStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
