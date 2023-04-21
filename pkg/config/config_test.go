@@ -50,12 +50,12 @@ func TestHarvesterConfig_GetKubeletLabelsArg(t *testing.T) {
 		{
 			name:   "Successfully creates node-labels argument",
 			input:  map[string]string{"labelKey1": "value1"},
-			output: []string{"node-labels=labelKey1=value1"},
+			output: []string{"max-pods=200", "node-labels=labelKey1=value1"},
 		},
 		{
-			name:   "Returns nothing if no Labels is given",
+			name:   "Returns maxPods even if no Labels are given",
 			input:  map[string]string{},
-			output: []string{},
+			output: []string{"max-pods=200"},
 		},
 		{
 			name:      "Error for invalid label name",
@@ -68,6 +68,11 @@ func TestHarvesterConfig_GetKubeletLabelsArg(t *testing.T) {
 			input:     map[string]string{"example.io/somelabel": "???value###NAH"},
 			output:    []string{},
 			expectErr: true,
+		},
+		{
+			name:   "Successfully creates max-pods argument",
+			input:  map[string]string{},
+			output: []string{"max-pods=200"},
 		},
 	}
 
