@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -16,6 +17,12 @@ import (
 )
 
 const validTokenChars = "[a-zA-Z0-9 !\"#$%&'()*+,-./:;<=>?@^_`{|}~[\\]\\\\]"
+
+var (
+	persistentStateDirBlackList = []string{
+		"/tmp",
+	}
+)
 
 var (
 	ErrMsgModeCreateContainsServerURL   = fmt.Sprintf("ServerURL need to be empty in %s mode", config.ModeCreate)
@@ -282,6 +289,29 @@ func checkToken(token string) error {
 	return nil
 }
 
+func checkPersistentStatePath(path string) error {
+	if !filepath.IsAbs(path) {
+		return errors.New("Invalid path. PersistentStatePath must be an absolute path")
+	}
+
+	for _, d := range persistentStateDirBlackList {
+		if path == d || strings.HasPrefix(path, d+string(os.PathSeparator)) {
+			return errors.Errorf("Invalid path. Parent dir of PersistentStatePath cannot be %s", d)
+		}
+	}
+
+	return nil
+}
+
+func checkPersistentStatePaths(persistentStatePaths []string) error {
+	for _, path := range persistentStatePaths {
+		if err := checkPersistentStatePath(path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func checkSystemSettings(systemSettings map[string]string) error {
 	if systemSettings == nil {
 		return nil
@@ -388,7 +418,8 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 	if len(cfg.SSHAuthorizedKeys) == 0 && cfg.Password == "" {
 		return errors.New(ErrMsgNoCredentials)
 	}
-	return nil
+
+	return checkPersistentStatePaths(cfg.OS.PersistentStatePaths)
 }
 
 func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {

@@ -197,3 +197,83 @@ func TestCheckToken(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckPersistentStatePath(t *testing.T) {
+	testCases := []struct {
+		name                string
+		persistentStatePath string
+		expectErr           bool
+	}{
+		{
+			name:                "empty path",
+			persistentStatePath: "",
+			expectErr:           true,
+		},
+		{
+			name:                "not a abs path",
+			persistentStatePath: "var/lib/test",
+			expectErr:           true,
+		},
+		{
+			name:                "valid path",
+			persistentStatePath: "/var/lib/test",
+			expectErr:           false,
+		},
+		{
+			name:                "tmp path1",
+			persistentStatePath: "/tmp",
+			expectErr:           true,
+		},
+		{
+			name:                "tmp path2",
+			persistentStatePath: "/tmp/",
+			expectErr:           true,
+		},
+		{
+			name:                "tmp path3",
+			persistentStatePath: "/tmp/test",
+			expectErr:           true,
+		},
+		{
+			name:                "not tmp path1",
+			persistentStatePath: "/tmptest",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path2",
+			persistentStatePath: "/tmptest/",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path3",
+			persistentStatePath: "/tmptest/tmp",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path4",
+			persistentStatePath: "/tmptest/tmp/",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path5",
+			persistentStatePath: "/tmptest/tmp/foo",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path6",
+			persistentStatePath: "/tmptest/tmp/foo/",
+			expectErr:           false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkPersistentStatePath(tc.persistentStatePath)
+			if tc.expectErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
