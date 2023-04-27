@@ -147,29 +147,57 @@ preload_rke2_images()
         return
     fi
 
-    RKE2_IMAGES_DIR="/var/lib/rancher/rke2/agent/images"
-    RKE2_IMAGES_LISTS_DIR="/tmp/images-lists"
-    mkdir -p $TARGET/$RKE2_IMAGES_DIR
-    mkdir -p $TARGET/$RKE2_IMAGES_LISTS_DIR
-    mount --bind ${ISOMNT}/bundle/harvester/images-lists $TARGET/$RKE2_IMAGES_LISTS_DIR
+    # Use HARVESTER_ISO_URL to determine if this is an ISO-based installation
+    if [ -n "$HARVESTER_ISO_URL" ]; then
+        INSTALL_MODE="PXE"
+    else
+        INSTALL_MODE="ISO"
+    fi
 
-    echo "Copying RKE2 images to the target location..."
-    rsync -ah --progress ${ISOMNT}/bundle/harvester/images/rke2-images.*.tar.zst $TARGET/$RKE2_IMAGES_DIR
+    readonly RKE2_IMAGES_DIR="/var/lib/rancher/rke2/agent/images"
+    readonly TMP_IMAGES_DIR="/var/lib/rancher/tmp/images"
+    readonly IMAGES_LISTS_DIR="/tmp/images-lists"
+    mkdir -p $TARGET/$RKE2_IMAGES_DIR
+    mkdir -p $TARGET/$TMP_IMAGES_DIR
+    mkdir -p $TARGET/$IMAGES_LISTS_DIR
+
+    # If the installation mode is ISO, use rsync instead of bind-mount to mitigate the potential installation failure due to slow media
+    # Otherwise (PXE), use bind-mount directly to speed up the process
+    if [ "$INSTALL_MODE" = "ISO" ]; then
+        echo "Copying RKE2 images to the target location..."
+        rsync -ah --progress ${ISOMNT}/bundle/harvester/images/rke2-images.*.tar.zst $TARGET/$RKE2_IMAGES_DIR
+        echo "Copying remaining images temporary location..."
+        rsync -ah --progress ${ISOMNT}/bundle/harvester/images/ $TARGET/$TMP_IMAGES_DIR
+        rsync -ah --progress ${ISOMNT}/bundle/harvester/images-lists/ $TARGET/$IMAGES_LISTS_DIR
+    else
+        echo "Bind-mount images directory to the target location..."
+        mount --bind ${ISOMNT}/bundle/harvester/images $TARGET/$RKE2_IMAGES_DIR
+        mount --bind ${ISOMNT}/bundle/harvester/images-lists $TARGET/$IMAGES_LISTS_DIR
+    fi
 
     cd $TARGET
     mount --bind /dev dev
     mount --bind /proc proc
 
-    echo "Bringing up RKE2 server to extract essential binaries..."
-    chroot . /bin/bash <<"EOF"
+    echo "Loading images. This may take a few minutes..."
+    install_mode="$INSTALL_MODE" tmp_images_dir="$TMP_IMAGES_DIR" images_lists_dir="$IMAGES_LISTS_DIR" chroot . /bin/bash <<"EOF"
       set -e
+
+      wait_for_containerd_ready()
+      {
+        until ctr --connect-timeout 1s version&>/dev/null
+        do
+            sleep 1
+        done
+      }
+
       # update the nameserver
       netconfig update
 
       inst_tmp=$(mktemp -d -p /usr/local)
       trap "rm -rf $inst_tmp" exit
 
-      # extract rke2 tarball from image
+      # extract RKE2 tarball from image
       image_list=$(ls /var/lib/rancher/agent/images/rancherd-bootstrap-images-*.txt | head -n 1)
       if [ -z "$image_list" ]; then
         echo "[ERROR] Fail to get rancherd bootstrap images list."
@@ -178,71 +206,73 @@ preload_rke2_images()
       rke2_image=$(grep 'docker.io/rancher/system-agent-installer-rke2:' $image_list)
       wharfie --images-dir /var/lib/rancher/agent/images/ $rke2_image $inst_tmp
 
-      # extract rke2 binary
+      # extract RKE2 binary
       rke2_tmp="$inst_tmp/rke2"
       mkdir -p $rke2_tmp && tar xf $inst_tmp/rke2.linux-amd64.tar.gz -C $rke2_tmp
 
       $rke2_tmp/bin/rke2 server &> /rke2.log &
 
-      until [ -f "/var/lib/rancher/rke2/bin/containerd" ] && [ -f "/var/lib/rancher/rke2/agent/etc/containerd/config.toml" ]
-      do
-        sleep 1
-      done
-
-      echo "Stop rke2 and remove tmporary rke2 files..."
-      pkill rke2
-      rm /rke2.log
-      rm /etc/rancher/rke2/rke2.yaml
-      rm -rf /var/lib/rancher/rke2/server
-      rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
-EOF
-
-    echo "Copying remaining images to the target location..."
-    rsync -ah --progress ${ISOMNT}/bundle/harvester/images/ $TARGET/$RKE2_IMAGES_DIR
-
-    echo "Loading images. This may take a few minutes..."
-    chroot . /bin/bash <<"EOF"
-
       export PATH=/var/lib/rancher/rke2/bin:$PATH
       export CONTAINERD_ADDRESS=/run/k3s/containerd/containerd.sock
 
-      echo "Start containerd..."
-      containerd -c /var/lib/rancher/rke2/agent/etc/containerd/config.toml -a $CONTAINERD_ADDRESS --state /run/k3s/containerd --root /var/lib/rancher/rke2/agent/containerd &> /containerd.log &
+      wait_for_containerd_ready
 
-      # wait for containerd to be ready
-      until ctr --connect-timeout 1s version&>/dev/null
-      do
-        sleep 1
-      done
+      if [ "$install_mode" = "ISO" ]; then
+        echo "Stop RKE2 and remove temporary RKE2 files..."
+        pkill rke2
+        rm /rke2.log
+        rm /etc/rancher/rke2/rke2.yaml
+        rm -rf /var/lib/rancher/rke2/server
+        rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
 
-      # load images
-      for i in /var/lib/rancher/rke2/agent/images/*.tar.zst; do
-        echo "Load images from $i"
-        zstd -d $i -o /usr/local/images.tar
-        ctr -n k8s.io images import --no-unpack /usr/local/images.tar
-        rm /usr/local/images.tar
-      done
+        echo "Start containerd..."
+        containerd -c /var/lib/rancher/rke2/agent/etc/containerd/config.toml -a $CONTAINERD_ADDRESS --state /run/k3s/containerd --root /var/lib/rancher/rke2/agent/containerd &> /containerd.log &
+
+        wait_for_containerd_ready
+
+        # load images
+        for i in $tmp_images_dir/*.tar.zst; do
+            echo "Load images from $i"
+            zstd -d $i -o /usr/local/images.tar
+            ctr -n k8s.io images import --no-unpack /usr/local/images.tar
+            rm /usr/local/images.tar
+        done
+      fi
 
       # make sure all preloading images are ready
-      for i in /tmp/images-lists/*.txt; do
+      for i in $images_lists_dir/*.txt; do
         stdbuf -oL ctr-check-images.sh $i
       done
 
-      # stop containerd
-      echo "Stop containerd..."
-      pkill containerd
-      rm /containerd.log
+      # tearing down containerd/RKE2
+      if [ "$install_mode" = "ISO" ]; then
+        echo "Stop containerd..."
+        pkill containerd
+        rm /containerd.log
+      else
+        echo "Stop RKE2..."
+        pkill rke2
+        rm /rke2.log
+        rm /etc/rancher/rke2/rke2.yaml
+        rm -rf /var/lib/rancher/rke2/server
+        rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
+      fi
 EOF
 
     until umount dev&>/dev/null
     do
-      sleep 1
+        sleep 1
     done
     umount proc
     cd - &> /dev/null
-    umount ${TARGET}/${RKE2_IMAGES_LISTS_DIR}
-
-    rm -f ${TARGET}/${RKE2_IMAGES_DIR}/*
+    if [ "$INSTALL_MODE" = "ISO" ]; then
+        rm -rf ${TARGET}/${RKE2_IMAGES_DIR}/*
+        rm -rf ${TARGET}/${TMP_IMAGES_DIR}
+        rm -rf ${TARGET}/${IMAGES_LISTS_DIR}/*
+    else
+        umount ${TARGET}/${RKE2_IMAGES_DIR}
+        umount ${TARGET}/${IMAGES_LISTS_DIR}
+    fi
 }
 
 preload_rancherd_images()
