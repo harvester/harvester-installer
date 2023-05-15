@@ -14,6 +14,7 @@ source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/lib/http
 source ${SCRIPTS_DIR}/lib/image
+source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring
 source ${SCRIPTS_DIR}/hack/patch-rancher-logging
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
@@ -61,9 +62,13 @@ source ${SCRIPTS_DIR}/version-monitoring
 helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 
+# patch rancher-monitoring chart to fix issues
+PKG_PATCH_MONITORING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-monitoring"
+patch_rancher_monitoring_chart ${CHARTS_DIR} ${MONITORING_VERSION} ${PKG_PATCH_MONITORING_PATH}
+
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null
-tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null --warning=no-timestamp
+tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Prepare logging chart
 source ${SCRIPTS_DIR}/version-logging
@@ -71,25 +76,25 @@ helm pull https://charts.rancher.io/assets/rancher-logging-crd/rancher-logging-c
 helm pull https://charts.rancher.io/assets/rancher-logging/rancher-logging-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
 
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null
-tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null  --warning=no-timestamp
+tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # patch rancher-logging chart to collect more logs"
 PKG_PATCH_LOGGING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-logging"
 patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING_PATH}
 
 # make chart sanity check again after patch
-tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Prepare vm-import-controller-chart
 helm pull https://github.com/harvester/charts/releases/download/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Prepare pcidevices-chart
 helm pull https://github.com/harvester/charts/releases/download/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 
 # Create Helm repo index after charts are ready
