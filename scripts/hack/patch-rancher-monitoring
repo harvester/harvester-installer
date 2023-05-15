@@ -1,0 +1,34 @@
+#!/bin/bash
+
+patch_rancher_monitoring_chart()
+{
+  local chart_dir=$1 #${CHARTS_DIR}
+  local monitoring_version=$2 #MONITORING_VERSION
+  local pkg_monitoring_path=$3 #${PKG_PATCH_MONITORING_PATH}
+  local cwd=$(pwd)
+
+  if [ ! -d "${pkg_monitoring_path}/${monitoring_version}" ]; then
+    echo "NOTE: there is no related path: ${pkg_monitoring_path}/${monitoring_version} to patch, SKIP"
+    return 0
+  fi
+
+  cd ${chart_dir}
+  tar zxf rancher-monitoring-${monitoring_version}.tgz --warning=no-timestamp
+
+  local nm="./rancher-monitoring/charts/grafana/templates/nginx-config.yaml"
+  echo "patch $nm, original file"
+  ls -alth "$nm" || echo "file $nm is not found"
+  rm -f "$nm"
+  cp -f ${pkg_monitoring_path}/${monitoring_version}/nginx-config.yaml "$nm"
+  echo "patched file"
+  ls -alth "$nm"
+
+  # remove existing chart
+  rm -f ${chart_dir}/rancher-monitoring-${monitoring_version}.tgz
+
+  # helm pack new
+  helm package rancher-monitoring
+  echo "finish patch ranch-monitoring chart"
+  cd $cwd
+}
+
