@@ -10,4 +10,8 @@ rancherValues:
   useBundledSystemChart: true
   bootstrapPassword: admin
   hostPort: 0
+  global:
+    cattle:
+      psp:
+        enabled: false
 rancherInstallerImage: rancher/system-agent-installer-rancher:v2.7.3
