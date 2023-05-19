@@ -3,11 +3,6 @@ function list_units() {
   systemctl list-units --type=scope --no-legend | grep -Eo "(cri-containerd-.+\.scope)"
 }
 
-function get_unit_status() {
-  local unit_name="$1"
-  systemctl status "${unit_name}"
-}
-
 systemctl stop rke2-server.service || true
 systemctl stop rke2-agent.service || true
 
