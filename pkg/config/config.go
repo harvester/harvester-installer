@@ -66,6 +66,7 @@ func GetSystemSettingsAllowList() []string {
 		"vip-pools",
 		"auto-disk-provision-paths",
 		"containerd-registry",
+		"ntp-servers",
 	}
 }
 
@@ -79,6 +80,10 @@ type Network struct {
 	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
 	MTU          int                `json:"mtu,omitempty"`
 	VlanID       int                `json:"vlanId,omitempty"`
+}
+
+type NTPSettings struct {
+	NTPServers []string `json:"ntpServers,omitempty"`
 }
 
 type HTTPBasicAuth struct {
