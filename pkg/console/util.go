@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -449,6 +450,11 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
 
+	err := updateSystemSettings(hvstConfig)
+	if err != nil {
+		return err
+	}
+
 	cosConfig, err := config.ConvertToCOS(hvstConfig)
 	if err != nil {
 		printToPanel(g, err.Error(), installPanel)
@@ -746,4 +752,21 @@ func executeSupportconfig(ctx context.Context, fileName string) error {
 	}
 
 	return cmd.Wait()
+}
+
+func updateSystemSettings(harvConfig *config.HarvesterConfig) error {
+	if len(harvConfig.OS.NTPServers) == 0 {
+		return nil
+	}
+
+	if harvConfig.SystemSettings == nil {
+		harvConfig.SystemSettings = make(map[string]string)
+	}
+	content := config.NTPSettings{NTPServers: harvConfig.OS.NTPServers}
+	ntpSettingBytes, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
+	harvConfig.SystemSettings[NtpSettingName] = string(ntpSettingBytes)
+	return nil
 }

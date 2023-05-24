@@ -42,6 +42,7 @@ const (
 const (
 	ErrMsgVLANShouldBeANumberInRange string = "VLAN ID should be a number 1 ~ 4094."
 	ErrMsgMTUShouldBeANumber         string = "MTU should be a number."
+	NtpSettingName                   string = "ntp-servers"
 )
 
 var (
