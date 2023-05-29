@@ -63,7 +63,7 @@ update_rancher_deps()
   # Get min verseion from rancher image's env variables
   docker image inspect $rancher_image | jq '.[0].Config.Env' | yq e '.[]' - > "$rancher_image_envs"
   CATTLE_FLEET_MIN_VERSION=$(bash -c "source $rancher_image_envs && echo \$CATTLE_FLEET_MIN_VERSION")
-  CATTLE_RANCHER_WEBHOOK_MIN_VERSION=$(bash -c "source $rancher_image_envs && echo \$CATTLE_RANCHER_WEBHOOK_MIN_VERSION")
+  CATTLE_RANCHER_WEBHOOK_MIN_VERSION=$(bash -c "source $rancher_image_envs && echo \$CATTLE_RANCHER_WEBHOOK_VERSION")
 
   # Extract rancher-charts helm index file
   repo_hash=$(docker run --rm --entrypoint=/bin/bash "$rancher_image" -c "ls /var/lib/rancher-data/local-catalogs/v2/rancher-charts | head -n1")
