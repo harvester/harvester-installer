@@ -27,13 +27,12 @@ DRACUT_CONFDIR=$TMP_DIR/dracut.conf.d
 mkdir -p $INITRD_EXTRACTED_DIR
 mkdir -p $DRACUT_CONFDIR
 
-
 # specify a new dracut config dir to avoid including cOS configs in /etc/dracut.conf.d
 cat > $DRACUT_CONFDIR/99-tmp.conf <<EOF
 early_microcode="no"
 host_only="yes"
 EOF
-/usr/bin/dracut --confdir $DRACUT_CONFDIR --force --omit "plymouth resume usrmount" --add kdump $TMP_INITRD $KERNEL_VERSION
+/usr/bin/dracut --xz --confdir $DRACUT_CONFDIR --force --omit "plymouth resume usrmount" --add kdump $TMP_INITRD $KERNEL_VERSION
 
 # extract initrd and replace fstab and kdump config
 cd $INITRD_EXTRACTED_DIR
