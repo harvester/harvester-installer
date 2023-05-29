@@ -1,7 +1,7 @@
 rancherValues:
   rancherImagePullPolicy: IfNotPresent
   rancherImage: rancher/rancher
-  rancherImageTag: v2.7.3
+  rancherImageTag: v2.7.5-rc5
   noDefaultAdmin: false
   # multi-cluster-management-agent is to run downstream controllers.
   # By default, a harvester cluster is not a downstream cluster, so we don't enable it.
@@ -14,4 +14,4 @@ rancherValues:
     cattle:
       psp:
         enabled: false
-rancherInstallerImage: rancher/system-agent-installer-rancher:v2.7.3
+rancherInstallerImage: rancher/system-agent-installer-rancher:v2.7.5-rc5
