@@ -95,7 +95,7 @@ func checkInterface(iface config.NetworkInterface) error {
 	return prettyError(ErrMsgInterfaceNotFound, iface.Name)
 }
 
-func checkDevice(device string) error {
+func checkDevice(device string, isDataDisk bool) error {
 	if device == "" {
 		return errors.New(ErrMsgDeviceNotSpecified)
 	}
@@ -130,8 +130,14 @@ func checkDevice(device string) error {
 		return prettyError(ErrMsgDeviceNotFound, device)
 	}
 
-	if err := validateDiskSize(device); err != nil {
-		return prettyError(ErrMsgDeviceTooSmall, device)
+	if isDataDisk {
+		if err := validateDataDiskSize(device); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, device)
+		}
+	} else {
+		if err := validateDiskSize(device); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, device)
+		}
 	}
 
 	return nil
@@ -345,12 +351,12 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		return errors.Errorf("invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'")
 	}
 
-	if err := checkDevice(cfg.Install.Device); err != nil {
+	if err := checkDevice(cfg.Install.Device, false); err != nil {
 		return err
 	}
 
 	if cfg.Install.DataDisk != "" {
-		if err := checkDevice(cfg.Install.DataDisk); err != nil {
+		if err := checkDevice(cfg.Install.DataDisk, true); err != nil {
 			return err
 		}
 	}
