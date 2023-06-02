@@ -30,11 +30,9 @@ const (
 )
 
 const (
-	SoftMinDiskSizeGiB   = 140
-	HardMinDiskSizeGiB   = 60
-	MinCosPartSizeGiB    = 25
-	NormalCosPartSizeGiB = 50
-	MaxPods              = 200
+	HardMinDiskSizeGiB     = 250
+	HardMinDataDiskSizeGiB = 50
+	MaxPods                = 200
 )
 
 // refer: https://github.com/harvester/harvester/blob/master/pkg/settings/settings.go
@@ -153,6 +151,8 @@ type Install struct {
 	Webhooks  []Webhook            `json:"webhooks,omitempty"`
 	Addons    map[string]Addon     `json:"addons,omitempty"`
 	Harvester HarvesterChartValues `json:"harvester,omitempty"`
+
+	PersistentPartitionSize string `json:"persistentPartitionSize,omitempty"`
 }
 
 type Wifi struct {
