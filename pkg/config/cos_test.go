@@ -10,97 +10,54 @@ import (
 
 func TestCalcCosPersistentPartSize(t *testing.T) {
 	testCases := []struct {
-		name        string
-		input       uint64
-		output      uint64
-		expectError bool
+		diskSize      uint64
+		partitionSize string
+		result        uint64
+		err           string
 	}{
 		{
-			name:        "Disk too small",
-			input:       50,
-			output:      0,
-			expectError: true,
+			diskSize:      300,
+			partitionSize: "150Gi",
+			result:        153600,
 		},
 		{
-			name:        "Disk meet hard requirement",
-			input:       60,
-			output:      25,
-			expectError: false,
+			diskSize:      500,
+			partitionSize: "153600Mi",
+			result:        153600,
 		},
 		{
-			name:        "Disk a bit larger than hard requirement: 80G",
-			input:       80,
-			output:      31,
-			expectError: false,
+			diskSize:      250,
+			partitionSize: "240Gi",
+			err:           "Partition size is too large. Maximum 176Gi is allowed",
 		},
 		{
-			name:        "Disk a bit larger than hard requirement: 100G",
-			input:       100,
-			output:      37,
-			expectError: false,
+			diskSize:      150,
+			partitionSize: "100Gi",
+			err:           "Disk size is too small. Minimum 250Gi is required",
 		},
 		{
-			name:        "Disk close to the soft requirement",
-			input:       139,
-			output:      49,
-			expectError: false,
+			diskSize:      300,
+			partitionSize: "153600Ki",
+			err:           "Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed",
 		},
 		{
-			name:        "Disk meet soft requirement",
-			input:       SoftMinDiskSizeGiB,
-			output:      50,
-			expectError: false,
+			diskSize:      2000,
+			partitionSize: "1.5Ti",
+			err:           "Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed",
 		},
 		{
-			name:        "200GiB",
-			input:       200,
-			output:      60,
-			expectError: false,
-		},
-		{
-			name:        "300GiB",
-			input:       300,
-			output:      70,
-			expectError: false,
-		},
-		{
-			name:        "400GiB",
-			input:       400,
-			output:      80,
-			expectError: false,
-		},
-		{
-			name:        "500GiB",
-			input:       500,
-			output:      90,
-			expectError: false,
-		},
-		{
-			name:        "600GiB",
-			input:       600,
-			output:      100,
-			expectError: false,
-		},
-		{
-			name:        "Greater than 600GiB should still get 100",
-			input:       700,
-			output:      100,
-			expectError: false,
+			diskSize:      500,
+			partitionSize: "abcd",
+			err:           "Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed",
 		},
 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			sizeGiB, err := calcCosPersistentPartSize(testCase.input)
-			if testCase.expectError {
-				assert.NotNil(t, err)
-			} else {
-				if err != nil {
-					t.Log(err)
-				}
-				assert.Equal(t, sizeGiB, testCase.output)
-			}
-		})
+	for _, tc := range testCases {
+		result, err := calcCosPersistentPartSize(tc.diskSize, tc.partitionSize)
+		assert.Equal(t, tc.result, result)
+		if err != nil {
+			assert.EqualError(t, err, tc.err)
+		}
 	}
 }
 

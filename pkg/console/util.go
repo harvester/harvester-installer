@@ -489,7 +489,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	if hvstConfig.ShouldCreateDataPartitionOnOsDisk() {
 		// Use custom layout (which also creates Longhorn partition) when needed
-		elementalConfig, err = config.CreateRootPartitioningLayout(elementalConfig, hvstConfig.Install.Device)
+		elementalConfig, err = config.CreateRootPartitioningLayout(elementalConfig, hvstConfig)
 		if err != nil {
 			return err
 		}
@@ -646,20 +646,20 @@ func validateDiskSize(devPath string) error {
 	if err != nil {
 		return err
 	}
-	if diskSizeBytes>>30 < config.HardMinDiskSizeGiB {
-		return fmt.Errorf("Disk size too small. Minimum %dGB is required", config.HardMinDiskSizeGiB)
+	if util.ByteToGi(diskSizeBytes) < config.HardMinDiskSizeGiB {
+		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", config.HardMinDiskSizeGiB)
 	}
 
 	return nil
 }
 
-func validateDiskSizeSoft(devPath string) error {
+func validateDataDiskSize(devPath string) error {
 	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
 	if err != nil {
 		return err
 	}
-	if diskSizeBytes>>30 < config.SoftMinDiskSizeGiB {
-		return fmt.Errorf("Disk size is smaller than the recommended size: %dGB", config.SoftMinDiskSizeGiB)
+	if util.ByteToGi(diskSizeBytes) < config.HardMinDataDiskSizeGiB {
+		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", config.HardMinDataDiskSizeGiB)
 	}
 
 	return nil
