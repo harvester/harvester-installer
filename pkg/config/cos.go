@@ -707,53 +707,49 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 	return bootstrapConfs, nil
 }
 
-func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
-	switch {
-	case diskSizeGiB < HardMinDiskSizeGiB:
-		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, HardMinDiskSizeGiB)
-	case diskSizeGiB < SoftMinDiskSizeGiB:
-		d := MinCosPartSizeGiB / float64(SoftMinDiskSizeGiB-HardMinDiskSizeGiB)
-		partSizeGiB := MinCosPartSizeGiB + float64(diskSizeGiB-HardMinDiskSizeGiB)*d
-		return uint64(partSizeGiB), nil
-	default:
-		partSizeGiB := NormalCosPartSizeGiB + ((diskSizeGiB-100)/100)*10
-		if partSizeGiB > 100 {
-			partSizeGiB = 100
-		}
-		return partSizeGiB, nil
+func calcCosPersistentPartSize(diskSizeGiB uint64, partSize string) (uint64, error) {
+	size, err := util.ParsePartitionSize(util.GiToByte(diskSizeGiB), partSize)
+	if err != nil {
+		return 0, err
 	}
+	return util.ByteToMi(size), nil
 }
 
-func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, devPath string) (*ElementalConfig, error) {
-	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
+func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, hvstConfig *HarvesterConfig) (*ElementalConfig, error) {
+	diskSizeBytes, err := util.GetDiskSizeBytes(hvstConfig.Install.Device)
 	if err != nil {
 		return nil, err
 	}
 
-	cosPersistentSizeGiB, err := calcCosPersistentPartSize(diskSizeBytes >> 30)
+	persistentSize := hvstConfig.Install.PersistentPartitionSize
+	if persistentSize == "" {
+		persistentSize = fmt.Sprintf("%dGi", PersistentSizeMinGiB)
+	}
+	cosPersistentSizeMiB, err := calcCosPersistentPartSize(util.ByteToGi(diskSizeBytes), persistentSize)
 	if err != nil {
 		return nil, err
 	}
 
+	logrus.Infof("Calculated COS_PERSISTENT partition size: %d MiB", cosPersistentSizeMiB)
 	elementalConfig.Install.Partitions = &ElementalDefaultPartition{
 		OEM: &ElementalPartition{
 			FilesystemLabel: "COS_OEM",
-			Size:            50,
+			Size:            DefaultCosOemSizeMiB,
 			FS:              "ext4",
 		},
 		State: &ElementalPartition{
 			FilesystemLabel: "COS_STATE",
-			Size:            15360,
+			Size:            DefaultCosStateSizeMiB,
 			FS:              "ext4",
 		},
 		Recovery: &ElementalPartition{
 			FilesystemLabel: "COS_RECOVERY",
-			Size:            8192,
+			Size:            DefaultCosRecoverySizeMiB,
 			FS:              "ext4",
 		},
 		Persistent: &ElementalPartition{
 			FilesystemLabel: "COS_PERSISTENT",
-			Size:            uint(cosPersistentSizeGiB << 10),
+			Size:            uint(cosPersistentSizeMiB),
 			FS:              "ext4",
 		},
 	}
