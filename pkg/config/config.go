@@ -30,8 +30,8 @@ const (
 )
 
 const (
-	SoftMinDiskSizeGiB   = 140
-	HardMinDiskSizeGiB   = 60
+	SoftMinDiskSizeGiB   = 500
+	HardMinDiskSizeGiB   = 200
 	MinCosPartSizeGiB    = 25
 	NormalCosPartSizeGiB = 50
 	MaxPods              = 200

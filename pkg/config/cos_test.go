@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,50 +24,50 @@ func TestCalcCosPersistentPartSize(t *testing.T) {
 		},
 		{
 			name:        "Disk meet hard requirement",
-			input:       60,
+			input:       200,
 			output:      25,
 			expectError: false,
 		},
 		{
-			name:        "Disk a bit larger than hard requirement: 80G",
-			input:       80,
+			name:        "Disk a bit larger than hard requirement: 250G",
+			input:       250,
+			output:      29,
+			expectError: false,
+		},
+		{
+			name:        "Disk a bit larger than hard requirement: 280G",
+			input:       280,
 			output:      31,
 			expectError: false,
 		},
 		{
-			name:        "Disk a bit larger than hard requirement: 100G",
-			input:       100,
-			output:      37,
-			expectError: false,
-		},
-		{
 			name:        "Disk close to the soft requirement",
-			input:       139,
+			input:       499,
 			output:      49,
 			expectError: false,
 		},
 		{
 			name:        "Disk meet soft requirement",
 			input:       SoftMinDiskSizeGiB,
-			output:      50,
+			output:      90,
 			expectError: false,
 		},
 		{
 			name:        "200GiB",
 			input:       200,
-			output:      60,
+			output:      25,
 			expectError: false,
 		},
 		{
-			name:        "300GiB",
+			name:        "500GiB",
 			input:       300,
-			output:      70,
+			output:      33,
 			expectError: false,
 		},
 		{
 			name:        "400GiB",
 			input:       400,
-			output:      80,
+			output:      41,
 			expectError: false,
 		},
 		{
@@ -98,7 +99,12 @@ func TestCalcCosPersistentPartSize(t *testing.T) {
 				if err != nil {
 					t.Log(err)
 				}
-				assert.Equal(t, sizeGiB, testCase.output)
+				if sizeGiB != testCase.output {
+					out := fmt.Sprintf("Argument: %v\n", testCase.name) +
+						fmt.Sprintf("Expected result: %v\n", testCase.output) +
+						fmt.Sprintf("Actual result: %v\n", sizeGiB)
+					t.Fatalf(out)
+				}
 			}
 		})
 	}
