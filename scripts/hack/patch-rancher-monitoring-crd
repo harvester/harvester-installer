@@ -1,0 +1,44 @@
+#!/bin/bash
+
+patch_rancher_monitoring_crd_chart()
+{
+  local chart_dir=$1 #${CHARTS_DIR}
+  local monitoring_version=$2 #MONITORING_VERSION
+  local pkg_monitoring_crd_path=$3 #${PKG_PATCH_MONITORING_PATH}
+  local cwd=$(pwd)
+
+  if [ ! -d "${pkg_monitoring_crd_path}/${monitoring_version}" ]; then
+    echo "NOTE: there is no related path: ${pkg_monitoring_crd_path}/${monitoring_version} to patch, SKIP"
+    return 0
+  fi
+
+  cd ${chart_dir}
+  tar zxf rancher-monitoring-crd-${monitoring_version}.tgz --warning=no-timestamp
+
+  local origfile="./rancher-monitoring-crd/templates/rbac.yaml"
+  local newfile="${pkg_monitoring_crd_path}/${monitoring_version}/rbac.yaml"
+  echo "patch original file $origfile"
+  if [ -f "$origfile" ]; then
+    ls -alth "$origfile"
+    echo "diff"
+    # when files are different, `diff` will return 1
+    diff "$origfile" "$newfile" || true
+    rm -f "$origfile"
+  else
+    echo "original file $origfile is not found"
+  fi
+
+  # replace with new file
+  cp -f "$newfile" "$origfile"
+  echo "patched file"
+  ls -alth "$origfile"
+
+  # remove existing chart
+  rm -f ${chart_dir}/rancher-monitoring-crd-${monitoring_version}.tgz
+
+  # helm pack new
+  helm package rancher-monitoring-crd
+  echo "finish patch ranch-monitoring-crd chart"
+  cd $cwd
+}
+
