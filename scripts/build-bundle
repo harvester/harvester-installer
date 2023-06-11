@@ -16,6 +16,7 @@ source ${SCRIPTS_DIR}/lib/http
 source ${SCRIPTS_DIR}/lib/image
 source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring
 source ${SCRIPTS_DIR}/hack/patch-rancher-logging
+source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring-crd
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 CHARTS_DIR="${PACKAGE_HARVESTER_REPO_DIR}/charts"
@@ -65,6 +66,10 @@ helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring
 # patch rancher-monitoring chart to fix issues
 PKG_PATCH_MONITORING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-monitoring"
 patch_rancher_monitoring_chart ${CHARTS_DIR} ${MONITORING_VERSION} ${PKG_PATCH_MONITORING_PATH}
+
+# patch rancher-monitoring-crd chart to fix issues
+PKG_PATCH_MONITORING_CRD_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-monitoring-crd"
+patch_rancher_monitoring_crd_chart ${CHARTS_DIR} ${MONITORING_VERSION} ${PKG_PATCH_MONITORING_CRD_PATH}
 
 # make chart sanity check
 tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null --warning=no-timestamp
