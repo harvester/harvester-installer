@@ -15,13 +15,23 @@ patch_rancher_monitoring_chart()
   cd ${chart_dir}
   tar zxf rancher-monitoring-${monitoring_version}.tgz --warning=no-timestamp
 
-  local nm="./rancher-monitoring/charts/grafana/templates/nginx-config.yaml"
-  echo "patch $nm, original file"
-  ls -alth "$nm" || echo "file $nm is not found"
-  rm -f "$nm"
-  cp -f ${pkg_monitoring_path}/${monitoring_version}/nginx-config.yaml "$nm"
+  local origfile="./rancher-monitoring/charts/grafana/templates/nginx-config.yaml"
+  local newfile="${pkg_monitoring_path}/${monitoring_version}/nginx-config.yaml"
+  echo "patch original file $origfile"
+  if [ -f "$origfile" ]; then
+    ls -alth "$origfile"
+    echo "diff"
+    # when files are different, `diff` will return 1
+    diff "$origfile" "$newfile" || true
+    rm -f "$origfile"
+  else
+    echo "original file $origfile is not found"
+  fi
+
+  # replace with new file
+  cp -f "$newfile" "$origfile"
   echo "patched file"
-  ls -alth "$nm"
+  ls -alth "$origfile"
 
   # remove existing chart
   rm -f ${chart_dir}/rancher-monitoring-${monitoring_version}.tgz
