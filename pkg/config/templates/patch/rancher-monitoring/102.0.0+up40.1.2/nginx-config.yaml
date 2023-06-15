@@ -75,7 +75,9 @@ data:
 
           sub_filter_once off;
 
-          sub_filter '"appSubUrl":""' '"appSubUrl":"/api/v1/namespaces/{{ template "grafana.namespace" . }}/services/http:{{ template "grafana.fullname" . }}:{{ .Values.service.port }}/proxy"';
+          #sub_filter '"appSubUrl":""' '"appSubUrl":"/api/v1/namespaces/{{ template "grafana.namespace" . }}/services/http:{{ template "grafana.fullname" . }}:{{ .Values.service.port }}/proxy"';
+
+          sub_filter '"appSubUrl":""' $final_appSubUrl;
 
           sub_filter ':"/avatar/' ':"avatar/';
 
@@ -87,4 +89,11 @@ data:
 
         }
       }
+
+      map $http_referer $final_appSubUrl {
+        ~.*/k8s/clusters/(c-m-.+)/.*      '"appSubUrl":"/k8s/clusters/$1/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
+        ~.*/dashboard/harvester/c/(c-m-.+)/.*      '"appSubUrl":"/k8s/clusters/$1/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
+        default '"appSubUrl":"/k8s/clusters/local/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
+      }
+
     }
