@@ -3,10 +3,7 @@ rancherValues:
   rancherImage: rancher/rancher
   rancherImageTag: v2.7.5-rc5
   noDefaultAdmin: false
-  # multi-cluster-management-agent is to run downstream controllers.
-  # By default, a harvester cluster is not a downstream cluster, so we don't enable it.
-  # Ref: https://github.com/rancher/rancher/blob/30c2d00e61e8016735a8c85c8a95567b68f48c07/pkg/features/feature.go#L40
-  features: multi-cluster-management=true,multi-cluster-management-agent=false
+  features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
   bootstrapPassword: admin
   hostPort: 0
