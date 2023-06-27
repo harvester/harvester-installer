@@ -326,7 +326,7 @@ get_crashkernel_params()
 
 add_debug_grub_entry()
 {
-    cat > "${STATEDIR}/grubmenu" << "EOF"
+    cat > "${STATEDIR}/grubcustom" << "EOF"
 menuentry "${display_name} (debug)" --id debug {
   search --no-floppy --set=root --label COS_STATE
   set img=/cOS/active.img
