@@ -871,7 +871,6 @@ func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.H
 	if err != nil {
 		return err
 	}
-	//defer os.Remove(liveCosConfig)
 
 	// apply live stage to configure node
 	err = apply(ctx, g, liveCosConfig, "live")
@@ -924,13 +923,11 @@ func generateEnvAndConfig(g *gocui.Gui, hvstConfig *config.HarvesterConfig) ([]s
 	if err != nil {
 		return nil, nil, err
 	}
-	//defer os.Remove(cosConfigFile)
 
 	hvstConfigFile, err := saveTemp(hvstConfig, "harvester")
 	if err != nil {
 		return nil, nil, err
 	}
-	//defer os.Remove(hvstConfigFile)
 
 	userDataUrl := hvstConfig.Install.ConfigURL
 	hvstConfig.Install.ConfigURL = cosConfigFile
