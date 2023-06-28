@@ -379,6 +379,7 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 	if len(config.OS.NTPServers) > 0 {
 		runtimeConfig.TimeSyncd["NTP"] = strings.Join(config.OS.NTPServers, " ")
 		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, ntpdService)
+		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, timeWaitSyncService)
 	}
 	if len(config.OS.DNSNameservers) > 0 {
 		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
