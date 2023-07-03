@@ -28,11 +28,13 @@ const (
 	colorYellow
 	colorBlue
 
-	statusReady            = "Ready"
-	statusNotReady         = "NotReady"
-	statusSettingUpNode    = "Setting up node"
-	statusSettingUpHarv    = "Setting up Harvester"
+	statusReady         = "Ready"
+	statusNotReady      = "NotReady"
+	statusSettingUpNode = "Setting up node"
+	statusSettingUpHarv = "Setting up Harvester"
+
 	defaultHarvesterConfig = "/oem/harvester.config"
+	defaultCustomConfig    = "/oem/99_custom.yaml"
 
 	logo string = `
 ██╗░░██╗░█████╗░██████╗░██╗░░░██╗███████╗░██████╗████████╗███████╗██████╗░
@@ -558,7 +560,7 @@ func (c *Console) getHarvesterConfig() error {
 	content, err := ioutil.ReadFile(defaultHarvesterConfig)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logrus.Info("no existing harvester config detected in /oem/harvester.config")
+			logrus.Infof("no existing harvester config detected in %s", defaultHarvesterConfig)
 			return nil
 		}
 		return fmt.Errorf("unable to read default harvester.config file %s: %v", defaultHarvesterConfig, err)
