@@ -859,8 +859,8 @@ func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.H
 	copyFiles := yipSchema.Stage{
 		Name: "copy files",
 		Commands: []string{
-			fmt.Sprintf("cp %s %s", defaultCustomConfig, cosConfigFile),
-			fmt.Sprintf("cp %s %s", defaultHarvesterConfig, hvstConfigFile),
+			fmt.Sprintf("cp %s %s", cosConfigFile, defaultCustomConfig),
+			fmt.Sprintf("cp %s %s", hvstConfigFile, defaultHarvesterConfig),
 		},
 	}
 
