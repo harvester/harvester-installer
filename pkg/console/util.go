@@ -773,17 +773,16 @@ func configureInstalledNode(g *gocui.Gui, hvstConfig *config.HarvesterConfig, we
 	defer os.Remove(cosConfigFile)
 	defer os.Remove(hvstConfigFile)
 
-	err = applyRancherdConfig(ctx, g, hvstConfig, cosConfig)
-	if err != nil {
+	if err := applyRancherdConfig(ctx, g, hvstConfig, cosConfig); err != nil {
 		printToPanel(g, fmt.Sprintf("error applying rancherd config :%v", err), installPanel)
 		return err
 	}
 
-	err = restartCoreServices()
-	if err != nil {
+	if err := restartCoreServices(); err != nil {
 		printToPanel(g, fmt.Sprintf("error restarting core services: %v", err), installPanel)
 	}
-	return err
+
+	return nil
 }
 
 func apply(ctx context.Context, g *gocui.Gui, configFile string, stage string) error {
@@ -860,8 +859,8 @@ func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.H
 	copyFiles := yipSchema.Stage{
 		Name: "copy files",
 		Commands: []string{
-			fmt.Sprintf("cp %s /oem/99_custom.yaml", cosConfigFile),
-			fmt.Sprintf("cp %s /oem/harvester.config", hvstConfigFile),
+			fmt.Sprintf("cp %s %s", defaultCustomConfig, cosConfigFile),
+			fmt.Sprintf("cp %s %s", defaultHarvesterConfig, hvstConfigFile),
 		},
 	}
 
@@ -873,8 +872,7 @@ func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.H
 	}
 
 	// apply live stage to configure node
-	err = apply(ctx, g, liveCosConfig, "live")
-	if err != nil {
+	if err := apply(ctx, g, liveCosConfig, "live"); err != nil {
 		return err
 	}
 

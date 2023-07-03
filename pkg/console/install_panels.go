@@ -763,6 +763,10 @@ func addAskCreatePanel(c *Console) error {
 			}
 
 			c.config.Install.Mode = selected
+			// explicitly set this false to ensure if user changes from
+			// install mode only to create /join then the variable is
+			// reset to ensure correct panel sequence is displayed
+			installModeOnly = false
 			if selected == config.ModeInstall {
 				installModeOnly = true
 			}
