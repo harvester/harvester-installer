@@ -127,7 +127,15 @@ rm -rf "${extract_dir}"
 if [ "${BUILD_QCOW}" == "true" ]; then
   echo "generating harvester install mode qcow"
   qemu-img create -f raw -o size=250G ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw
-  qemu-system-x86_64 --enable-kvm -nographic -cpu host -smp cores=2,threads=2,sockets=1 -m 8192 -serial mon:stdio -serial file:harvester-installer.log  -nic none -drive file=${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw,if=virtio,cache=writeback,discard=ignore,format=raw -boot d -cdrom ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.iso -kernel ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-amd64 -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=rootfs.squashfs console=ttyS1 rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=rancher harvester.scheme_version=1 harvester.install.persistentPartitionSize=150Gi" -initrd ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-amd64 -boot once=d
+  qemu-system-x86_64 --enable-kvm -nographic -cpu host -smp cores=2,threads=2,sockets=1 -m 8192 -serial mon:stdio \
+  -serial file:harvester-installer.log  -nic none \
+  -drive file=${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw,if=virtio,cache=writeback,discard=ignore,format=raw \
+  -boot d -cdrom ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.iso -kernel ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-amd64 \
+  -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=rootfs.squashfs \
+  console=ttyS1 rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda \
+  harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=rancher \
+  harvester.scheme_version=1 harvester.install.persistentPartitionSize=150Gi" \
+  -initrd ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-amd64 -boot once=d
   tail -100 harvester-installer.log
   echo "compressing raw image"
   zstd -T4 --rm ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw
