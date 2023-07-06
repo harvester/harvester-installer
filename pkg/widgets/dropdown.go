@@ -165,6 +165,10 @@ func (d *DropDown) GetMultiData() []string {
 func (d *DropDown) SetData(data string) error {
 	v, err := d.g.View(d.ViewName)
 	if err != nil {
+		// Ignore ErrUnknownView for now
+		if err == gocui.ErrUnknownView {
+			return nil
+		}
 		return err
 	}
 	v.Clear()

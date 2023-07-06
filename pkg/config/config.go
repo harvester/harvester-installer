@@ -31,7 +31,8 @@ const (
 )
 
 const (
-	HardMinDiskSizeGiB     = 250
+	SingleDiskMinSizeGiB   = 250
+	MultipleDiskMinSizeGiB = 180
 	HardMinDataDiskSizeGiB = 50
 	MaxPods                = 200
 )
