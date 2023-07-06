@@ -20,8 +20,9 @@ update_boot_args()
 }
 
 echo "writing image to disk"
-curl --retry 5 --no-buffer -k ${HARVESTER_RAW_DISK_IMAGE_PATH} | dd of=${HARVESTER_DEVICE} bs=1M
+curl --retry 5 --no-buffer -k ${HARVESTER_RAW_DISK_IMAGE_PATH} | zstd -d -T4 | dd of=${HARVESTER_DEVICE} bs=1M iflag=fullblock oflag=direct
 echo -e "w" | fdisk ${HARVESTER_DEVICE}
+partprobe ${HARVESTER_DEVICE}
 
 # if config_url is set then stream this to userdata.yaml as installer will load it on next boot
 echo "checking and writing userdata"
