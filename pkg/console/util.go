@@ -627,13 +627,18 @@ func harvesterInstalled() (bool, error) {
 	return false, nil
 }
 
-func validateDiskSize(devPath string) error {
+func validateDiskSize(devPath string, single bool) error {
 	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
 	if err != nil {
 		return err
 	}
-	if util.ByteToGi(diskSizeBytes) < config.HardMinDiskSizeGiB {
-		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", config.HardMinDiskSizeGiB)
+
+	limit := config.SingleDiskMinSizeGiB
+	if !single {
+		limit = config.MultipleDiskMinSizeGiB
+	}
+	if util.ByteToGi(diskSizeBytes) < uint64(limit) {
+		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", limit)
 	}
 
 	return nil

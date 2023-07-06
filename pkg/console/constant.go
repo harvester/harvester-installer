@@ -78,7 +78,7 @@ const (
 	dnsServersNote         = "Note: You can use comma to add more DNS servers. Leave blank to use default DNS."
 	bondNote               = "Note: Select one or more NICs for the Management NIC.\nUse the default value for the Bond Mode if only one NIC is selected."
 	forceMBRNote           = "Note: GPT is used by default. You can use MBR if you encountered compatibility issues."
-	persistentSizeNote     = "Note: persistent partition stores data like system package and container images, not the VM data. \nYou can specify a size like 200Gi or 15360Mi. \nLeave it blank to use the default value."
+	persistentSizeNote     = "Note: persistent partition stores data like system package and container images, not the VM data. \nYou can specify a size like 200Gi or 153600Mi. \nLeave it blank to use the default value."
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"
 )
