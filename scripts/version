@@ -25,3 +25,10 @@ REPO=${REPO:-rancher}
 if echo $TAG | grep -q dirty; then
     TAG=dev
 fi
+
+echo "DRONE_BUILD_EVENT:" $DRONE_BUILD_EVENT
+if [ "$DRONE_BUILD_EVENT" == "cron" ]; then
+  echo "build install qcow image on cronjob"
+  BUILD_QCOW="true"
+fi
+
