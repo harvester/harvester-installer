@@ -40,7 +40,7 @@ var (
 	ErrMsgInterfaceIsLoop              = "interface is a loopback interface"
 	ErrMsgDeviceNotSpecified           = "no device specified"
 	ErrMsgDeviceNotFound               = "device not found"
-	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", config.HardMinDiskSizeGiB)
+	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", config.SingleDiskMinSizeGiB)
 	ErrMsgNoCredentials                = "no SSH authorized keys or passwords are set"
 	ErrMsgForceMBROnLargeDisk          = "disk size too large for MBR partitioning table"
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
@@ -95,20 +95,23 @@ func checkInterface(iface config.NetworkInterface) error {
 	return prettyError(ErrMsgInterfaceNotFound, iface.Name)
 }
 
-func checkDevice(device string, isDataDisk bool) error {
-	if device == "" {
+func checkDevice(cfg *config.HarvesterConfig) error {
+	installDisk := cfg.Install.Device
+	dataDisk := cfg.Install.DataDisk
+
+	if installDisk == "" {
 		return errors.New(ErrMsgDeviceNotSpecified)
 	}
 
-	fileInfo, err := os.Lstat(device)
+	fileInfo, err := os.Lstat(installDisk)
 	if err != nil {
 		return err
 	}
 
-	targetDevice := device
+	targetDevice := installDisk
 	// Support using path like `/dev/disks/by-id/xxx`
 	if fileInfo.Mode()&fs.ModeSymlink != 0 {
-		targetDevice, err = filepath.EvalSymlinks(device)
+		targetDevice, err = filepath.EvalSymlinks(installDisk)
 		if err != nil {
 			return err
 		}
@@ -127,16 +130,19 @@ func checkDevice(device string, isDataDisk bool) error {
 		}
 	}
 	if !deviceFound {
-		return prettyError(ErrMsgDeviceNotFound, device)
+		return prettyError(ErrMsgDeviceNotFound, installDisk)
 	}
 
-	if isDataDisk {
-		if err := validateDataDiskSize(device); err != nil {
-			return prettyError(ErrMsgDeviceTooSmall, device)
+	if dataDisk == installDisk || dataDisk == "" {
+		if err := validateDiskSize(installDisk, true); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, installDisk)
 		}
 	} else {
-		if err := validateDiskSize(device); err != nil {
-			return prettyError(ErrMsgDeviceTooSmall, device)
+		if err := validateDiskSize(installDisk, false); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, installDisk)
+		}
+		if err := validateDataDiskSize(dataDisk); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, dataDisk)
 		}
 	}
 
@@ -373,7 +379,6 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		if err := checkVip(cfg.Vip, cfg.VipHwAddr, cfg.VipMode); err != nil {
 			return err
 		}
-
 		if err := checkSystemSettings(cfg.SystemSettings); err != nil {
 			return err
 		}
@@ -427,14 +432,8 @@ func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
 }
 
 func diskChecks(cfg *config.HarvesterConfig) error {
-	if err := checkDevice(cfg.Install.Device, false); err != nil {
+	if err := checkDevice(cfg); err != nil {
 		return err
-	}
-
-	if cfg.Install.DataDisk != "" {
-		if err := checkDevice(cfg.Install.DataDisk, true); err != nil {
-			return err
-		}
 	}
 
 	if cfg.ForceMBR {

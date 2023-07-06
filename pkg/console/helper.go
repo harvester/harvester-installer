@@ -32,13 +32,7 @@ func (p *passwordWrapper) passwordVEscapeKeyBinding(g *gocui.Gui, v *gocui.View)
 	p.passwordV.Close()
 	p.passwordConfirmV.Close()
 	if installModeOnly {
-		if canChoose, err := canChooseDataDisk(); err != nil {
-			return err
-		} else if canChoose {
-			return showDataDiskPage(p.c)
-		} else {
-			return showDiskPage(p.c)
-		}
+		return showDiskPage(p.c)
 	}
 	if err := p.c.setContentByName(notePanel, ""); err != nil {
 		return err
@@ -85,13 +79,7 @@ func (p *passwordWrapper) passwordConfirmVKeyEscape(g *gocui.Gui, v *gocui.View)
 		return err
 	}
 	if installModeOnly {
-		if canChoose, err := canChooseDataDisk(); err != nil {
-			return err
-		} else if canChoose {
-			return showDataDiskPage(p.c)
-		} else {
-			return showDiskPage(p.c)
-		}
+		return showDiskPage(p.c)
 	}
 	return showNext(p.c, tokenPanel)
 }
