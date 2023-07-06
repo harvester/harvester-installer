@@ -199,3 +199,23 @@ resources:
             requests:
               cpu: 100m
               memory: 30Mi
+  - apiVersion: harvesterhci.io/v1beta1
+    kind: Addon
+    metadata:
+      name: harvester-seeder
+      namespace: harvester-system
+    labels:
+      addon.harvesterhci.io/experimental: "true"
+    spec:
+      repo: http://harvester-cluster-repo.cattle-system.svc/charts
+      version: "0.1.0-rc2"
+      chart: harvester-seeder
+      {{- if and .Addons .Addons.harvester_seeder}}
+      enabled: {{ .Addons.harvester_seeder.Enabled }}
+      {{- else }}
+      enabled: false
+      {{- end }}
+      valuesContent: |
+        image:
+          tag: v0.1.0-rc2
+        fullnameOverride: harvester-seeder
