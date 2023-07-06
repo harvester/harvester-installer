@@ -1,9 +1,10 @@
 package console
 
 import (
+	"github.com/jroimartin/gocui"
+
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/widgets"
-	"github.com/jroimartin/gocui"
 )
 
 type passwordWrapper struct {
