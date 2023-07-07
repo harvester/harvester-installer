@@ -21,12 +21,19 @@ source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-logging
 
+if [ "$DRONE_BUILD_EVENT" == "pull_request" ]; then
+  echo "build install qcow image on cronjob"
+  BUILD_QCOW="true"
+fi
+
+
 echo "Installer version: ${VERSION}"
 echo "Harvester version: ${HARVESTER_VERSION}"
 echo "Harvester chart version: ${HARVESTER_CHART_VERSION}"
 echo "Rancher version: ${RANCHER_VERSION}"
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 echo "Rancher logging version: ${LOGGING_VERSION}"
+echo "Build qcow image: ${DRONE_BUILD_EVENT}"
 
 mkdir -p bin
 
