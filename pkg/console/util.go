@@ -927,7 +927,7 @@ func generateEnvAndConfig(g *gocui.Gui, hvstConfig *config.HarvesterConfig) ([]s
 		return nil, nil, err
 	}
 
-	userDataUrl := hvstConfig.Install.ConfigURL
+	userDataURL := hvstConfig.Install.ConfigURL
 	hvstConfig.Install.ConfigURL = cosConfigFile
 	elementalConfig, err := config.ConvertToElementalConfig(hvstConfig)
 	if err != nil {
@@ -942,6 +942,6 @@ func generateEnvAndConfig(g *gocui.Gui, hvstConfig *config.HarvesterConfig) ([]s
 	env := append(os.Environ(), ev...)
 	env = append(env, fmt.Sprintf("HARVESTER_CONFIG=%s", hvstConfigFile))
 	env = append(env, fmt.Sprintf("HARVESTER_INSTALLATION_LOG=%s", defaultLogFilePath))
-	env = append(env, fmt.Sprintf("HARVESTER_STREAMDISK_CLOUDINIT_URL=%s", userDataUrl))
+	env = append(env, fmt.Sprintf("HARVESTER_STREAMDISK_CLOUDINIT_URL=%s", userDataURL))
 	return env, elementalConfig, nil
 }

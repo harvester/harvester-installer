@@ -632,7 +632,7 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 		return nil
 	}
 
-	var interfaces []string
+	interfaces := make([]string, 0, len(wifis))
 	for i, wifi := range wifis {
 		iface := fmt.Sprintf("wlan%d", i)
 
@@ -749,7 +749,7 @@ func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, hvstConfig *
 	}
 
 	elementalConfig.Install.ExtraPartitions = []ElementalPartition{
-		ElementalPartition{
+		{
 			FilesystemLabel: "HARV_LH_DEFAULT",
 			Size:            0,
 			FS:              "ext4",
