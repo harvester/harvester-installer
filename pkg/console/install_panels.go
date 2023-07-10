@@ -614,6 +614,9 @@ func addDataDiskPanel(c *Console) error {
 
 	gotoNextPage := func() error {
 		closeThisPage()
+		if installModeOnly {
+			return showNext(c, passwordConfirmPanel, passwordPanel)
+		}
 		return showHostnamePage(c)
 	}
 
