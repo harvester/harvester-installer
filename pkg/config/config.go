@@ -256,7 +256,7 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 		labelStrs = append(labelStrs, fmt.Sprintf("%s=%s", labelName, labelValue))
 	}
 
-	var args []string = []string{
+	var args = []string{
 		fmt.Sprintf("max-pods=%d", MaxPods),
 	}
 

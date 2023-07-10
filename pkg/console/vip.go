@@ -2,10 +2,10 @@ package console
 
 import (
 	"context"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"net"
 	"strconv"
-	"time"
 
 	"github.com/insomniacslk/dhcp/dhcpv4/nclient4"
 	"github.com/pkg/errors"
@@ -25,8 +25,11 @@ func createMacvlan(name string) (netlink.Link, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch %s", name)
 	}
-	rand.Seed(time.Now().UnixNano())
-	macvlanName := tempMacvlanPrefix + strconv.Itoa(rand.Intn(100))
+	randNum, err := rand.Int(rand.Reader, big.NewInt(100))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to generate random number")
+	}
+	macvlanName := tempMacvlanPrefix + strconv.Itoa(randNum.Sign())
 	macvlan := &netlink.Macvlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        macvlanName,
