@@ -39,6 +39,51 @@ steps:
       - push
       - cron
 
+- name: docker-publish-cluster-repo-branch
+  image: plugins/docker
+  settings:
+    context: dist/harvester-cluster-repo
+    custom_dns: 1.1.1.1
+    dockerfile: dist/harvester-cluster-repo/Dockerfile
+    repo: "rancher/harvester-cluster-repo"
+    tag: ${DRONE_BRANCH}-head-amd64
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+      include:
+      - "refs/heads/master"
+      - "refs/heads/v*"
+    event:
+    - push
+    - cron
+
+- name: manifest-cluster-repo-branch
+  image: plugins/manifest
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    platforms:
+    - linux/amd64
+    target: "rancher/harvester-cluster-repo:${DRONE_BRANCH}-head"
+    template: "rancher/harvester-cluster-repo:${DRONE_BRANCH}-head-ARCH"
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+      include:
+      - "refs/heads/master"
+      - "refs/heads/v*"
+    event:
+    - push
+    - cron
+
 volumes:
 - name: docker
   host:
