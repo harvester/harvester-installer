@@ -30,6 +30,7 @@ patch_rancher_logging_chart()
 
   # helm pack new
   helm package rancher-logging
+  rm -rf rancher-logging
   echo "finish patch ranch-logging chart"
   cd $cwd
 }
