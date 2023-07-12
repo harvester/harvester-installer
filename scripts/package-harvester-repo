@@ -2,6 +2,7 @@
 
 TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 SCRIPTS_DIR="${TOP_DIR}/scripts"
+DIST_REPO_DIR="${TOP_DIR}/dist/harvester-cluster-repo"
 PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
 PACKAGE_HARVESTER_REPO_DIR="${TOP_DIR}/package/harvester-repo"
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
@@ -12,6 +13,10 @@ mkdir -p ${IMAGES_DIR}
 mkdir -p ${IMAGES_LISTS_DIR}
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/lib/image
+
+# for image publish in CI
+rm -rf ${DIST_REPO_DIR} && mkdir -p ${DIST_REPO_DIR}
+cp -r ${PACKAGE_HARVESTER_REPO_DIR}/* ${DIST_REPO_DIR}
 
 cd ${PACKAGE_HARVESTER_REPO_DIR}
 
