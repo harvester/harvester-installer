@@ -38,6 +38,7 @@ patch_rancher_monitoring_chart()
 
   # helm pack new
   helm package rancher-monitoring
+  rm -rf rancher-monitoring
   echo "finish patch ranch-monitoring chart"
   cd $cwd
 }
