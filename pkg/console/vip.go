@@ -2,11 +2,10 @@ package console
 
 import (
 	"context"
-	"crypto/rand"
-	"math/big"
 	"net"
 	"strconv"
 
+	gocommon "github.com/harvester/go-common"
 	"github.com/insomniacslk/dhcp/dhcpv4/nclient4"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -25,11 +24,11 @@ func createMacvlan(name string) (netlink.Link, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch %s", name)
 	}
-	randNum, err := rand.Int(rand.Reader, big.NewInt(100))
+	randNum, err := gocommon.GenRandNumber(100)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate random number")
 	}
-	macvlanName := tempMacvlanPrefix + strconv.Itoa(randNum.Sign())
+	macvlanName := tempMacvlanPrefix + strconv.Itoa(int(randNum))
 	macvlan := &netlink.Macvlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        macvlanName,
