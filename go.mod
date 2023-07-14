@@ -4,13 +4,14 @@ go 1.18
 
 require (
 	github.com/ghodss/yaml v1.0.0
+	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
 	github.com/imdario/mergo v0.3.12
 	github.com/insomniacslk/dhcp v0.0.0-20210827173440-b95caade3eac
 	github.com/jroimartin/gocui v0.4.0
 	github.com/mudler/yip v0.0.0-20211129144714-088f39125cf7
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.2
 	github.com/stretchr/testify v1.8.1
 	github.com/tredoe/osutil v1.3.6
 	github.com/vishvananda/netlink v1.1.0
@@ -23,9 +24,12 @@ require (
 )
 
 require (
+	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
