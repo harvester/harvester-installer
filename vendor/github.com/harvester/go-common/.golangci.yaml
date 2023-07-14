@@ -1,0 +1,19 @@
+linters:
+  disable-all: true
+  enable:
+    - goimports
+    - gofmt
+    - misspell
+    - revive
+    - gosec
+    - prealloc
+run:
+  skip-files:
+    - /zz_generated_
+    - _generated
+  skip-dirs:
+    - generated
+  deadline: 5m
+  tests: true
+  build-tags:
+    - test
