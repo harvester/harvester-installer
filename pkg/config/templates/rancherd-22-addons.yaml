@@ -6,7 +6,7 @@ resources:
       namespace: harvester-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.1.4"
+      version: "0.1.5"
       chart: harvester-vm-import-controller
       {{- if and .Addons .Addons.harvester_vm_import_controller }}
       enabled: {{ .Addons.harvester_vm_import_controller.Enabled }}
@@ -15,7 +15,7 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.1.4
+          tag: v0.1.5
         fullnameOverride: harvester-vm-import-controller
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
@@ -24,7 +24,7 @@ resources:
       namespace: harvester-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.2.5-rc2"
+      version: "0.2.5"
       chart: harvester-pcidevices-controller
       {{- if and .Addons .Addons.harvester_pcidevices_controller }}
       enabled: {{ .Addons.harvester_pcidevices_controller.Enabled }}
@@ -33,7 +33,7 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.2.5-rc2
+          tag: v0.2.5
         fullnameOverride: harvester-pcidevices-controller
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
@@ -208,7 +208,7 @@ resources:
       addon.harvesterhci.io/experimental: "true"
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.1.0-rc2"
+      version: "0.1.0-rc3"
       chart: harvester-seeder
       {{- if and .Addons .Addons.harvester_seeder}}
       enabled: {{ .Addons.harvester_seeder.Enabled }}
@@ -217,5 +217,5 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.1.0-rc2
+          tag: v0.1.0-rc3
         fullnameOverride: harvester-seeder
