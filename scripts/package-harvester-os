@@ -168,9 +168,21 @@ spec:
 EOF
 fi
 
-# Collect image lists to a tarball "image-lists.tar.gz"
+# Collect image lists
 OUTPUT_DIR="$TOP_DIR/dist/artifacts/image-lists"
 mkdir -p $OUTPUT_DIR
 find $IMAGES_LISTS_DIR -name "*.txt" -exec cp {} $OUTPUT_DIR \;
 find $RANCHERD_IMAGES_DIR -name "*.txt" -exec cp {} $OUTPUT_DIR \;
+
+# Write all images into one file for user convenience
+IMAGE_ALL=$TOP_DIR/dist/artifacts/harvester-images-list.txt
+rm -f ${IMAGE_ALL}
+echo "# All images in the Harvester ISO built @ " $(date) $'\n' > ${IMAGE_ALL}
+for filename in $OUTPUT_DIR/*.txt; do
+  echo "# In" $(basename ${filename}) >> ${IMAGE_ALL}
+  cat $filename >> ${IMAGE_ALL}
+  echo "" >> ${IMAGE_ALL}
+done
+
+# Write image lists to a tarball "image-lists.tar.gz"
 tar zcvf $TOP_DIR/dist/artifacts/image-lists.tar.gz -C $TOP_DIR/dist/artifacts image-lists && rm -rf $OUTPUT_DIR
