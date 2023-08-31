@@ -377,6 +377,12 @@ update_grub_settings()
         grub2-editenv ${GRUBENV_FILE} create
     fi
 
+    # PATCH: add /oem/grubcustom too to prevent stuck when using BOSS-S1
+    GRUBCUSTOM_FILE="${oem_dir}/grubcustom"
+    if ! [ -f ${GRUBCUSTOM_FILE} ]; then
+        grub2-editenv ${GRUBCUSTOM_FILE} create
+    fi
+
     add_debug_grub_entry
 }
 
