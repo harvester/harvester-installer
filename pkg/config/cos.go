@@ -205,6 +205,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		},
 	}
 
+	// Handle the sshd components
+	overwriteSSHDComponent(config)
+
 	// Add after-install-chroot stage
 	if len(config.OS.AfterInstallChrootCommands) > 0 {
 		afterInstallChroot := yipSchema.Stage{}
@@ -215,6 +218,13 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	return cosConfig, nil
+}
+
+func overwriteSSHDComponent(config *HarvesterConfig) {
+	if config.OS.SSHD.SFTP {
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/lib/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
+	}
 }
 
 func overwriteAfterInstallChrootStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
