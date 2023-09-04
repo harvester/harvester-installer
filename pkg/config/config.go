@@ -186,8 +186,16 @@ type OS struct {
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
+	SSHD           SSHDConfig        `json:"sshd,omitempty"`
 
 	PersistentStatePaths []string `json:"persistentStatePaths,omitempty"`
+}
+
+// SSHDConfig is the SSHD configuration for the node
+//
+//   - SFTP: the switch to enable/disable SFTP
+type SSHDConfig struct {
+	SFTP bool `json:"sftp,omitempty"`
 }
 
 type HarvesterConfig struct {
