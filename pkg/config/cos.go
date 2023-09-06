@@ -31,8 +31,9 @@ const (
 
 	bootstrapConfigCount               = 6
 	defaultReplicaCount                = 3
-	defaultGuaranteedEngineManagerCPU  = 12 // means percentage 12%
-	defaultGuaranteedReplicaManagerCPU = 12 // means percentage 12%
+	defaultGuaranteedEngineManagerCPU  = 12   // means percentage 12%
+	defaultGuaranteedReplicaManagerCPU = 12   // means percentage 12%
+	defaultSystemImageSize             = 3072 // size of /run/initramfs/cos-state/cOS/active.img in MB
 )
 
 var (
@@ -60,6 +61,14 @@ type ElementalInstallSpec struct {
 	ExtraPartitions []ElementalPartition       `yaml:"extra-partitions,omitempty"`
 	CloudInit       string                     `yaml:"cloud-init,omitempty"`
 	Tty             string                     `yaml:"tty,omitempty"`
+	System          *ElementalSystem           `yaml:"system,omitempty"`
+}
+
+type ElementalSystem struct {
+	Label string `yaml:"label,omitempty"`
+	Size  uint   `yaml:"size,omitempty"`
+	FS    string `yaml:"fs,omitempty"`
+	URI   string `yaml:"uri,omitempty"`
 }
 
 type ElementalDefaultPartition struct {
@@ -98,6 +107,12 @@ func ConvertToElementalConfig(config *HarvesterConfig) (*ElementalConfig, error)
 	elementalConfig.Install.Target = resolvedDevPath
 	elementalConfig.Install.CloudInit = config.Install.ConfigURL
 	elementalConfig.Install.Tty = config.Install.TTY
+
+	// Since https://github.com/rancher/elemental-toolkit/commit/7b348b51342c9041741145d1426951336836c757, elemental
+	// CLI calcuates active.img's size automatically. Specify the size to make the size consistent with previous versions.
+	elementalConfig.Install.System = &ElementalSystem{
+		Size: defaultSystemImageSize,
+	}
 
 	return elementalConfig, nil
 }
