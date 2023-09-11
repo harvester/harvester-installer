@@ -97,7 +97,7 @@ func ConvertToElementalConfig(config *HarvesterConfig) (*ElementalConfig, error)
 
 	elementalConfig.Install.PartTable = "gpt"
 	if !config.Install.ForceGPT {
-		elementalConfig.Install.PartTable = "mbr"
+		elementalConfig.Install.PartTable = "msdos"
 	}
 
 	resolvedDevPath, err := filepath.EvalSymlinks(config.Install.Device)
