@@ -96,7 +96,7 @@ cp "${extract_dir}/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-$
 # and copy EFI files to it to make it UEFI bootable
 uefi_img="${extract_dir}/boot/uefi.img"
 dd if=/dev/zero of="${uefi_img}" bs=1k count=4096 status=progress
-mkfs.vfat "${uefi_img}"
+mkfs.vfat "${uefi_img}" -n COS_GRUB
 mcopy -s -i "${uefi_img}" "${extract_dir}/EFI" ::
 
 # Remove original ISO, and repack it using xorriso
