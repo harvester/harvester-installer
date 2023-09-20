@@ -163,6 +163,48 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+func TestContainerdRegistrySettingValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantErrText string
+	}{
+		{
+			name:        "empty object",
+			input:       "{}",
+			wantErrText: "",
+		},
+		{
+			name:        "invalid JSON",
+			input:       `{"error"}`,
+			wantErrText: ErrContainerdRegistrySettingNotValidJSON,
+		},
+		{
+			name:        "invalid config type",
+			input:       `{"Configs": 1}`,
+			wantErrText: ErrContainerdRegistrySettingNotValidJSON,
+		},
+		{
+			name:        "invalid mirrors type",
+			input:       `{"Mirrors": 1}`,
+			wantErrText: ErrContainerdRegistrySettingNotValidJSON,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkSystemSettings(map[string]string{
+				"containerd-registry": tt.input,
+			})
+			if got == nil {
+				assert.Equal(t, tt.wantErrText, "")
+			} else {
+				assert.Equal(t, tt.wantErrText, got.Error())
+			}
+		})
+	}
+}
+
 func TestCheckToken(t *testing.T) {
 	testCases := []struct {
 		name       string
