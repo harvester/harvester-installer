@@ -1,6 +1,7 @@
 package console
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/validation"
 
@@ -51,6 +53,8 @@ var (
 
 	ErrMsgManagementInterfaceNotFound = "networks is deprecated, please use management_interface for new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/#installmanagement_interface"
 	ErrMsgUnsupportedSchemeVersion    = "Unsupported Harvester Scheme Version %d, please use new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/"
+
+	ErrContainerdRegistrySettingNotValidJSON = "could not parse containerd-registry as JSON"
 )
 
 type ValidatorInterface interface {
@@ -330,7 +334,7 @@ func checkSystemSettings(systemSettings map[string]string) error {
 	}
 
 	allowList := config.GetSystemSettingsAllowList()
-	for systemSetting := range systemSettings {
+	for systemSetting, value := range systemSettings {
 		isValid := false
 		for _, allowSystemSetting := range allowList {
 			if systemSetting == allowSystemSetting {
@@ -338,6 +342,14 @@ func checkSystemSettings(systemSettings map[string]string) error {
 				break
 			}
 		}
+
+		if systemSetting == "containerd-registry" {
+			var r registries.Registry
+			if err := json.NewDecoder(strings.NewReader(value)).Decode(&r); err != nil {
+				return errors.New(ErrContainerdRegistrySettingNotValidJSON)
+			}
+		}
+
 		if !isValid {
 			return errors.Errorf(ErrMsgSystemSettingsUnknown, systemSetting)
 		}
