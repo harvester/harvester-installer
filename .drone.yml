@@ -10,6 +10,7 @@ trigger:
   branch:
   - master
   - v*
+  - ptf-*
 
 steps:
 - name: build
@@ -35,6 +36,7 @@ steps:
       include:
         - "refs/heads/master"
         - "refs/heads/v*"
+        - "refs/heads/ptf-*"
     event:
       - push
       - cron
@@ -58,6 +60,7 @@ steps:
       include:
       - "refs/heads/master"
       - "refs/heads/v*"
+      - "refs/heads/ptf-*"
     event:
     - push
     - cron
@@ -80,6 +83,7 @@ steps:
       include:
       - "refs/heads/master"
       - "refs/heads/v*"
+      - "refs/heads/ptf-*"
     event:
     - push
     - cron
