@@ -2,7 +2,7 @@ package config
 
 import (
 	"github.com/rancher/mapper/convert"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func PrintInstall(cfg HarvesterConfig) ([]byte, error) {

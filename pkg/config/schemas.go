@@ -3,9 +3,9 @@ package config
 import (
 	"fmt"
 
-	"github.com/ghodss/yaml"
 	"github.com/rancher/mapper"
 	"github.com/rancher/mapper/convert"
+	"gopkg.in/yaml.v3"
 )
 
 var (

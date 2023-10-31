@@ -18,7 +18,7 @@ import (
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/version"
 	"github.com/harvester/harvester-installer/pkg/widgets"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
