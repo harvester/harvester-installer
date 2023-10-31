@@ -1,9 +1,8 @@
 module github.com/harvester/harvester-installer
 
-go 1.18
+go 1.20
 
 require (
-	github.com/ghodss/yaml v1.0.0
 	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
 	github.com/imdario/mergo v0.3.12
 	github.com/insomniacslk/dhcp v0.0.0-20210827173440-b95caade3eac
@@ -16,11 +15,11 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tredoe/osutil v1.3.6
 	github.com/vishvananda/netlink v1.1.0
-	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
-	golang.org/x/net v0.7.0
-	golang.org/x/sys v0.5.0
+	golang.org/x/crypto v0.14.0
+	golang.org/x/net v0.17.0
+	golang.org/x/sys v0.13.0
 	gopkg.in/ini.v1 v1.63.2
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.25.4
 )
 
@@ -34,6 +33,7 @@ require (
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/google/go-containerregistry v0.12.2-0.20230106184643-b063f6aeac72 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -59,16 +59,15 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	golang.org/x/text v0.13.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	k8s.io/utils v0.0.0-20221011040102-427025108f67 // indirect
 )
 
 replace (
 	github.com/nsf/termbox-go => github.com/Harvester/termbox-go v1.1.1-0.20210318083914-8ab92204a400
-	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.0
-	golang.org/x/text => golang.org/x/text v0.3.8
-	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-20220521103104-8f96da9f5d5e
-	k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.19.3-k3s1
-	k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
-	k8s.io/client-go => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.19.3-k3s1
+	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1
+	k8s.io/api => k8s.io/api v0.24.10
+	k8s.io/apimachinery => k8s.io/apimachinery v0.24.10
+	k8s.io/client-go => k8s.io/client-go v0.24.10
 )
