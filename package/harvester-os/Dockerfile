@@ -1,7 +1,7 @@
 ARG BASE_OS_IMAGE
 FROM ${BASE_OS_IMAGE}
 
-RUN curl -sfL https://github.com/rancher/wharfie/releases/latest/download/wharfie-amd64  -o /usr/bin/wharfie && chmod +x /usr/bin/wharfie
+RUN curl -sfL https://github.com/rancher/wharfie/releases/download/v0.6.3/wharfie-amd64  -o /usr/bin/wharfie && chmod +x /usr/bin/wharfie
 
 COPY files/ /
 RUN chmod 0600 /system/oem/*
