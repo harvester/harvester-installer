@@ -37,13 +37,20 @@ EOF
 }
 
 
+echo "Remove the getty service..."
+rm -rf "/etc/systemd/system/getty*"
+
+echo "Remove the serial-getty service..."
+rm -rf "/etc/systemd/system/serial-getty*"
+
 # reverse the ttys to start from the last one
 for TTY in $(cat /sys/class/tty/console/active); do
   tty_num=${TTY#tty}
 
   # tty1 ~ tty64
   if [[ $tty_num =~ ^[0-9]+$ ]]; then
-    create_drop_in "/run/systemd/system/getty@${TTY}.service.d"
+    create_drop_in "/etc/systemd/system/getty@${TTY}.service.d"
+    
     break
   fi
 
@@ -55,9 +62,6 @@ for TTY in $(cat /sys/class/tty/console/active); do
     continue
   fi
   
-  create_drop_in "/run/systemd/system/serial-getty@${TTY}.service.d"
+  create_drop_in "/etc/systemd/system/serial-getty@${TTY}.service.d"
   break
 done
-
-
-systemctl daemon-reload
