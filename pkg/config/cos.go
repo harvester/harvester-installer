@@ -303,6 +303,9 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if err != nil {
 		return err
 	}
+
+	// remove space, so we don't get result like |2 or |4 in the yaml
+	rke2AgentConfig = strings.TrimSpace(rke2AgentConfig)
 	stage.Files = append(stage.Files,
 		yipSchema.File{
 			Path:        "/etc/rancher/rke2/config.yaml.d/90-harvester-agent.yaml",
