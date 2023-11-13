@@ -25,7 +25,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/http/httpproxy"
 	"gopkg.in/ini.v1"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/harvester/harvester-installer/pkg/config"
