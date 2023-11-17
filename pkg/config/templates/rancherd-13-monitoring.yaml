@@ -22,6 +22,18 @@ resources:
           name: rancher-monitoring-admission
           operations:
             - { "op": "remove", "path": "/webhooks" }
+        - apiVersion: monitoring.coreos.com/v1
+          jsonPointers:
+          - /spec
+          - /status
+          kind: Prometheus
+          name: rancher-monitoring-prometheus
+        - apiVersion: monitoring.coreos.com/v1
+          jsonPointers:
+          - /spec
+          - /status
+          kind: Alertmanager
+          name: rancher-monitoring-alertmanager
     targets:
     - clusterName: local
       clusterSelector:
