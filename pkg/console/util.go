@@ -638,7 +638,7 @@ func validateDiskSize(devPath string, single bool) error {
 		limit = config.MultipleDiskMinSizeGiB
 	}
 	if util.ByteToGi(diskSizeBytes) < uint64(limit) {
-		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", limit)
+		return fmt.Errorf("Installation disk size is too small. Minimum %dGi is required", limit)
 	}
 
 	return nil
@@ -650,7 +650,7 @@ func validateDataDiskSize(devPath string) error {
 		return err
 	}
 	if util.ByteToGi(diskSizeBytes) < config.HardMinDataDiskSizeGiB {
-		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", config.HardMinDataDiskSizeGiB)
+		return fmt.Errorf("Data disk size is too small. Minimum %dGi is required", config.HardMinDataDiskSizeGiB)
 	}
 
 	return nil

@@ -17,12 +17,12 @@ const (
 
 func ParsePartitionSize(diskSizeBytes uint64, partitionSize string) (uint64, error) {
 	if diskSizeBytes < MinDiskSize {
-		return 0, fmt.Errorf("Disk size is too small. Minimum %dGi is required", ByteToGi(MinDiskSize))
+		return 0, fmt.Errorf("Installation disk size is too small. Minimum %dGi is required", ByteToGi(MinDiskSize))
 	}
 	actualDiskSizeBytes := diskSizeBytes - fixedOccupiedSize
 
 	if !sizeRegexp.MatchString(partitionSize) {
-		return 0, fmt.Errorf("Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed")
+		return 0, fmt.Errorf("Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed.")
 	}
 
 	size, err := strconv.ParseUint(partitionSize[:len(partitionSize)-2], 10, 64)
