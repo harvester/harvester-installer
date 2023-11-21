@@ -41,32 +41,32 @@ func TestParsePartitionSize(t *testing.T) {
 		{
 			diskSize:      100 * GiByteMultiplier,
 			partitionSize: "50Gi",
-			err:           "Disk size is too small. Minimum 250Gi is required",
+			err:           "Installation disk size is too small. Minimum 250Gi is required",
 		},
 		{
 			diskSize:      249 * GiByteMultiplier,
 			partitionSize: "50Gi",
-			err:           "Disk size is too small. Minimum 250Gi is required",
+			err:           "Installation disk size is too small. Minimum 250Gi is required",
 		},
 		{
 			diskSize:      2000 * GiByteMultiplier,
 			partitionSize: "abcd",
-			err:           "Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed",
+			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed.",
 		},
 		{
 			diskSize:      2000 * GiByteMultiplier,
 			partitionSize: "1Ti",
-			err:           "Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed",
+			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed.",
 		},
 		{
 			diskSize:      2000 * GiByteMultiplier,
 			partitionSize: "50Ki",
-			err:           "Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed",
+			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed.",
 		},
 		{
 			diskSize:      2000 * GiByteMultiplier,
 			partitionSize: "5.5",
-			err:           "Partition size should be ended with 'Mi', 'Gi', and no dot and negative is allowed",
+			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed.",
 		},
 		{
 			diskSize:      400 * GiByteMultiplier,

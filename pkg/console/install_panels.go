@@ -407,6 +407,24 @@ func addDiskPanel(c *Console) error {
 	c.AddElement(diskValidatorPanel, diskValidatorV)
 
 	// Helper functions
+	validateAllDiskSizes := func() (bool, error) {
+		installDisk := c.config.Install.Device
+		dataDisk := c.config.Install.DataDisk
+
+		if dataDisk == "" || installDisk == dataDisk {
+			if err := validateDiskSize(installDisk, true); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+		} else {
+			if err := validateDiskSize(installDisk, false); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+			if err := validateDataDiskSize(dataDisk); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+		}
+		return true, nil;
+	}
 	closeThisPage := func() {
 		c.CloseElements(
 			diskPanel,
@@ -424,27 +442,20 @@ func addDiskPanel(c *Console) error {
 		return showNext(c, askCreatePanel)
 	}
 	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+		// Don't proceed to the next page if disk size validation fails
+		if valid, err := validateAllDiskSizes(); !valid || err != nil {
+			return err;
+		}
+
 		installDisk := c.config.Install.Device
 		dataDisk := c.config.Install.DataDisk
 		persistentSize := c.config.Install.PersistentPartitionSize
-
 		if dataDisk == "" || installDisk == dataDisk {
-			if err := validateDiskSize(installDisk, true); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
-
 			diskSize, err := util.GetDiskSizeBytes(c.config.Install.Device)
 			if err != nil {
 				return err
 			}
 			if _, err := util.ParsePartitionSize(diskSize, persistentSize); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
-		} else {
-			if err := validateDiskSize(installDisk, false); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
-			if err := validateDataDiskSize(dataDisk); err != nil {
 				return updateValidatorMessage(err.Error())
 			}
 		}
@@ -479,8 +490,9 @@ func addDiskPanel(c *Console) error {
 		c.config.Install.Device = device
 
 		if len(diskOpts) > 1 {
-			if err := updateValidatorMessage(""); err != nil {
-				return err
+			// Show error if disk size validation fails, but allow proceeding to next field
+			if _, err := validateAllDiskSizes(); err != nil {
+				return err;
 			}
 			if device == dataDisk {
 				return showNext(c, persistentSizePanel, dataDiskPanel)
@@ -491,8 +503,9 @@ func addDiskPanel(c *Console) error {
 		if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
 			return err
 		}
-		if err := updateValidatorMessage(""); err != nil {
-			return err
+		// Show error if disk size validation fails, but allow proceeding to next field
+		if _, err := validateAllDiskSizes(); err != nil {
+			return err;
 		}
 		return showNext(c, persistentSizePanel)
 	}
@@ -524,6 +537,10 @@ func addDiskPanel(c *Console) error {
 		if installDisk == dataDisk {
 			if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
 				return err
+			}
+			// Show error if disk size validation fails, but allow proceeding to next field
+			if _, err := validateAllDiskSizes(); err != nil {
+				return err;
 			}
 			return showNext(c, persistentSizePanel)
 		}
