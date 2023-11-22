@@ -1,7 +1,7 @@
 rancherValues:
   rancherImagePullPolicy: IfNotPresent
   rancherImage: rancher/rancher
-  rancherImageTag: v2.7.5
+  rancherImageTag: v2.7.9
   noDefaultAdmin: false
   features: multi-cluster-management=false,multi-cluster-management-agent=false
   useBundledSystemChart: true
@@ -11,4 +11,4 @@ rancherValues:
     cattle:
       psp:
         enabled: false
-rancherInstallerImage: rancher/system-agent-installer-rancher:v2.7.5
+rancherInstallerImage: rancher/system-agent-installer-rancher:v2.7.9
