@@ -124,6 +124,9 @@ resources:
       storageClass:
         replicaCount: {{ .Harvester.StorageClass.ReplicaCount }}
       {{- end }}
+      {{- if .Harvester.EnableGoCoverDir }}
+      enableGoCoverDir: true
+      {{- end }}
       kubevirt:
         spec:
           monitorAccount: rancher-monitoring-operator
