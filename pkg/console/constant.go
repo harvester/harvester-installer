@@ -45,6 +45,7 @@ const (
 	vipPanel                    = "vipPanel"
 	vipTextPanel                = "vipTextPanel"
 	ntpServersPanel             = "ntpServersPanel"
+	askRolePanel                = "askRolePanel"
 
 	hostnameTitle         = "Configure hostname for this instance"
 	networkTitle          = "Configure network"

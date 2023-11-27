@@ -5,6 +5,9 @@ import (
 )
 
 var (
+	HarvesterNodeRoleLabelPrefix = "node-role.harvesterhci.io/"
+	HarvesterEtcdNodeLabelKey    = HarvesterNodeRoleLabelPrefix + "etcd"
+
 	sizeRegexp = regexp.MustCompile(`^(\d+)(Mi|Gi)$`)
 )
 
