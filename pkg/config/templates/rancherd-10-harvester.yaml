@@ -120,6 +120,9 @@ resources:
           ip: "{{ .Vip }}"
           hwAddress: "{{ .VipHwAddr }}"
       {{- end }}
+      {{- if .Harvester.EnableGoCoverDir }}
+      enableGoCoverDir: true
+      {{- end }}
       kubevirt:
         spec:
           monitorAccount: rancher-monitoring-operator
