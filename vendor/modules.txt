@@ -1,18 +1,67 @@
+# github.com/coreos/go-systemd/v22 v22.5.0
+## explicit; go 1.12
+github.com/coreos/go-systemd/v22/dbus
 # github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269
 ## explicit
 github.com/coreos/yaml
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/docker/go-units v0.4.0
+# github.com/docker/cli v20.10.20+incompatible
+## explicit
+github.com/docker/cli/cli/config
+github.com/docker/cli/cli/config/configfile
+github.com/docker/cli/cli/config/credentials
+github.com/docker/cli/cli/config/types
+# github.com/docker/distribution v2.8.1+incompatible
+## explicit
+github.com/docker/distribution/registry/client/auth/challenge
+# github.com/docker/docker v20.10.20+incompatible
+## explicit
+github.com/docker/docker/pkg/homedir
+# github.com/docker/docker-credential-helpers v0.7.0
+## explicit; go 1.18
+github.com/docker/docker-credential-helpers/client
+github.com/docker/docker-credential-helpers/credentials
+# github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
+# github.com/fsnotify/fsnotify v1.6.0
+## explicit; go 1.16
+github.com/fsnotify/fsnotify
 # github.com/ghodss/yaml v1.0.0
 ## explicit
 github.com/ghodss/yaml
+# github.com/godbus/dbus/v5 v5.0.4
+## explicit; go 1.12
+github.com/godbus/dbus/v5
+# github.com/google/go-containerregistry v0.12.2-0.20230106184643-b063f6aeac72
+## explicit; go 1.18
+github.com/google/go-containerregistry/internal/and
+github.com/google/go-containerregistry/internal/compression
+github.com/google/go-containerregistry/internal/gzip
+github.com/google/go-containerregistry/internal/redact
+github.com/google/go-containerregistry/internal/retry
+github.com/google/go-containerregistry/internal/retry/wait
+github.com/google/go-containerregistry/internal/verify
+github.com/google/go-containerregistry/internal/zstd
+github.com/google/go-containerregistry/pkg/authn
+github.com/google/go-containerregistry/pkg/compression
+github.com/google/go-containerregistry/pkg/logs
+github.com/google/go-containerregistry/pkg/name
+github.com/google/go-containerregistry/pkg/v1
+github.com/google/go-containerregistry/pkg/v1/match
+github.com/google/go-containerregistry/pkg/v1/partial
+github.com/google/go-containerregistry/pkg/v1/remote
+github.com/google/go-containerregistry/pkg/v1/remote/transport
+github.com/google/go-containerregistry/pkg/v1/stream
+github.com/google/go-containerregistry/pkg/v1/types
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 ## explicit; go 1.13
 github.com/google/shlex
+# github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
+## explicit; go 1.19
+github.com/harvester/go-common
 # github.com/hashicorp/errwrap v1.0.0
 ## explicit
 github.com/hashicorp/errwrap
@@ -38,6 +87,15 @@ github.com/itchyny/timefmt-go
 # github.com/jroimartin/gocui v0.4.0
 ## explicit
 github.com/jroimartin/gocui
+# github.com/klauspost/compress v1.15.11
+## explicit; go 1.17
+github.com/klauspost/compress
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/cpuinfo
+github.com/klauspost/compress/internal/snapref
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/mattn/go-runewidth v0.0.9
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
@@ -50,12 +108,22 @@ github.com/mdlayher/ethernet
 # github.com/mdlayher/raw v0.0.0-20191009151244-50f2db8cc065
 ## explicit; go 1.12
 github.com/mdlayher/raw
+# github.com/mitchellh/go-homedir v1.1.0
+## explicit
+github.com/mitchellh/go-homedir
 # github.com/mudler/yip v0.0.0-20211129144714-088f39125cf7
 ## explicit; go 1.16
 github.com/mudler/yip/pkg/schema
 # github.com/nsf/termbox-go v1.1.1 => github.com/Harvester/termbox-go v1.1.1-0.20210318083914-8ab92204a400
 ## explicit; go 1.15
 github.com/nsf/termbox-go
+# github.com/opencontainers/go-digest v1.0.0
+## explicit; go 1.13
+github.com/opencontainers/go-digest
+# github.com/opencontainers/image-spec v1.1.0-rc2
+## explicit; go 1.17
+github.com/opencontainers/image-spec/specs-go
+github.com/opencontainers/image-spec/specs-go/v1
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -72,19 +140,25 @@ github.com/rancher/mapper/convert
 github.com/rancher/mapper/definition
 github.com/rancher/mapper/mappers
 github.com/rancher/mapper/values
-# github.com/rancher/wrangler v0.0.0-20190426050201-5946f0eaed19
-## explicit; go 1.12
+# github.com/rancher/wharfie v0.6.2
+## explicit; go 1.19
+github.com/rancher/wharfie/pkg/registries
+# github.com/rancher/wrangler v0.0.0-20190426050201-5946f0eaed19 => github.com/rancher/wrangler v1.1.1
+## explicit; go 1.19
 github.com/rancher/wrangler/pkg/name
-# github.com/sirupsen/logrus v1.8.1
+# github.com/sirupsen/logrus v1.9.2
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/stretchr/testify v1.7.0
+# github.com/stretchr/testify v1.8.1
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 # github.com/tredoe/osutil v1.3.6
 ## explicit; go 1.16
 github.com/tredoe/osutil/user/crypt
+github.com/tredoe/osutil/user/crypt/apr1_crypt
 github.com/tredoe/osutil/user/crypt/common
+github.com/tredoe/osutil/user/crypt/md5_crypt
+github.com/tredoe/osutil/user/crypt/sha256_crypt
 github.com/tredoe/osutil/user/crypt/sha512_crypt
 # github.com/twpayne/go-vfs v1.5.0
 ## explicit; go 1.13
@@ -101,31 +175,38 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 ## explicit; go 1.12
 github.com/vishvananda/netns
-# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+# go.uber.org/atomic v1.7.0
+## explicit; go 1.13
+go.uber.org/atomic
+# go.uber.org/multierr v1.6.0
+## explicit; go 1.12
+go.uber.org/multierr
+# golang.org/x/crypto v0.14.0
 ## explicit; go 1.17
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/curve25519/internal/field
-golang.org/x/crypto/ed25519
-golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
-golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
-# golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+# golang.org/x/net v0.17.0
 ## explicit; go 1.17
 golang.org/x/net/bpf
 golang.org/x/net/http/httpproxy
 golang.org/x/net/idna
-# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+# golang.org/x/sync v0.1.0
+## explicit
+golang.org/x/sync/errgroup
+# golang.org/x/sys v0.13.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
-golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/execabs
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.6
-## explicit; go 1.11
+# golang.org/x/text v0.13.0
+## explicit; go 1.17
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
@@ -136,17 +217,22 @@ gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+# gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# k8s.io/apimachinery v0.18.8 => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
-## explicit; go 1.15
+# k8s.io/apimachinery v0.25.4 => k8s.io/apimachinery v0.24.10
+## explicit; go 1.19
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/rand
 k8s.io/apimachinery/pkg/util/sets
 k8s.io/apimachinery/pkg/util/validation
 k8s.io/apimachinery/pkg/util/validation/field
+# k8s.io/utils v0.0.0-20221011040102-427025108f67
+## explicit; go 1.18
+k8s.io/utils/internal/third_party/forked/golang/net
+k8s.io/utils/net
 # github.com/nsf/termbox-go => github.com/Harvester/termbox-go v1.1.1-0.20210318083914-8ab92204a400
-# k8s.io/api => github.com/rancher/kubernetes/staging/src/k8s.io/api v1.19.3-k3s1
-# k8s.io/apimachinery => github.com/rancher/kubernetes/staging/src/k8s.io/apimachinery v1.19.3-k3s1
-# k8s.io/client-go => github.com/rancher/kubernetes/staging/src/k8s.io/client-go v1.19.3-k3s1
+# github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1
+# k8s.io/api => k8s.io/api v0.24.10
+# k8s.io/apimachinery => k8s.io/apimachinery v0.24.10
+# k8s.io/client-go => k8s.io/client-go v0.24.10

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type SettingManifestMock struct {
@@ -50,12 +50,12 @@ func TestHarvesterConfig_GetKubeletLabelsArg(t *testing.T) {
 		{
 			name:   "Successfully creates node-labels argument",
 			input:  map[string]string{"labelKey1": "value1"},
-			output: []string{"node-labels=labelKey1=value1"},
+			output: []string{"max-pods=200", "node-labels=labelKey1=value1"},
 		},
 		{
-			name:   "Returns nothing if no Labels is given",
+			name:   "Returns maxPods even if no Labels are given",
 			input:  map[string]string{},
-			output: []string{},
+			output: []string{"max-pods=200"},
 		},
 		{
 			name:      "Error for invalid label name",
@@ -68,6 +68,11 @@ func TestHarvesterConfig_GetKubeletLabelsArg(t *testing.T) {
 			input:     map[string]string{"example.io/somelabel": "???value###NAH"},
 			output:    []string{},
 			expectErr: true,
+		},
+		{
+			name:   "Successfully creates max-pods argument",
+			input:  map[string]string{},
+			output: []string{"max-pods=200"},
 		},
 	}
 
@@ -276,6 +281,23 @@ func TestHarvesterRootfsRendering(t *testing.T) {
 				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/harvester/defaultdisk")
 			},
 		},
+		{
+			name: "Test additional persistent state paths",
+			harvConfig: HarvesterConfig{
+				OS: OS{
+					PersistentStatePaths: []string{
+						"/path1",
+						"/path2",
+					},
+				},
+			},
+			assertion: func(t *testing.T, rootfs *Rootfs) {
+				assert.Contains(t, rootfs.Environment["VOLUMES"], "LABEL=HARV_LH_DEFAULT:/var/lib/harvester/defaultdisk")
+				assert.NotContains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/var/lib/harvester/defaultdisk")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/path1")
+				assert.Contains(t, rootfs.Environment["PERSISTENT_STATE_PATHS"], "/path2")
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -365,4 +387,66 @@ func TestHarvesterConfigMerge_OtherField(t *testing.T) {
 	assert.Equal(t, map[string]string{"foo": "bar", "key": "val"}, conf.Labels, "Map field should be merged")
 	assert.Equal(t, []string{"1.1.1.1", "8.8.8.8"}, conf.DNSNameservers, "Slice shoule be appended")
 	assert.Equal(t, "TokenValue", conf.Token, "New field should be added")
+}
+
+func TestHarvesterAfterInstallChrootRendering(t *testing.T) {
+	type HarvesterAfterInstallChroot struct {
+		Commands []string `yaml:"commands,omitempty"`
+	}
+
+	testCases := []struct {
+		name       string
+		harvConfig HarvesterConfig
+		assertion  func(t *testing.T, afterInstallChroot *HarvesterAfterInstallChroot)
+	}{
+
+		{
+			name: "Test after-install-chroot-command",
+			harvConfig: HarvesterConfig{
+				OS: OS{
+					AfterInstallChrootCommands: []string{
+						`echo "hello"`,
+						`echo "world"`,
+					},
+				},
+			},
+			assertion: func(t *testing.T, afterInstallChroot *HarvesterAfterInstallChroot) {
+				assert.Contains(t, afterInstallChroot.Commands, `echo "hello"`)
+				assert.Contains(t, afterInstallChroot.Commands, `echo "world"`)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		content, err := render("cos-after-install-chroot.yaml", tc.harvConfig)
+		assert.NoError(t, err)
+		t.Log("Rendered content:")
+		t.Log(content)
+
+		afterInstallChroot := HarvesterAfterInstallChroot{}
+		err = yaml.Unmarshal([]byte(content), &afterInstallChroot)
+		assert.NoError(t, err)
+		t.Log("Loaded Config:")
+		t.Log(afterInstallChroot)
+
+		tc.assertion(t, &afterInstallChroot)
+	}
+}
+
+func TestHarvesterConfigMerge_Addons(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.Hostname = "hellofoo"
+
+	otherConf := NewHarvesterConfig()
+	otherConf.Addons = map[string]Addon{
+		"rancher-logging":    {true, "the value to overwrite original"},
+		"rancher-monitoring": {false, ""},
+	}
+
+	err := conf.Merge(*otherConf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, true, conf.Addons["rancher-logging"].Enabled, "Addons Enabled true should be merged")
+	assert.Equal(t, "the value to overwrite original", conf.Addons["rancher-logging"].ValuesContent, "Addons ValuesContent should be merged")
+	assert.Equal(t, false, conf.Addons["rancher-monitoring"].Enabled, "Addons Enabled false should be merged")
 }

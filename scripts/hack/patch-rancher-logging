@@ -21,11 +21,16 @@ patch_rancher_logging_chart()
   grep "harvester-patch" ./rancher-logging/templates/loggings/rke2/configmap.yaml || true
   grep "harvester-patch" ./rancher-logging/templates/loggings/rke2/daemonset.yaml || true
 
+  echo "patch rancher logging eventtailer"
+  cp -f ${pkg_logging_path}/${logging_version}/eventtailer.yaml ./rancher-logging/templates/eventtailer.yaml
+  grep "harvester-patch" ./rancher-logging/templates/eventtailer.yaml || true
+
   # remove existing chart
   rm ${chart_dir}/rancher-logging-${logging_version}.tgz
 
   # helm pack new
   helm package rancher-logging
+  rm -rf rancher-logging
   echo "finish patch ranch-logging chart"
   cd $cwd
 }

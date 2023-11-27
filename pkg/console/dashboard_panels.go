@@ -18,6 +18,7 @@ import (
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/version"
 	"github.com/harvester/harvester-installer/pkg/widgets"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -31,6 +32,9 @@ const (
 	statusNotReady      = "NotReady"
 	statusSettingUpNode = "Setting up node"
 	statusSettingUpHarv = "Setting up Harvester"
+
+	defaultHarvesterConfig = "/oem/harvester.config"
+	defaultCustomConfig    = "/oem/99_custom.yaml"
 
 	logo string = `
 ██╗░░██╗░█████╗░██████╗░██╗░░░██╗███████╗░██████╗████████╗███████╗██████╗░
@@ -198,7 +202,7 @@ func toShell(g *gocui.Gui, v *gocui.View) error {
 			if err := validatorV.Show(); err != nil {
 				return err
 			}
-			validatorV.SetContent("Invalid credential")
+			validatorV.SetContent("Invalid credential or password hash algorithm not supported.")
 			return nil
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
@@ -550,4 +554,17 @@ func getNodeStatus() string {
 
 func wrapColor(s string, color int) string {
 	return fmt.Sprintf("\033[3%d;7m%s\033[0m", color, s)
+}
+
+func (c *Console) getHarvesterConfig() error {
+	content, err := ioutil.ReadFile(defaultHarvesterConfig)
+	if err != nil {
+		if os.IsNotExist(err) {
+			logrus.Infof("no existing harvester config detected in %s", defaultHarvesterConfig)
+			return nil
+		}
+		return fmt.Errorf("unable to read default harvester.config file %s: %v", defaultHarvesterConfig, err)
+	}
+
+	return yaml.Unmarshal(content, c.config)
 }

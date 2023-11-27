@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/imdario/mergo"
+	yipSchema "github.com/mudler/yip/pkg/schema"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -30,10 +31,10 @@ const (
 )
 
 const (
-	SoftMinDiskSizeGiB   = 140
-	HardMinDiskSizeGiB   = 60
-	MinCosPartSizeGiB    = 25
-	NormalCosPartSizeGiB = 50
+	SingleDiskMinSizeGiB   = 250
+	MultipleDiskMinSizeGiB = 180
+	HardMinDataDiskSizeGiB = 50
+	MaxPods                = 200
 )
 
 // refer: https://github.com/harvester/harvester/blob/master/pkg/settings/settings.go
@@ -65,6 +66,7 @@ func GetSystemSettingsAllowList() []string {
 		"vip-pools",
 		"auto-disk-provision-paths",
 		"containerd-registry",
+		"ntp-servers",
 	}
 }
 
@@ -80,6 +82,10 @@ type Network struct {
 	VlanID       int                `json:"vlanId,omitempty"`
 }
 
+type NTPSettings struct {
+	NTPServers []string `json:"ntpServers,omitempty"`
+}
+
 type HTTPBasicAuth struct {
 	User     string `json:"user,omitempty"`
 	Password string `json:"password,omitempty"`
@@ -93,6 +99,31 @@ type Webhook struct {
 	Payload   string              `json:"payload,omitempty"`
 	Insecure  bool                `json:"insecure,omitempty"`
 	BasicAuth HTTPBasicAuth       `json:"basicAuth,omitempty"`
+}
+
+type Addon struct {
+	Enabled       bool   `json:"enabled,omitempty"`
+	ValuesContent string `json:"valuesContent,omitempty"`
+}
+
+type LHDefaultSettings struct {
+	// 0 is valid, means not setting CPU resources, use pointer to check if it is set
+	GuaranteedEngineManagerCPU  *uint32 `json:"guaranteedEngineManagerCPU,omitempty"`
+	GuaranteedReplicaManagerCPU *uint32 `json:"guaranteedReplicaManagerCPU,omitempty"`
+}
+
+type LonghornChartValues struct {
+	DefaultSettings LHDefaultSettings `json:"defaultSettings,omitempty"`
+}
+
+type StorageClass struct {
+	// 0 is invalid, will be omitted
+	ReplicaCount uint32 `json:"replicaCount,omitempty"`
+}
+
+type HarvesterChartValues struct {
+	StorageClass StorageClass        `json:"storageClass,omitempty"`
+	Longhorn     LonghornChartValues `json:"longhorn,omitempty"`
 }
 
 type Install struct {
@@ -119,7 +150,11 @@ type Install struct {
 	ForceMBR bool   `json:"forceMbr,omitempty"`
 	DataDisk string `json:"dataDisk,omitempty"`
 
-	Webhooks []Webhook `json:"webhooks,omitempty"`
+	Webhooks                []Webhook            `json:"webhooks,omitempty"`
+	Addons                  map[string]Addon     `json:"addons,omitempty"`
+	Harvester               HarvesterChartValues `json:"harvester,omitempty"`
+	RawDiskImagePath        string               `json:"rawDiskImagePath,omitempty"`
+	PersistentPartitionSize string               `json:"persistentPartitionSize,omitempty"`
 }
 
 type Wifi struct {
@@ -136,9 +171,10 @@ type File struct {
 }
 
 type OS struct {
-	SSHAuthorizedKeys []string `json:"sshAuthorizedKeys,omitempty"`
-	WriteFiles        []File   `json:"writeFiles,omitempty"`
-	Hostname          string   `json:"hostname,omitempty"`
+	AfterInstallChrootCommands []string `json:"afterInstallChrootCommands,omitempty"`
+	SSHAuthorizedKeys          []string `json:"sshAuthorizedKeys,omitempty"`
+	WriteFiles                 []File   `json:"writeFiles,omitempty"`
+	Hostname                   string   `json:"hostname,omitempty"`
 
 	Modules        []string          `json:"modules,omitempty"`
 	Sysctls        map[string]string `json:"sysctls,omitempty"`
@@ -148,22 +184,23 @@ type OS struct {
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
+
+	PersistentStatePaths []string `json:"persistentStatePaths,omitempty"`
 }
 
 type HarvesterConfig struct {
 	// Harvester will use scheme version to determine current version and migrate config to new scheme version
-	SchemeVersion uint32 `json:"schemeVersion,omitempty"`
-	ServerURL     string `json:"serverUrl,omitempty"`
-	Token         string `json:"token,omitempty"`
-
+	SchemeVersion          uint32 `json:"schemeVersion,omitempty"`
+	ServerURL              string `json:"serverUrl,omitempty"`
+	Token                  string `json:"token,omitempty"`
 	OS                     `json:"os,omitempty"`
 	Install                `json:"install,omitempty"`
-	RuntimeVersion         string                    `json:"runtimeVersion,omitempty"`
-	RancherVersion         string                    `json:"rancherVersion,omitempty"`
-	HarvesterChartVersion  string                    `json:"harvesterChartVersion,omitempty"`
-	MonitoringChartVersion string                    `json:"monitoringChartVersion,omitempty"`
-	SystemSettings         map[string]string         `json:"systemSettings,omitempty"`
-	LoggingChartVersion    string                    `json:"loggingChartVersion,omitempty"`
+	RuntimeVersion         string            `json:"runtimeVersion,omitempty"`
+	RancherVersion         string            `json:"rancherVersion,omitempty"`
+	HarvesterChartVersion  string            `json:"harvesterChartVersion,omitempty"`
+	MonitoringChartVersion string            `json:"monitoringChartVersion,omitempty"`
+	SystemSettings         map[string]string `json:"systemSettings,omitempty"`
+	LoggingChartVersion    string            `json:"loggingChartVersion,omitempty"`
 }
 
 func NewHarvesterConfig() *HarvesterConfig {
@@ -205,6 +242,7 @@ func (c *HarvesterConfig) String() string {
 
 func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	// node-labels=key1=val1,key2=val2
+	// max-pods=200 https://github.com/harvester/harvester/issues/2707
 	labelStrs := make([]string, 0, len(c.Labels))
 	for labelName, labelValue := range c.Labels {
 		if errs := validation.IsQualifiedName(labelName); len(errs) > 0 {
@@ -219,13 +257,17 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 		labelStrs = append(labelStrs, fmt.Sprintf("%s=%s", labelName, labelValue))
 	}
 
-	if len(labelStrs) > 0 {
-		return []string{
-			fmt.Sprintf("node-labels=%s", strings.Join(labelStrs, ",")),
-		}, nil
+	var args = []string{
+		fmt.Sprintf("max-pods=%d", MaxPods),
 	}
 
-	return []string{}, nil
+	if len(labelStrs) > 0 {
+		args = append(args,
+			fmt.Sprintf("node-labels=%s", strings.Join(labelStrs, ",")),
+		)
+	}
+
+	return args, nil
 }
 
 func (c HarvesterConfig) ShouldCreateDataPartitionOnOsDisk() bool {
@@ -321,4 +363,54 @@ func (n *NetworkInterface) FindNetworkInterfaceHwAddr() error {
 
 	// Default, there is no Name or HwAddress, do nothing. Let validation capture it
 	return nil
+}
+
+func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
+
+	runtimeConfig := yipSchema.Stage{
+		Users:            make(map[string]yipSchema.User),
+		TimeSyncd:        make(map[string]string),
+		SSHKeys:          make(map[string][]string),
+		Sysctl:           make(map[string]string),
+		Environment:      make(map[string]string),
+		SystemdFirstBoot: make(map[string]string),
+	}
+
+	runtimeConfig.Hostname = config.OS.Hostname
+	if len(config.OS.NTPServers) > 0 {
+		runtimeConfig.TimeSyncd["NTP"] = strings.Join(config.OS.NTPServers, " ")
+		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, ntpdService)
+		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, timeWaitSyncService)
+	}
+	if len(config.OS.DNSNameservers) > 0 {
+		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
+	}
+	err := initRancherdStage(config, &runtimeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := UpdateWifiConfig(&runtimeConfig, config.OS.Wifi, true); err != nil {
+		return nil, err
+	}
+
+	if _, err := UpdateManagementInterfaceConfig(&runtimeConfig, config.ManagementInterface, true); err != nil {
+		return nil, err
+	}
+
+	runtimeConfig.SSHKeys[cosLoginUser] = config.OS.SSHAuthorizedKeys
+	runtimeConfig.Users[cosLoginUser] = yipSchema.User{
+		PasswordHash: config.OS.Password,
+	}
+
+	conf := &yipSchema.YipConfig{
+		Name: "RancherD Configuration",
+		Stages: map[string][]yipSchema.Stage{
+			"live": {
+				runtimeConfig,
+			},
+		},
+	}
+
+	return conf, nil
 }

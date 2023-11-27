@@ -14,17 +14,21 @@ source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/lib/http
 source ${SCRIPTS_DIR}/lib/image
+source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring
 source ${SCRIPTS_DIR}/hack/patch-rancher-logging
+source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring-crd
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 CHARTS_DIR="${PACKAGE_HARVESTER_REPO_DIR}/charts"
 IMAGES_DIR="${BUNDLE_DIR}/harvester/images"
 IMAGES_LISTS_DIR="${BUNDLE_DIR}/harvester/images-lists"
 RANCHERD_IMAGES_DIR="${BUNDLE_DIR}/rancherd/images"
-VM_IMPORT_CONTROLLER_CHART_VERSION="0.1.2"
-VM_IMPORT_CONTROLLER_IMAGE="rancher/harvester-vm-import-controller:v0.1.2"
-PCIDEVICES_CONTROLLER_CHART_VERSION="0.2.3"
-PCIDEVICES_CONTROLLER_IMAGE="rancher/harvester-pcidevices:v0.2.3"
+VM_IMPORT_CONTROLLER_CHART_VERSION="0.1.5"
+VM_IMPORT_CONTROLLER_IMAGE="rancher/harvester-vm-import-controller:v0.1.5"
+PCIDEVICES_CONTROLLER_CHART_VERSION="0.2.5"
+PCIDEVICES_CONTROLLER_IMAGE="rancher/harvester-pcidevices:v0.2.5"
+HARVESTER_SEEDER_CHART_VERSION="0.1.0"
+HARVESTER_SEEDER_IMAGE="rancher/harvester-seeder:v0.1.0"
 mkdir -p ${CHARTS_DIR}
 mkdir -p ${IMAGES_DIR}
 mkdir -p ${IMAGES_LISTS_DIR}
@@ -61,9 +65,17 @@ source ${SCRIPTS_DIR}/version-monitoring
 helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 
+# patch rancher-monitoring chart to fix issues
+PKG_PATCH_MONITORING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-monitoring"
+patch_rancher_monitoring_chart ${CHARTS_DIR} ${MONITORING_VERSION} ${PKG_PATCH_MONITORING_PATH}
+
+# patch rancher-monitoring-crd chart to fix issues
+PKG_PATCH_MONITORING_CRD_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-monitoring-crd"
+patch_rancher_monitoring_crd_chart ${CHARTS_DIR} ${MONITORING_VERSION} ${PKG_PATCH_MONITORING_CRD_PATH}
+
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null
-tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/null --warning=no-timestamp
+tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Prepare logging chart
 source ${SCRIPTS_DIR}/version-logging
@@ -71,26 +83,30 @@ helm pull https://charts.rancher.io/assets/rancher-logging-crd/rancher-logging-c
 helm pull https://charts.rancher.io/assets/rancher-logging/rancher-logging-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
 
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null
-tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null  --warning=no-timestamp
+tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # patch rancher-logging chart to collect more logs"
 PKG_PATCH_LOGGING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-logging"
 patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING_PATH}
 
 # make chart sanity check again after patch
-tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Prepare vm-import-controller-chart
 helm pull https://github.com/harvester/charts/releases/download/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Prepare pcidevices-chart
 helm pull https://github.com/harvester/charts/releases/download/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
 # make chart sanity check
-tar zxvf ${CHARTS_DIR}/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}.tgz >/dev/null
+tar zxvf ${CHARTS_DIR}/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
 
+# Prepare harvester-seeder-chart
+helm pull https://github.com/harvester/charts/releases/download/harvester-seeder-${HARVESTER_SEEDER_CHART_VERSION}/harvester-seeder-${HARVESTER_SEEDER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/harvester-seeder-${HARVESTER_SEEDER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
@@ -149,6 +165,9 @@ echo ${VM_IMPORT_CONTROLLER_IMAGE} >>  ${image_list_file}
 # pcidevices-controller images
 echo ${PCIDEVICES_CONTROLLER_IMAGE} >> ${image_list_file}
 
+# seeder images
+echo ${HARVESTER_SEEDER_IMAGE} >> ${image_list_file}
+
 # harvester additional images, which is not in rancher images, not in harvester images or any others
 # do not add any comment line into this file, each line should be an valid image name
 cat ${SCRIPTS_DIR}/images/harvester-additional-images.txt >> ${image_list_file}
@@ -171,13 +190,17 @@ save_image "common" $BUNDLE_DIR ${IMAGES_LISTS_DIR}/${image_list_file} ${IMAGES_
 
 # Tag harvester-upgrade:master-head to harvester-upgrade:<version> and save the image to an archive
 # This makes it possible to upgrade a cluster with a master ISO.
+# Also tag harvester-upgrade:master-head to harvester-upgrade:master-<commit>-head and save the image to an archive
+# This makes it possible to upgrade from master builds to master builds
 upgrade_image_repo=$(yq -e e '.upgrade.image.repository' $values_file)
 upgrade_image_tag=$(yq -e e '.upgrade.image.tag' $values_file)
 if [ "$upgrade_image_tag" != "$HARVESTER_VERSION" ]; then
-  docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "${upgrade_image_repo}:${HARVESTER_VERSION}"
+  docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "rancher/harvester-upgrade:${HARVESTER_VERSION}"
+  docker tag "${upgrade_image_repo}:${upgrade_image_tag}" "rancher/harvester-upgrade:${HARVESTER_APP_VERSION}-head"
   image_list_file="${IMAGES_LISTS_DIR}/harvester-extra-${VERSION}.txt"
   image_archive="${IMAGES_DIR}/harvester-extra-${VERSION}.tar"
-  echo "${upgrade_image_repo}:${HARVESTER_VERSION}" | awk -F '/' '{if(NF>=3){print $0} else if(NF==2){print "docker.io/"$0}}' > ${image_list_file}
+  echo "docker.io/rancher/harvester-upgrade:${HARVESTER_VERSION}" > ${image_list_file}
+  echo "docker.io/rancher/harvester-upgrade:${HARVESTER_APP_VERSION}-head" >> ${image_list_file}
   docker image save -o $image_archive $(<$image_list_file)
   zstd --rm $image_archive -o "${image_archive}.zst"
   add_image_list_to_metadata "common" $BUNDLE_DIR $image_list_file "${image_archive}.zst"

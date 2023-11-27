@@ -12,7 +12,7 @@ import (
 
 	yipSchema "github.com/mudler/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/harvester/harvester-installer/pkg/util"
 )
@@ -22,11 +22,18 @@ const (
 	manifestsDirectory   = "/var/lib/rancher/rke2/server/manifests/"
 	harvesterConfig      = "harvester-config.yaml"
 	ntpdService          = "systemd-timesyncd"
+	timeWaitSyncService  = "systemd-time-wait-sync"
 	rancherdBootstrapDir = "/etc/rancher/rancherd/config.yaml.d/"
 
 	networkConfigDirectory = "/etc/sysconfig/network/"
 	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
 	ifrouteGlobPattern     = networkConfigDirectory + "ifroute-*"
+
+	bootstrapConfigCount               = 6
+	defaultReplicaCount                = 3
+	defaultGuaranteedEngineManagerCPU  = 12   // means percentage 12%
+	defaultGuaranteedReplicaManagerCPU = 12   // means percentage 12%
+	defaultSystemImageSize             = 3072 // size of /run/initramfs/cos-state/cOS/active.img in MB
 )
 
 var (
@@ -40,6 +47,75 @@ var (
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
 )
+
+// refer: https://github.com/rancher/elemental-cli/blob/v0.1.0/config.yaml.example
+type ElementalConfig struct {
+	Install ElementalInstallSpec `yaml:"install,omitempty"`
+}
+
+type ElementalInstallSpec struct {
+	Target          string                     `yaml:"target,omitempty"`
+	Firmware        string                     `yaml:"firmware,omitempty"`
+	PartTable       string                     `yaml:"part-table,omitempty"`
+	Partitions      *ElementalDefaultPartition `yaml:"partitions,omitempty"`
+	ExtraPartitions []ElementalPartition       `yaml:"extra-partitions,omitempty"`
+	CloudInit       string                     `yaml:"cloud-init,omitempty"`
+	Tty             string                     `yaml:"tty,omitempty"`
+	System          *ElementalSystem           `yaml:"system,omitempty"`
+}
+
+type ElementalSystem struct {
+	Label string `yaml:"label,omitempty"`
+	Size  uint   `yaml:"size,omitempty"`
+	FS    string `yaml:"fs,omitempty"`
+	URI   string `yaml:"uri,omitempty"`
+}
+
+type ElementalDefaultPartition struct {
+	OEM        *ElementalPartition `yaml:"oem,omitempty"`
+	State      *ElementalPartition `yaml:"state,omitempty"`
+	Recovery   *ElementalPartition `yaml:"recovery,omitempty"`
+	Persistent *ElementalPartition `yaml:"persistent,omitempty"`
+}
+
+type ElementalPartition struct {
+	FilesystemLabel string `yaml:"label,omitempty"`
+	Size            uint   `yaml:"size,omitempty"`
+	FS              string `yaml:"fs,omitempty"`
+}
+
+func NewElementalConfig() *ElementalConfig {
+	return &ElementalConfig{}
+}
+
+func ConvertToElementalConfig(config *HarvesterConfig) (*ElementalConfig, error) {
+	elementalConfig := NewElementalConfig()
+
+	if config.Install.ForceEFI {
+		elementalConfig.Install.Firmware = "efi"
+	}
+
+	elementalConfig.Install.PartTable = "gpt"
+	if !config.Install.ForceGPT {
+		elementalConfig.Install.PartTable = "msdos"
+	}
+
+	resolvedDevPath, err := filepath.EvalSymlinks(config.Install.Device)
+	if err != nil {
+		return nil, err
+	}
+	elementalConfig.Install.Target = resolvedDevPath
+	elementalConfig.Install.CloudInit = config.Install.ConfigURL
+	elementalConfig.Install.Tty = config.Install.TTY
+
+	// Since https://github.com/rancher/elemental-toolkit/commit/7b348b51342c9041741145d1426951336836c757, elemental
+	// CLI calcuates active.img's size automatically. Specify the size to make the size consistent with previous versions.
+	elementalConfig.Install.System = &ElementalSystem{
+		Size: defaultSystemImageSize,
+	}
+
+	return elementalConfig, nil
+}
 
 // ConvertToCOS converts HarvesterConfig to cOS configuration.
 func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
@@ -59,14 +135,25 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		TimeSyncd: make(map[string]string),
 	}
 
-	// TOP
-	if err := initRancherdStage(config, &initramfs); err != nil {
-		return nil, err
+	afterNetwork := yipSchema.Stage{
+		SSHKeys: make(map[string][]string),
 	}
+
+	initramfs.Users[cosLoginUser] = yipSchema.User{
+		PasswordHash: cfg.OS.Password,
+	}
+
+	// Use modprobe to load modules as a temporary solution
+	for _, module := range cfg.OS.Modules {
+		initramfs.Commands = append(initramfs.Commands, "modprobe "+module)
+	}
+
+	initramfs.Sysctl = cfg.OS.Sysctls
+	initramfs.Environment = cfg.OS.Environment
 
 	// OS
 	for _, ff := range cfg.OS.WriteFiles {
-		perm, err := strconv.ParseUint(ff.RawFilePermissions, 8, 0)
+		perm, err := strconv.ParseUint(ff.RawFilePermissions, 8, 32)
 		if err != nil {
 			logrus.Warnf("fail to parse permission %s, use default permission.", err)
 			perm = 0600
@@ -80,37 +167,34 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		})
 	}
 
-	initramfs.Hostname = cfg.OS.Hostname
-	initramfs.Modules = cfg.OS.Modules
-	initramfs.Sysctl = cfg.OS.Sysctls
-	if len(cfg.OS.NTPServers) > 0 {
-		initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
-		initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
-	}
-	if len(cfg.OS.DNSNameservers) > 0 {
-		initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
-	}
+	// TOP
+	if cfg.Mode != ModeInstall {
+		if err := initRancherdStage(config, &initramfs); err != nil {
+			return nil, err
+		}
 
-	if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
-		return nil, err
-	}
+		initramfs.Hostname = cfg.OS.Hostname
 
-	initramfs.Users[cosLoginUser] = yipSchema.User{
-		PasswordHash: cfg.OS.Password,
-	}
+		if len(cfg.OS.NTPServers) > 0 {
+			initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
+			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
+			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
+		}
+		if len(cfg.OS.DNSNameservers) > 0 {
+			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
+		}
 
-	initramfs.Environment = cfg.OS.Environment
+		if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
+			return nil, err
+		}
 
-	_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
-	if err != nil {
-		return nil, err
-	}
+		_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
+		if err != nil {
+			return nil, err
+		}
 
-	// After network is available
-	afterNetwork := yipSchema.Stage{
-		SSHKeys: make(map[string][]string),
+		afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
 	}
-	afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
 
 	cosConfig := &yipSchema.YipConfig{
 		Name: "Harvester Configuration",
@@ -121,7 +205,25 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		},
 	}
 
+	// Add after-install-chroot stage
+	if len(config.OS.AfterInstallChrootCommands) > 0 {
+		afterInstallChroot := yipSchema.Stage{}
+		if err := overwriteAfterInstallChrootStage(config, &afterInstallChroot); err != nil {
+			return nil, err
+		}
+		cosConfig.Stages["after-install-chroot"] = []yipSchema.Stage{afterInstallChroot}
+	}
+
 	return cosConfig, nil
+}
+
+func overwriteAfterInstallChrootStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+	content, err := render("cos-after-install-chroot.yaml", config)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal([]byte(content), stage)
 }
 
 func overwriteRootfsStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
@@ -137,7 +239,7 @@ func overwriteRootfsStage(config *HarvesterConfig, stage *yipSchema.Stage) error
 	return nil
 }
 
-func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+func setConfigDefaultValues(config *HarvesterConfig) {
 	if config.RuntimeVersion == "" {
 		config.RuntimeVersion = RKE2Version
 	}
@@ -154,6 +256,23 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if config.LoggingChartVersion == "" {
 		config.LoggingChartVersion = LoggingChartVersion
 	}
+
+	// 0 is invalid and skipped from yaml to strut, no need to check
+	if config.Harvester.StorageClass.ReplicaCount > defaultReplicaCount {
+		config.Harvester.StorageClass.ReplicaCount = defaultReplicaCount
+	}
+
+	if config.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU != nil && *config.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU > defaultGuaranteedEngineManagerCPU {
+		*config.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU = defaultGuaranteedEngineManagerCPU
+	}
+
+	if config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU != nil && *config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU > defaultGuaranteedReplicaManagerCPU {
+		*config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU = defaultGuaranteedReplicaManagerCPU
+	}
+}
+
+func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+	setConfigDefaultValues(config)
 
 	stage.Directories = append(stage.Directories,
 		yipSchema.Directory{
@@ -178,15 +297,6 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	)
 
 	if config.Install.Mode == "create" {
-		stage.Directories = append(stage.Directories,
-			yipSchema.Directory{
-				Path:        rancherdBootstrapDir,
-				Permissions: 0600,
-				Owner:       0,
-				Group:       0,
-			},
-		)
-
 		bootstrapResources, err := genBootstrapResources(config)
 		if err != nil {
 			return err
@@ -241,6 +351,9 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	if err != nil {
 		return err
 	}
+
+	// remove space, so we don't get result like |2 or |4 in the yaml
+	rke2AgentConfig = strings.TrimSpace(rke2AgentConfig)
 	stage.Files = append(stage.Files,
 		yipSchema.File{
 			Path:        "/etc/rancher/rke2/config.yaml.d/90-harvester-agent.yaml",
@@ -305,11 +418,12 @@ func SaveOriginalNetworkConfig() error {
 				return err
 			}
 			for _, path := range filepaths {
-				if bytes, err := ioutil.ReadFile(path); err != nil {
+				bytes, err := ioutil.ReadFile(path)
+				if err != nil {
 					return err
-				} else {
-					originalNetworkConfigs[filepath.Base(path)] = bytes
 				}
+				originalNetworkConfigs[filepath.Base(path)] = bytes
+
 			}
 			return nil
 		}
@@ -536,7 +650,7 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 		return nil
 	}
 
-	var interfaces []string
+	interfaces := make([]string, 0, len(wifis))
 	for i, wifi := range wifis {
 		iface := fmt.Sprintf("wlan%d", i)
 
@@ -567,21 +681,20 @@ func getAddStaticDNSServersCmd(servers []string) string {
 }
 
 func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {
-	return ToEnv("ELEMENTAL_", c.Install)
+	return ToEnv("HARVESTER_", c.Install)
 }
 
 // Returns Rancherd bootstrap resources
 // map: fileName -> fileContent
 func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
-	bootstrapConfs := make(map[string]string, 4)
+	bootstrapConfs := make(map[string]string, bootstrapConfigCount)
 
 	for _, templateName := range []string{
 		"10-harvester.yaml",
 		"11-monitoring-crd.yaml",
-		"13-monitoring.yaml",
 		"14-logging-crd.yaml",
-		"15-logging.yaml",
 		"20-harvester-settings.yaml",
+		"22-addons.yaml",
 	} {
 		rendered, err := render("rancherd-"+templateName, config)
 		if err != nil {
@@ -590,102 +703,76 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 
 		bootstrapConfs[templateName] = rendered
 	}
-	// It's not a template but I still put it here for consistency
 
+	// It's not a template but still put it here for consistency
 	for _, templateName := range []string{
 		"12-monitoring-dashboard.yaml",
-		"22-addons.yaml",
 	} {
 		templBytes, err := templFS.ReadFile(filepath.Join(templateFolder, "rancherd-"+templateName))
 		if err != nil {
 			return nil, err
 		}
+
 		bootstrapConfs[templateName] = string(templBytes)
 	}
 
 	return bootstrapConfs, nil
 }
 
-func calcCosPersistentPartSize(diskSizeGiB uint64) (uint64, error) {
-	switch {
-	case diskSizeGiB < HardMinDiskSizeGiB:
-		return 0, fmt.Errorf("disk too small: %dGB. Minimum %dGB is required", diskSizeGiB, HardMinDiskSizeGiB)
-	case diskSizeGiB < SoftMinDiskSizeGiB:
-		var d float64 = MinCosPartSizeGiB / float64(SoftMinDiskSizeGiB-HardMinDiskSizeGiB)
-		partSizeGiB := MinCosPartSizeGiB + float64(diskSizeGiB-HardMinDiskSizeGiB)*d
-		return uint64(partSizeGiB), nil
-	default:
-		partSizeGiB := NormalCosPartSizeGiB + ((diskSizeGiB-100)/100)*10
-		if partSizeGiB > 100 {
-			partSizeGiB = 100
-		}
-		return partSizeGiB, nil
+func calcCosPersistentPartSize(diskSizeGiB uint64, partSize string) (uint64, error) {
+	size, err := util.ParsePartitionSize(util.GiToByte(diskSizeGiB), partSize)
+	if err != nil {
+		return 0, err
 	}
+	return util.ByteToMi(size), nil
 }
 
-func CreateRootPartitioningLayout(devPath string) (*yipSchema.YipConfig, error) {
-	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
+func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, hvstConfig *HarvesterConfig) (*ElementalConfig, error) {
+	diskSizeBytes, err := util.GetDiskSizeBytes(hvstConfig.Install.Device)
 	if err != nil {
 		return nil, err
 	}
 
-	cosPersistentSizeGiB, err := calcCosPersistentPartSize(diskSizeBytes >> 30)
+	persistentSize := hvstConfig.Install.PersistentPartitionSize
+	if persistentSize == "" {
+		persistentSize = fmt.Sprintf("%dGi", PersistentSizeMinGiB)
+	}
+	cosPersistentSizeMiB, err := calcCosPersistentPartSize(util.ByteToGi(diskSizeBytes), persistentSize)
 	if err != nil {
 		return nil, err
 	}
 
-	resolvedDevPath, err := filepath.EvalSymlinks(devPath)
-	if err != nil {
-		return nil, err
-	}
-
-	yipConfig := yipSchema.YipConfig{
-		Name: "Root partitioning layout",
-		Stages: map[string][]yipSchema.Stage{
-			"partitioning": {
-				yipSchema.Stage{
-					Name: "Root partitioning layout",
-					Layout: yipSchema.Layout{
-						Device: &yipSchema.Device{
-							Path: resolvedDevPath,
-						},
-						Parts: []yipSchema.Partition{
-							{
-								FSLabel:    "COS_OEM",
-								PLabel:     "oem",
-								Size:       50,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_STATE",
-								PLabel:     "state",
-								Size:       15360,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_RECOVERY",
-								PLabel:     "recovery",
-								Size:       8192,
-								FileSystem: "ext4",
-							},
-							{
-								FSLabel:    "COS_PERSISTENT",
-								PLabel:     "persistent",
-								Size:       uint(cosPersistentSizeGiB << 10),
-								FileSystem: "ext4",
-							},
-							{
-								// Do not specify PLabel because it's hard to remove!
-								FSLabel:    "HARV_LH_DEFAULT",
-								Size:       0,
-								FileSystem: "ext4",
-							},
-						},
-					},
-				},
-			},
+	logrus.Infof("Calculated COS_PERSISTENT partition size: %d MiB", cosPersistentSizeMiB)
+	elementalConfig.Install.Partitions = &ElementalDefaultPartition{
+		OEM: &ElementalPartition{
+			FilesystemLabel: "COS_OEM",
+			Size:            DefaultCosOemSizeMiB,
+			FS:              "ext4",
+		},
+		State: &ElementalPartition{
+			FilesystemLabel: "COS_STATE",
+			Size:            DefaultCosStateSizeMiB,
+			FS:              "ext4",
+		},
+		Recovery: &ElementalPartition{
+			FilesystemLabel: "COS_RECOVERY",
+			Size:            DefaultCosRecoverySizeMiB,
+			FS:              "ext4",
+		},
+		Persistent: &ElementalPartition{
+			FilesystemLabel: "COS_PERSISTENT",
+			Size:            uint(cosPersistentSizeMiB),
+			FS:              "ext4",
 		},
 	}
 
-	return &yipConfig, nil
+	elementalConfig.Install.ExtraPartitions = []ElementalPartition{
+		{
+			FilesystemLabel: "HARV_LH_DEFAULT",
+			Size:            0,
+			FS:              "ext4",
+		},
+	}
+
+	return elementalConfig, nil
 }

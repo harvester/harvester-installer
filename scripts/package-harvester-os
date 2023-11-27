@@ -17,7 +17,7 @@ source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-logging
 
-BASE_OS_IMAGE="rancher/harvester-os:20221201"
+BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
@@ -67,13 +67,79 @@ find $BUNDLE_DIR -type f -exec chmod +r {} +
 # build ISO
 ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
 cp harvester-release.yaml iso
-yq e ".overlay.isoimage = \"$(pwd)/iso\"" iso.yaml -i
 echo "set harvester_version=${VERSION}" > iso/boot/grub2/harvester.cfg
-luet-makeiso iso.yaml --image "${HARVESTER_OS_IMAGE}" --output ${ARTIFACTS_DIR}/${ISO_PREFIX}
-rm ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
 
-# Extract the squashfs image for PXE boot
-xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract /rootfs.squashfs ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs
+elemental build-iso --config-dir "$(pwd)" "docker:${HARVESTER_OS_IMAGE}" -a x86_64 \
+          --local \
+          -n "${ISO_PREFIX}" \
+          -o "${ARTIFACTS_DIR}" \
+          --overlay-iso "$(pwd)/iso" \
+          -x "-comp xz"
+
+rm -f ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
+
+# Unpack ISO for reconfiguring boot image
+# Elemental toolkit deprecated legacy BIOS boot support, and can only use one boot method (UEFI/BIOS) at the same time,
+# so we need to unpack the ISO, add legacy BIOS boot support back, and repack it.
+# It's a workaround for now, and we will remove legacy BIOS boot support in the future releases.
+extract_dir=$(mktemp -d)
+xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract / "${extract_dir}"
+
+# Reset permissions, directories 0755 and files 0644
+# otherwise upgrade would fail due to wrong permission on /run/initramfs/live in upgrade repository VM
+chmod -R a=r,u+w,a+X "${extract_dir}"
+
+# Copy squashfs image for PXE boot
+cp "${extract_dir}/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
+
+# Use dd to create empty image, create an empty FAT32 filesystem
+# and copy EFI files to it to make it UEFI bootable
+uefi_img="${extract_dir}/boot/uefi.img"
+dd if=/dev/zero of="${uefi_img}" bs=1k count=4096 status=progress
+mkfs.vfat "${uefi_img}" -n COS_GRUB
+mcopy -s -i "${uefi_img}" "${extract_dir}/EFI" ::
+
+# Remove original ISO, and repack it using xorriso
+rm -f "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
+xorriso -volid "$(yq '.iso.label' manifest.yaml)" \
+    -joliet on -padding 0 \
+    -outdev "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso" \
+    -map "${extract_dir}" / -chmod 0755 -- \
+    -boot_image grub bin_path="boot/x86_64/loader/eltorito.img" \
+    -boot_image grub grub2_mbr="${extract_dir}/boot/x86_64/loader/boot_hybrid.img" \
+    -boot_image grub grub2_boot_info=on \
+    -boot_image any partition_offset=16 \
+    -boot_image any cat_path="boot/x86_64/boot.catalog" \
+    -boot_image any cat_hidden=on \
+    -boot_image any boot_info_table=on \
+    -boot_image any platform_id=0x00 \
+    -boot_image any emul_type=no_emulation \
+    -boot_image any load_size=2048 \
+    -append_partition 2 0xef "${extract_dir}/boot/uefi.img" \
+    -boot_image any next \
+    -boot_image any efi_path=--interval:appended_partition_2:all:: \
+    -boot_image any platform_id=0xef \
+    -boot_image any emul_type=no_emulation
+
+# Cleanup
+rm -rf "${extract_dir}"
+
+if [ "${BUILD_QCOW}" == "true" ]; then
+  echo "generating harvester install mode qcow"
+  qemu-img create -f raw -o size=250G ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw
+  qemu-system-x86_64 --enable-kvm -nographic -cpu host -smp cores=2,threads=2,sockets=1 -m 8192 -serial mon:stdio \
+  -serial file:harvester-installer.log  -nic none \
+  -drive file=${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw,if=virtio,cache=writeback,discard=ignore,format=raw \
+  -boot d -cdrom ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.iso -kernel ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-amd64 \
+  -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=rootfs.squashfs \
+  console=ttyS1 rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda \
+  harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=rancher \
+  harvester.scheme_version=1 harvester.install.persistentPartitionSize=150Gi" \
+  -initrd ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-amd64 -boot once=d
+  tail -100 harvester-installer.log
+  echo "compressing raw image"
+  zstd -T4 --rm ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw
+fi
 
 # Write checksum
 cd ${ARTIFACTS_DIR}
@@ -102,9 +168,21 @@ spec:
 EOF
 fi
 
-# Collect image lists to a tarball "image-lists.tar.gz"
+# Collect image lists
 OUTPUT_DIR="$TOP_DIR/dist/artifacts/image-lists"
 mkdir -p $OUTPUT_DIR
 find $IMAGES_LISTS_DIR -name "*.txt" -exec cp {} $OUTPUT_DIR \;
 find $RANCHERD_IMAGES_DIR -name "*.txt" -exec cp {} $OUTPUT_DIR \;
+
+# Write all images into one file for user convenience
+IMAGE_ALL=$TOP_DIR/dist/artifacts/harvester-images-list.txt
+rm -f ${IMAGE_ALL}
+echo "# All images in the Harvester ISO built @ " $(date) $'\n' > ${IMAGE_ALL}
+for filename in $OUTPUT_DIR/*.txt; do
+  echo "# In" $(basename ${filename}) >> ${IMAGE_ALL}
+  cat $filename >> ${IMAGE_ALL}
+  echo "" >> ${IMAGE_ALL}
+done
+
+# Write image lists to a tarball "image-lists.tar.gz"
 tar zcvf $TOP_DIR/dist/artifacts/image-lists.tar.gz -C $TOP_DIR/dist/artifacts image-lists && rm -rf $OUTPUT_DIR

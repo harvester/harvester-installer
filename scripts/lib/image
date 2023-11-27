@@ -43,6 +43,40 @@ save_image_list()
   echo -n "$want" | sort | uniq > $out_file
 }
 
+pull_images() {
+  local image_list=$1
+  local image_cache_db=${SCRIPTS_DIR}/images/cache.yaml
+  local repository
+
+  if [ -z "$USE_LOCAL_IMAGES" ]; then
+    xargs -n1 -t docker image pull --quiet < $image_list
+    return
+  fi
+
+  # If an image is in the exlcude list or its tag ends with "-head", we always pull it.
+  # Otherwise, we check if the image exists on the system. If yes, we do nothing.
+  for image in $(cat $image_list); do
+    repository=$(echo $image | awk -F ':' '{print $1}')
+    tag=$(echo $image | awk -F ':' '{print $2}')
+
+    if yq -e e ".exclude.repos[] | select(. == \"${repository}\")" $image_cache_db &>/dev/null; then
+      echo "[ImageCache] $image is in the exclude.repos list."
+    elif [[ $tag == *"-head" ]]; then
+      echo "[ImageCache] $image has \"-head\" suffix."
+    elif yq -e e ".exclude.tags[] | select(. == \"${tag}\")" $image_cache_db &>/dev/null; then
+      echo "[ImageCache] $image is in the exclude.tags list."
+    else
+      if docker image inspect $image &>/dev/null; then
+        echo "[ImageCache] $image exists."
+        continue
+      fi
+    fi
+
+    echo "[ImageCache] $image: pulling..."
+    docker pull $image
+  done
+}
+
 save_image()
 {
   local image_type=$1
@@ -52,7 +86,7 @@ save_image()
 
   local archive_name="$(basename ${image_list%.txt}).tar"
   local archive_file="${save_dir}/${archive_name}"
-  xargs -n1 -t docker image pull --quiet < $image_list
+  pull_images $image_list
   docker image save -o $archive_file $(<${image_list})
   zstd --rm $archive_file
 

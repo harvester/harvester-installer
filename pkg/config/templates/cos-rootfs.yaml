@@ -22,8 +22,14 @@ environment:
     /var/lib/kubelet
     /var/lib/wicked
     /var/lib/cni
+    /var/lib/third-party
     /var/crash
     /var/lib/longhorn
+    {{- if .OS.PersistentStatePaths }}
+    {{- range $path := .OS.PersistentStatePaths }}
+    {{ $path }}
+    {{- end }}
+    {{- end }}
     {{- if not .ShouldMountDataPartition }}
     /var/lib/harvester/defaultdisk
     {{- end }}

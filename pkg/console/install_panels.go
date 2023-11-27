@@ -20,16 +20,14 @@ import (
 )
 
 type UserInputData struct {
-	ServerURL             string
-	SSHKeyURL             string
-	Password              string
-	PasswordConfirm       string
-	Address               string
-	DNSServers            string
-	NTPServers            string
-	HasCheckedNTPServers  bool
-	HasWarnedDiskSize     bool
-	HasWarnedDataDiskSize bool
+	ServerURL            string
+	SSHKeyURL            string
+	Password             string
+	PasswordConfirm      string
+	Address              string
+	DNSServers           string
+	NTPServers           string
+	HasCheckedNTPServers bool
 }
 
 const (
@@ -42,6 +40,7 @@ const (
 const (
 	ErrMsgVLANShouldBeANumberInRange string = "VLAN ID should be a number 1 ~ 4094."
 	ErrMsgMTUShouldBeANumber         string = "MTU should be a number."
+	NtpSettingName                   string = "ntp-servers"
 )
 
 var (
@@ -52,6 +51,9 @@ var (
 	mgmtNetwork = config.Network{
 		DefaultRoute: true,
 	}
+	alreadyInstalled bool
+	installModeOnly  bool
+	diskConfirmed    bool
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -62,10 +64,30 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
+		// if already installed then lets check if cloud init allows us to provision
+		if alreadyInstalled {
+			err = mergeCloudInit(c.config)
+			if err != nil {
+				logrus.Errorf("error merging cloud-config")
+			}
+			logrus.Infof("already install value post config merge: %v", c.config.Automatic)
+			// if already installed and automatic installation is set to true
+			// configure node directly
+			if alreadyInstalled && c.config.Automatic {
+				initPanel = installPanel
+			}
+		}
+
 		if cfg, err := config.ReadConfig(); err == nil {
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
 				c.config.Merge(cfg)
+				// setup InstallMode to ensure that during automatic install
+				// we are only copying binaries and ignoring network / rancherd setup
+				// needed for generating pre-installed qcow2 image
+				if c.config.Install.Mode == config.ModeInstall && !alreadyInstalled {
+					installModeOnly = true
+				}
 				initPanel = installPanel
 			}
 		} else {
@@ -107,7 +129,6 @@ func setPanels(c *Console) error {
 		addFooterPanel,
 		addAskCreatePanel,
 		addDiskPanel,
-		addDataDiskPanel,
 		addHostnamePanel,
 		addNetworkPanel,
 		addVIPPanel,
@@ -173,169 +194,76 @@ func addFooterPanel(c *Console) error {
 }
 
 func showDiskPage(c *Console) error {
-	if systemIsBIOS() {
-		return showNext(c,
-			forceMBRNotePanel,
-			askForceMBRPanel,
-			askForceMBRTitlePanel,
-			diskPanel,
-		)
+	diskConfirmed = false
+
+	diskOptions, err := getDiskOptions()
+	if err != nil {
+		return err
 	}
-	return showNext(c, diskPanel)
+
+	showPersistentSizeOption := false
+	if len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device {
+		showPersistentSizeOption = true
+	}
+
+	nextComponents := []string{diskPanel}
+	if len(diskOptions) > 1 {
+		nextComponents = append([]string{dataDiskPanel}, nextComponents...)
+	}
+
+	if systemIsBIOS() {
+		nextComponents = append([]string{askForceMBRTitlePanel, askForceMBRPanel}, nextComponents...)
+	}
+
+	if showPersistentSizeOption {
+		nextComponents = append([]string{persistentSizePanel}, nextComponents...)
+	}
+	return showNext(c, nextComponents...)
 }
 
-func addDiskPanel(c *Console) error {
-	setLocation := createVerticalLocator(c)
+func calculateDefaultPersistentSize(dev string) (string, error) {
+	bytes, err := util.GetDiskSizeBytes(dev)
+	if err != nil {
+		return "", err
+	}
+
+	defaultBytes := uint64(float64(bytes) * config.DefaultPersistentPercentageNum)
+	defaultSize := util.ByteToGi(defaultBytes)
+	if defaultSize < config.PersistentSizeMinGiB {
+		defaultSize = config.PersistentSizeMinGiB
+	}
+	return fmt.Sprintf("%dGi", defaultSize), nil
+}
+
+func getDataDiskOptions(hvstConfig *config.HarvesterConfig) ([]widgets.Option, error) {
+	// Show the OS disk as "Use the installation disk (<Disk Name>)"
+	deviceForOS := hvstConfig.Install.Device
 	diskOpts, err := getDiskOptions()
 	if err != nil {
-		return err
+		return nil, err
+	}
+	if deviceForOS == "" {
+		diskOpts[0].Text = fmt.Sprintf("Use the installation disk (%s)", diskOpts[0].Text)
+		return diskOpts, nil
 	}
 
-	// Select device panel
-	diskV, err := widgets.NewSelect(c.Gui, diskPanel, "", getDiskOptions)
-	if err != nil {
-		return err
-	}
-	diskV.PreShow = func() error {
-		diskV.Value = c.config.Install.Device
-		return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
-	}
-	setLocation(diskV.Panel, len(diskOpts)+2)
-	c.AddElement(diskPanel, diskV)
-
-	// Asking force MBR title
-	askForceMBRTitleV := widgets.NewPanel(c.Gui, askForceMBRTitlePanel)
-	askForceMBRTitleV.SetContent("Use MBR partitioning scheme")
-	setLocation(askForceMBRTitleV, 2)
-	c.AddElement(askForceMBRTitlePanel, askForceMBRTitleV)
-
-	// Asking force MBR DropDown
-	askForceMBRV, err := widgets.NewDropDown(c.Gui, askForceMBRPanel, "", func() ([]widgets.Option, error) {
-		return []widgets.Option{{Value: "no", Text: "No"}, {Value: "yes", Text: "Yes"}}, nil
-	})
-	if err != nil {
-		return err
-	}
-	askForceMBRV.PreShow = func() error {
-		c.Cursor = true
-		if c.config.ForceMBR {
-			askForceMBRV.SetData("yes")
-		} else {
-			askForceMBRV.SetData("no")
-		}
-		return nil
-	}
-	setLocation(askForceMBRV.Panel, 3)
-	c.AddElement(askForceMBRPanel, askForceMBRV)
-
-	// Note panel for ForceMBR
-	forceMBRNoteV := widgets.NewPanel(c.Gui, forceMBRNotePanel)
-	forceMBRNoteV.Wrap = true
-	setLocation(forceMBRNoteV, 3)
-	c.AddElement(forceMBRNotePanel, forceMBRNoteV)
-
-	// Panel for showing validator message
-	diskValidatorV := widgets.NewPanel(c.Gui, diskValidatorPanel)
-	diskValidatorV.FgColor = gocui.ColorRed
-	diskValidatorV.Wrap = true
-	updateValidatorMessage := func(msg string) error {
-		diskValidatorV.Focus = false
-		return c.setContentByName(diskValidatorPanel, msg)
-	}
-	setLocation(diskValidatorV, 3)
-	c.AddElement(diskValidatorPanel, diskValidatorV)
-
-	// Helper functions
-	closeThisPage := func() {
-		userInputData.HasWarnedDiskSize = false
-		c.CloseElements(
-			diskPanel,
-			askForceMBRPanel,
-			diskValidatorPanel,
-			forceMBRNotePanel,
-			askForceMBRTitlePanel,
-		)
-	}
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
-		closeThisPage()
-		return showNext(c, askCreatePanel)
-	}
-	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
-		forceMBR, err := askForceMBRV.GetData()
-		if err != nil {
-			return err
-		}
-		if forceMBR == "yes" {
-			diskTooLargeForMBR, err := diskExceedsMBRLimit(c.config.Device)
-			if err != nil {
-				return err
+	for i, diskOpt := range diskOpts {
+		if diskOpt.Value == deviceForOS {
+			osDiskOpt := widgets.Option{
+				Text:  fmt.Sprintf("Use the installation disk (%s)", diskOpt.Text),
+				Value: diskOpt.Value,
 			}
-			if diskTooLargeForMBR {
-				return updateValidatorMessage("Disk too large for MBR. Must be less than 2TiB")
-			}
-		}
-		c.config.ForceMBR = (forceMBR == "yes")
-
-		closeThisPage()
-		if canChoose, err := canChooseDataDisk(); err != nil {
-			return err
-		} else if canChoose {
-			return showDataDiskPage(c)
-		} else {
-			return showHostnamePage(c)
+			diskOpts = append(diskOpts[:i], diskOpts[i+1:]...)
+			diskOpts = append([]widgets.Option{osDiskOpt}, diskOpts...)
+			return diskOpts, nil
 		}
 	}
-
-	// Keybindings
-	diskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			device, err := diskV.GetData()
-			if err != nil {
-				return err
-			}
-			if err := validateDiskSize(device); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
-
-			if err := validateDiskSizeSoft(device); err != nil && !userInputData.HasWarnedDiskSize {
-				userInputData.HasWarnedDiskSize = true
-				return updateValidatorMessage(fmt.Sprintf("%s. Press Enter to continue.", err.Error()))
-			}
-
-			c.config.Install.Device = device
-
-			if systemIsBIOS() {
-				c.setContentByName(forceMBRNotePanel, forceMBRNote)
-				return showNext(c, askForceMBRPanel)
-			}
-			return gotoNextPage(g, v)
-		},
-		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.HasWarnedDiskSize = false
-			return updateValidatorMessage("")
-		},
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.HasWarnedDiskSize = false
-			return updateValidatorMessage("")
-		},
-		gocui.KeyEsc: gotoPrevPage,
-	}
-
-	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: gotoNextPage,
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
-			//XXX Must close diskPanel first or gocui would crash
-			c.CloseElement(diskPanel)
-			return showNext(c, diskPanel)
-		},
-		gocui.KeyArrowDown: gotoNextPage,
-		gocui.KeyEsc:       gotoPrevPage,
-	}
-	return nil
+	logrus.Warnf("device '%s' not found in disk options", deviceForOS)
+	return nil, nil
 }
 
 func getDiskOptions() ([]widgets.Option, error) {
-	output, err := exec.Command("/bin/sh", "-c", `lsblk -r -o NAME,SIZE,TYPE | grep -w disk|cut -d ' ' -f 1,2`).CombinedOutput()
+	output, err := exec.Command("/bin/sh", "-c", `lsblk -r -o NAME,SIZE,TYPE | grep -w disk | cut -d ' ' -f 1,2`).CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -354,117 +282,357 @@ func getDiskOptions() ([]widgets.Option, error) {
 	return options, nil
 }
 
-func showDataDiskPage(c *Console) error {
-	setLocation := createVerticalLocatorWithName(c)
-	diskOpts, err := getDataDiskOptions(c.config)
-	if err != nil {
-		return err
-	}
-	panels := []string{dataDiskPanel, dataDiskValidatorPanel}
-	setLocation(dataDiskPanel, len(diskOpts)+2)
-	setLocation(dataDiskValidatorPanel, 3)
+func addDiskPanel(c *Console) error {
+	diskConfirmed = false
 
-	if err := showNext(c, panels...); err != nil {
-		return err
-	}
-	if err := c.ShowElement(dataDiskPanel); err != nil {
-		return err
-	}
-	if err := c.setContentByName(titlePanel, "Choose disk for storing VM data"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func getDataDiskOptions(hvstConfig *config.HarvesterConfig) ([]widgets.Option, error) {
-	// Show the OS disk as "Use the installation disk (<Disk Name>)"
-	deviceForOS := hvstConfig.Install.Device
+	setLocation := createVerticalLocator(c)
 	diskOpts, err := getDiskOptions()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	for i, diskOpt := range diskOpts {
-		if diskOpt.Value == deviceForOS {
-			osDiskOpt := widgets.Option{
-				Text:  fmt.Sprintf("Use the installation disk (%s)", diskOpt.Text),
-				Value: diskOpt.Value,
-			}
-			diskOpts = append(diskOpts[:i], diskOpts[i+1:]...)
-			diskOpts = append([]widgets.Option{osDiskOpt}, diskOpts...)
-			return diskOpts, nil
-		}
-	}
-	return nil, fmt.Errorf("device '%s' not found in disk options", deviceForOS)
-}
 
-func addDataDiskPanel(c *Console) error {
-	dataDiskV, err := widgets.NewSelect(c.Gui, dataDiskPanel, "", func() ([]widgets.Option, error) {
+	// Select device panel
+	diskV, err := widgets.NewDropDown(c.Gui, diskPanel, diskLabel, func() ([]widgets.Option, error) {
+		return diskOpts, nil
+	})
+	if err != nil {
+		return err
+	}
+	diskV.PreShow = func() error {
+		if c.config.Install.Device == "" {
+			c.config.Install.Device = diskOpts[0].Value
+		}
+		if err := diskV.SetData(c.config.Install.Device); err != nil {
+			return err
+		}
+
+		if err := c.setContentByName(diskNotePanel, ""); err != nil {
+			return err
+		}
+		return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
+	}
+	setLocation(diskV.Panel, 3)
+	c.AddElement(diskPanel, diskV)
+
+	dataDiskV, err := widgets.NewDropDown(c.Gui, dataDiskPanel, dataDiskLabel, func() ([]widgets.Option, error) {
 		return getDataDiskOptions(c.config)
 	})
 	if err != nil {
 		return err
 	}
+
 	dataDiskV.PreShow = func() error {
+		if c.config.Install.DataDisk == "" {
+			c.config.Install.DataDisk = c.config.Install.Device
+		}
 		return dataDiskV.SetData(c.config.Install.DataDisk)
 	}
+	setLocation(dataDiskV.Panel, 3)
 	c.AddElement(dataDiskPanel, dataDiskV)
 
-	dataDiskValidatorV := widgets.NewPanel(c.Gui, dataDiskValidatorPanel)
-	dataDiskValidatorV.FgColor = gocui.ColorRed
-	dataDiskValidatorV.Wrap = true
-	dataDiskValidatorV.Focus = false
+	// Persistent partition size panel
+	persistentSizeV, err := widgets.NewInput(c.Gui, persistentSizePanel, persistentSizeLabel, false)
+	if err != nil {
+		return err
+	}
+	persistentSizeV.PreShow = func() error {
+		c.Cursor = true
+
+		device := c.config.Install.Device
+		if device == "" {
+			device = diskOpts[0].Value
+		}
+
+		//If the user has already set a persistent partition size, use that
+		if persistentSizeV.Value != "" {
+			if c.config.Install.PersistentPartitionSize != "" {
+				persistentSizeV.Value = c.config.Install.PersistentPartitionSize
+			} else {
+				defaultValue, err := calculateDefaultPersistentSize(device)
+				if err != nil {
+					return err
+				}
+				persistentSizeV.Value = defaultValue
+			}
+		} else {
+			defaultValue, err := calculateDefaultPersistentSize(device)
+			if err != nil {
+				return err
+			}
+			persistentSizeV.Value = defaultValue
+		}
+		return nil
+	}
+	setLocation(persistentSizeV, 3)
+	c.AddElement(persistentSizePanel, persistentSizeV)
+
+	// Asking force MBR title
+	askForceMBRTitleV := widgets.NewPanel(c.Gui, askForceMBRTitlePanel)
+	askForceMBRTitleV.SetContent("Use MBR partitioning scheme")
+	setLocation(askForceMBRTitleV, 3)
+	c.AddElement(askForceMBRTitlePanel, askForceMBRTitleV)
+
+	// Asking force MBR DropDown
+	askForceMBRV, err := widgets.NewDropDown(c.Gui, askForceMBRPanel, "", func() ([]widgets.Option, error) {
+		return []widgets.Option{{Value: "no", Text: "No"}, {Value: "yes", Text: "Yes"}}, nil
+	})
+	if err != nil {
+		return err
+	}
+	askForceMBRV.PreShow = func() error {
+		c.Cursor = true
+		if c.config.ForceMBR {
+			return askForceMBRV.SetData("yes")
+		}
+		return askForceMBRV.SetData("no")
+	}
+	setLocation(askForceMBRV.Panel, 3)
+	c.AddElement(askForceMBRPanel, askForceMBRV)
+
+	// Note panel for ForceMBR and persistent partition size
+	diskNoteV := widgets.NewPanel(c.Gui, diskNotePanel)
+	diskNoteV.Wrap = true
+	setLocation(diskNoteV, 3)
+	c.AddElement(diskNotePanel, diskNoteV)
+
+	// Panel for showing validator message
+	diskValidatorV := widgets.NewPanel(c.Gui, diskValidatorPanel)
+	diskValidatorV.FgColor = gocui.ColorRed
+	diskValidatorV.Wrap = true
 	updateValidatorMessage := func(msg string) error {
-		return c.setContentByName(dataDiskValidatorPanel, msg)
+		diskValidatorV.Focus = false
+		return c.setContentByName(diskValidatorPanel, msg)
 	}
-	c.AddElement(dataDiskValidatorPanel, dataDiskValidatorV)
+	setLocation(diskValidatorV, 3)
+	c.AddElement(diskValidatorPanel, diskValidatorV)
 
+	// Helper functions
 	closeThisPage := func() {
-		userInputData.HasWarnedDataDiskSize = false
-		c.CloseElements(dataDiskPanel, dataDiskValidatorPanel)
+		c.CloseElements(
+			diskPanel,
+			dataDiskPanel,
+			askForceMBRPanel,
+			diskValidatorPanel,
+			diskNotePanel,
+			askForceMBRTitlePanel,
+			persistentSizePanel,
+		)
 	}
-
-	gotoNextPage := func() error {
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
+		diskConfirmed = false
+		return showNext(c, askCreatePanel)
+	}
+	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+		installDisk := c.config.Install.Device
+		dataDisk := c.config.Install.DataDisk
+		persistentSize := c.config.Install.PersistentPartitionSize
+
+		if dataDisk == "" || installDisk == dataDisk {
+			if err := validateDiskSize(installDisk, true); err != nil {
+				return updateValidatorMessage(err.Error())
+			}
+
+			diskSize, err := util.GetDiskSizeBytes(c.config.Install.Device)
+			if err != nil {
+				return err
+			}
+			if _, err := util.ParsePartitionSize(diskSize, persistentSize); err != nil {
+				return updateValidatorMessage(err.Error())
+			}
+		} else {
+			if err := validateDiskSize(installDisk, false); err != nil {
+				return updateValidatorMessage(err.Error())
+			}
+			if err := validateDataDiskSize(dataDisk); err != nil {
+				return updateValidatorMessage(err.Error())
+			}
+		}
+
+		if !diskConfirmed {
+			diskConfirmed = true
+			return nil
+		}
+
+		closeThisPage()
+		//TODO: When Install modeonly.. we need to decide that this
+		// network page is not shown and skip straight to the password page
+		if installModeOnly {
+			return showNext(c, passwordConfirmPanel, passwordPanel)
+		}
 		return showHostnamePage(c)
 	}
 
-	gotoPrevPage := func() error {
-		closeThisPage()
-		return showDiskPage(c)
+	diskConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		device, err := diskV.GetData()
+		if err != nil {
+			return err
+		}
+		dataDisk, err := dataDiskV.GetData()
+		if err != nil {
+			return err
+		}
+
+		if err := updateValidatorMessage(""); err != nil {
+			return err
+		}
+		c.config.Install.Device = device
+
+		if len(diskOpts) > 1 {
+			if err := updateValidatorMessage(""); err != nil {
+				return err
+			}
+			if device == dataDisk {
+				return showNext(c, persistentSizePanel, dataDiskPanel)
+			}
+			return showNext(c, dataDiskPanel)
+		}
+
+		if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
+			return err
+		}
+		if err := updateValidatorMessage(""); err != nil {
+			return err
+		}
+		return showNext(c, persistentSizePanel)
+	}
+	// Keybindings
+	diskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter:     diskConfirm,
+		gocui.KeyArrowDown: diskConfirm,
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			return updateValidatorMessage("")
+		},
+		gocui.KeyEsc: gotoPrevPage,
 	}
 
+	dataDiskConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		dataDisk, err := dataDiskV.GetData()
+		if err != nil {
+			return err
+		}
+
+		if err := updateValidatorMessage(""); err != nil {
+			return err
+		}
+		c.config.Install.DataDisk = dataDisk
+
+		installDisk, err := diskV.GetData()
+		if err != nil {
+			return err
+		}
+		if installDisk == dataDisk {
+			if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
+				return err
+			}
+			return showNext(c, persistentSizePanel)
+		}
+
+		c.CloseElements(persistentSizePanel)
+		if systemIsBIOS() {
+			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
+				return err
+			}
+			return showNext(c, askForceMBRPanel)
+		}
+		return gotoNextPage(g, v)
+	}
 	dataDiskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			device, err := dataDiskV.GetData()
+		gocui.KeyEnter:     dataDiskConfirm,
+		gocui.KeyArrowDown: dataDiskConfirm,
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			if err := updateValidatorMessage(""); err != nil {
+				return err
+			}
+			diskConfirmed = false
+			return showNext(c, diskPanel)
+		},
+		gocui.KeyEsc: gotoPrevPage,
+	}
+
+	persistentSizeConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		persistentSize, err := persistentSizeV.GetData()
+		if err != nil {
+			return err
+		}
+		c.config.Install.PersistentPartitionSize = persistentSize
+
+		if systemIsBIOS() {
+			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
+				return err
+			}
+			return showNext(c, askForceMBRPanel)
+		}
+		return gotoNextPage(g, v)
+	}
+	persistentSizeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: persistentSizeConfirm,
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			diskConfirmed = false
+			if len(diskOpts) > 1 {
+				if err := updateValidatorMessage(""); err != nil {
+					return err
+				}
+				if err := c.setContentByName(diskNotePanel, ""); err != nil {
+					return err
+				}
+				return showNext(c, dataDiskPanel)
+			}
+			if err := updateValidatorMessage(""); err != nil {
+				return err
+			}
+			if err := c.setContentByName(diskNotePanel, ""); err != nil {
+				return err
+			}
+			return showNext(c, diskPanel)
+		},
+		gocui.KeyArrowDown: persistentSizeConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+
+	mbrConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		forceMBR, err := askForceMBRV.GetData()
+		if err != nil {
+			return err
+		}
+		if forceMBR == "yes" {
+			diskTooLargeForMBR, err := diskExceedsMBRLimit(c.config.Device)
+			if err != nil {
+				return err
+			}
+			if diskTooLargeForMBR {
+				return updateValidatorMessage("Disk too large for MBR. Must be less than 2TiB")
+			}
+		}
+
+		c.config.ForceMBR = forceMBR == "yes"
+		return gotoNextPage(g, v)
+	}
+	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: mbrConfirm,
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			diskConfirmed = false
+
+			disk, err := diskV.GetData()
+			if err != nil {
+				return err
+			}
+			dataDisk, err := dataDiskV.GetData()
 			if err != nil {
 				return err
 			}
 
-			if err := validateDiskSize(device); err != nil {
-				return updateValidatorMessage(err.Error())
+			if len(diskOpts) > 1 && disk != dataDisk {
+				return showNext(c, dataDiskPanel)
 			}
-			if err := validateDiskSizeSoft(device); err != nil && !userInputData.HasWarnedDataDiskSize {
-				userInputData.HasWarnedDataDiskSize = true
-				return updateValidatorMessage(fmt.Sprintf("%s. Press Enter to continue.", err.Error()))
+			if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
+				return err
 			}
-
-			c.config.Install.DataDisk = device
-			return gotoNextPage()
+			return showNext(c, persistentSizePanel)
 		},
-		gocui.KeyArrowDown: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.HasWarnedDataDiskSize = false
-			return updateValidatorMessage("")
-		},
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.HasWarnedDataDiskSize = false
-			return updateValidatorMessage("")
-		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			return gotoPrevPage()
-		},
+		gocui.KeyArrowDown: mbrConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
 	}
-
 	return nil
 }
 
@@ -488,6 +656,16 @@ func addAskCreatePanel(c *Console) error {
 				Text:  "Upgrade Harvester",
 			})
 		}
+
+		// layoutInstall is now called from layoutDashboard due to the addition
+		// of the new config.ModeInstall. config will be setup by layoutDashboard before passing control here
+		// this extra option should only show up if that is not the case
+		if !alreadyInstalled {
+			options = append(options, widgets.Option{
+				Value: config.ModeInstall,
+				Text:  "Install Harvester binaries only",
+			})
+		}
 		return options, nil
 	}
 	// new cluster or join existing cluster
@@ -498,6 +676,9 @@ func addAskCreatePanel(c *Console) error {
 	askCreateV.FirstPage = true
 	askCreateV.PreShow = func() error {
 		askCreateV.Value = c.config.Install.Mode
+		if alreadyInstalled {
+			return c.setContentByName(titlePanel, "Harvester already installed. Choose configuration mode")
+		}
 		return c.setContentByName(titlePanel, "Choose installation mode")
 	}
 	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -506,7 +687,23 @@ func addAskCreatePanel(c *Console) error {
 			if err != nil {
 				return err
 			}
+
+			if alreadyInstalled {
+				// need to wipe the Mode value before we set panel
+				// needed to ensure that value lookup fails as install
+				// is not available in the option in this case
+				c.config.Install.Mode = ""
+			}
+
 			c.config.Install.Mode = selected
+			// explicitly set this false to ensure if user changes from
+			// install mode only to create /join then the variable is
+			// reset to ensure correct panel sequence is displayed
+			installModeOnly = false
+			if selected == config.ModeInstall {
+				installModeOnly = true
+			}
+
 			askCreateV.Close()
 
 			if selected == config.ModeCreate {
@@ -514,6 +711,12 @@ func addAskCreatePanel(c *Console) error {
 				userInputData.ServerURL = ""
 			} else if selected == config.ModeUpgrade {
 				return showNext(c, confirmUpgradePanel)
+			}
+
+			// all packages are already install
+			// configure hostname and network
+			if alreadyInstalled {
+				return showHostnamePage(c)
 			}
 			return showDiskPage(c)
 		},
@@ -609,81 +812,38 @@ func addPasswordPanels(c *Console) error {
 		return err
 	}
 
-	passwordV.PreShow = func() error {
+	pw := &passwordWrapper{
+		c:                c,
+		passwordV:        passwordV,
+		passwordConfirmV: passwordConfirmV,
+	}
+
+	pw.passwordV.PreShow = func() error {
 		passwordV.Value = userInputData.Password
 		return nil
 	}
 
-	passwordVConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		password1V, err := c.GetElement(passwordPanel)
-		if err != nil {
-			return err
-		}
-		userInputData.Password, err = password1V.GetData()
-		if err != nil {
-			return err
-		}
-		if userInputData.Password == "" {
-			return c.setContentByName(validatorPanel, "Password is required")
-		}
-		return showNext(c, passwordConfirmPanel)
+	pw.passwordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter:     pw.passwordVConfirmKeyBinding,
+		gocui.KeyArrowDown: pw.passwordVConfirmKeyBinding,
+		gocui.KeyEsc:       pw.passwordVEscapeKeyBinding,
 	}
-	passwordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter:     passwordVConfirm,
-		gocui.KeyArrowDown: passwordVConfirm,
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			passwordV.Close()
-			passwordConfirmV.Close()
-			if err := c.setContentByName(notePanel, ""); err != nil {
-				return err
-			}
-			return showNext(c, tokenPanel)
-		},
-	}
-	passwordV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8+2)
-	c.AddElement(passwordPanel, passwordV)
 
-	passwordConfirmV.PreShow = func() error {
+	pw.passwordV.SetLocation(maxX/8, maxY/8, maxX/8*7, maxY/8+2)
+	c.AddElement(passwordPanel, pw.passwordV)
+
+	pw.passwordConfirmV.PreShow = func() error {
 		c.Gui.Cursor = true
 		passwordConfirmV.Value = userInputData.PasswordConfirm
 		c.setContentByName(notePanel, "")
 		return c.setContentByName(titlePanel, "Configure the password to access the node")
 	}
-	passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.PasswordConfirm, err = passwordConfirmV.GetData()
-			if err != nil {
-				return err
-			}
-			return showNext(c, passwordPanel)
-		},
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
-			userInputData.PasswordConfirm, err = passwordConfirmV.GetData()
-			if err != nil {
-				return err
-			}
-			if userInputData.Password != userInputData.PasswordConfirm {
-				return c.setContentByName(validatorPanel, "Password mismatching")
-			}
-			passwordV.Close()
-			passwordConfirmV.Close()
-			encrypted, err := util.GetEncrptedPasswd(userInputData.Password)
-			if err != nil {
-				return err
-			}
-			c.config.Password = encrypted
-			return showNext(c, ntpServersPanel)
-		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
-			passwordV.Close()
-			passwordConfirmV.Close()
-			if err := c.setContentByName(notePanel, ""); err != nil {
-				return err
-			}
-			return showNext(c, tokenPanel)
-		},
+	pw.passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: pw.passwordConfirmVArrowUpKeyBinding,
+		gocui.KeyEnter:   pw.passwordConfirmVKeyEnter,
+		gocui.KeyEsc:     pw.passwordConfirmVKeyEscape,
 	}
-	passwordConfirmV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+5)
+	pw.passwordConfirmV.SetLocation(maxX/8, maxY/8+3, maxX/8*7, maxY/8+5)
 	c.AddElement(passwordConfirmPanel, passwordConfirmV)
 
 	return nil
@@ -863,13 +1023,10 @@ func addHostnamePanel(c *Console) error {
 
 	prev := func(g *gocui.Gui, v *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
-		if canChoose, err := canChooseDataDisk(); err != nil {
-			return err
-		} else if canChoose {
-			return showDataDiskPage(c)
-		} else {
-			return showDiskPage(c)
+		if alreadyInstalled {
+			return showNext(c, askCreatePanel)
 		}
+		return showDiskPage(c)
 	}
 
 	validate := func() (string, error) {
@@ -1029,16 +1186,16 @@ func addNetworkPanel(c *Console) error {
 		c.config.ManagementInterface = mgmtNetwork
 
 		if mgmtNetwork.Method == config.NetworkMethodDHCP {
-			if addr, err := getIPThroughDHCP(config.MgmtInterfaceName); err != nil {
+			addr, err := getIPThroughDHCP(config.MgmtInterfaceName)
+			if err != nil {
 				return fmt.Sprintf("Requesting IP through DHCP failed: %s", err.Error()), nil
-			} else {
-				logrus.Infof("DHCP test passed. Got IP: %s", addr)
-				userInputData.Address = ""
-				mgmtNetwork.IP = ""
-				mgmtNetwork.SubnetMask = ""
-				mgmtNetwork.Gateway = ""
-				mgmtNetwork.MTU = 0
 			}
+			logrus.Infof("DHCP test passed. Got IP: %s", addr)
+			userInputData.Address = ""
+			mgmtNetwork.IP = ""
+			mgmtNetwork.SubnetMask = ""
+			mgmtNetwork.Gateway = ""
+			mgmtNetwork.MTU = 0
 		}
 		return "", nil
 	}
@@ -1571,8 +1728,16 @@ func addConfirmInstallPanel(c *Console) error {
 		options += string(installBytes)
 		logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))
 		if !c.config.Install.Silent {
-			confirmV.SetContent(options +
-				"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+			if alreadyInstalled {
+				confirmV.SetContent(options +
+					"\nHarvester is already installed. It will be configured with \nthe above configuration.\n Continue?\n")
+			} else if installModeOnly {
+				confirmV.SetContent(options +
+					"\nHarvester will be copied to local disk.\n No configuration will be performed.\n Continue?\n")
+			} else {
+				confirmV.SetContent(options +
+					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+			}
 		}
 		c.Gui.Cursor = false
 		return c.setContentByName(titlePanel, "Confirm installation options")
@@ -1595,6 +1760,9 @@ func addConfirmInstallPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
 			confirmV.Close()
+			if installModeOnly {
+				return showNext(c, passwordConfirmPanel, passwordPanel)
+			}
 			return showNext(c, cloudInitPanel)
 		},
 	}
@@ -1647,6 +1815,10 @@ func addInstallPanel(c *Console) error {
 	installV := widgets.NewPanel(c.Gui, installPanel)
 	installV.PreShow = func() error {
 		go func() {
+			// in alreadyInstalled mode and auto configuration, the network is not available
+			if alreadyInstalled && c.config.Automatic == true && c.config.ManagementInterface.Method == "dhcp" {
+				configureInstallModeDHCP(c)
+			}
 			logrus.Info("Local config: ", c.config)
 			if c.config.Install.ConfigURL != "" {
 				printToPanel(c.Gui, fmt.Sprintf("Fetching %s...", c.config.Install.ConfigURL), installPanel)
@@ -1730,7 +1902,11 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, fmt.Sprintf("invalid webhook: %s", err), installPanel)
 			}
 
-			doInstall(c.Gui, c.config, webhooks)
+			if alreadyInstalled {
+				configureInstalledNode(c.Gui, c.config, webhooks)
+			} else {
+				doInstall(c.Gui, c.config, webhooks)
+			}
 		}()
 		return c.setContentByName(footerPanel, "")
 	}
@@ -2114,6 +2290,65 @@ func addDNSServersPanel(c *Console) error {
 		return asyncTaskV.Close()
 	}
 	c.AddElement(dnsServersPanel, dnsServersV)
+
+	return nil
+}
+
+func configureInstallModeDHCP(c *Console) {
+	netDef := c.config.Install.ManagementInterface
+	// copy settings before application //
+	mgmtNetwork.Interfaces = netDef.Interfaces
+	if netDef.BondOptions == nil {
+		mgmtNetwork.BondOptions = map[string]string{
+			"mode":   config.BondModeBalanceTLB,
+			"miimon": "100",
+		}
+	} else {
+		mgmtNetwork.BondOptions = netDef.BondOptions
+	}
+	mgmtNetwork.Method = netDef.Method
+
+	_, err := applyNetworks(
+		mgmtNetwork,
+		c.config.Hostname,
+	)
+	if err != nil {
+		logrus.Error(err)
+		printToPanel(c.Gui, fmt.Sprintf("error applying network configuration: %s", err.Error()), installPanel)
+	}
+
+	_, err = getIPThroughDHCP(config.MgmtInterfaceName)
+	if err != nil {
+		printToPanel(c.Gui, fmt.Sprintf("error getting DHCP address: %s", err.Error()), installPanel)
+	}
+
+	// if need vip via dhcp
+	if c.config.Install.VipMode == config.NetworkMethodDHCP {
+		vip, err := getVipThroughDHCP(config.MgmtInterfaceName)
+		if err != nil {
+			printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
+			return
+		}
+		c.config.Vip = vip.ipv4Addr
+		c.config.VipHwAddr = vip.hwAddr
+	}
+
+}
+
+func mergeCloudInit(c *config.HarvesterConfig) error {
+	cloudConfig, err := config.ReadUserDataConfig()
+	if err != nil {
+		return err
+	}
+	if cloudConfig.Install.Automatic {
+		c.Merge(cloudConfig)
+		if cloudConfig.OS.Hostname != "" {
+			c.OS.Hostname = cloudConfig.OS.Hostname
+		}
+		if cloudConfig.OS.Password != "" {
+			c.OS.Password = cloudConfig.OS.Password
+		}
+	}
 
 	return nil
 }

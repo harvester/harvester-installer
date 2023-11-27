@@ -1,14 +1,17 @@
 package console
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/validation"
 
@@ -16,6 +19,12 @@ import (
 )
 
 const validTokenChars = "[a-zA-Z0-9 !\"#$%&'()*+,-./:;<=>?@^_`{|}~[\\]\\\\]"
+
+var (
+	persistentStateDirBlackList = []string{
+		"/tmp",
+	}
+)
 
 var (
 	ErrMsgModeCreateContainsServerURL   = fmt.Sprintf("ServerURL need to be empty in %s mode", config.ModeCreate)
@@ -33,7 +42,7 @@ var (
 	ErrMsgInterfaceIsLoop              = "interface is a loopback interface"
 	ErrMsgDeviceNotSpecified           = "no device specified"
 	ErrMsgDeviceNotFound               = "device not found"
-	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", config.HardMinDiskSizeGiB)
+	ErrMsgDeviceTooSmall               = fmt.Sprintf("device size too small. At least %dG is required", config.SingleDiskMinSizeGiB)
 	ErrMsgNoCredentials                = "no SSH authorized keys or passwords are set"
 	ErrMsgForceMBROnLargeDisk          = "disk size too large for MBR partitioning table"
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
@@ -44,6 +53,8 @@ var (
 
 	ErrMsgManagementInterfaceNotFound = "networks is deprecated, please use management_interface for new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/#installmanagement_interface"
 	ErrMsgUnsupportedSchemeVersion    = "Unsupported Harvester Scheme Version %d, please use new config and refer https://docs.harvesterhci.io/v1.1/install/harvester-configuration/"
+
+	ErrContainerdRegistrySettingNotValidJSON = "could not parse containerd-registry as JSON"
 )
 
 type ValidatorInterface interface {
@@ -88,20 +99,23 @@ func checkInterface(iface config.NetworkInterface) error {
 	return prettyError(ErrMsgInterfaceNotFound, iface.Name)
 }
 
-func checkDevice(device string) error {
-	if device == "" {
+func checkDevice(cfg *config.HarvesterConfig) error {
+	installDisk := cfg.Install.Device
+	dataDisk := cfg.Install.DataDisk
+
+	if installDisk == "" {
 		return errors.New(ErrMsgDeviceNotSpecified)
 	}
 
-	fileInfo, err := os.Lstat(device)
+	fileInfo, err := os.Lstat(installDisk)
 	if err != nil {
 		return err
 	}
 
-	targetDevice := device
+	targetDevice := installDisk
 	// Support using path like `/dev/disks/by-id/xxx`
 	if fileInfo.Mode()&fs.ModeSymlink != 0 {
-		targetDevice, err = filepath.EvalSymlinks(device)
+		targetDevice, err = filepath.EvalSymlinks(installDisk)
 		if err != nil {
 			return err
 		}
@@ -120,11 +134,20 @@ func checkDevice(device string) error {
 		}
 	}
 	if !deviceFound {
-		return prettyError(ErrMsgDeviceNotFound, device)
+		return prettyError(ErrMsgDeviceNotFound, installDisk)
 	}
 
-	if err := validateDiskSize(device); err != nil {
-		return prettyError(ErrMsgDeviceTooSmall, device)
+	if dataDisk == installDisk || dataDisk == "" {
+		if err := validateDiskSize(installDisk, true); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, installDisk)
+		}
+	} else {
+		if err := validateDiskSize(installDisk, false); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, installDisk)
+		}
+		if err := validateDataDiskSize(dataDisk); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, dataDisk)
+		}
 	}
 
 	return nil
@@ -155,13 +178,12 @@ func checkMTU(mtu int) error {
 	// Treat 0 as default value
 	if mtu == 0 {
 		return nil
-	} else {
-		// RFC 791
-		if mtu < 576 || mtu > 9000 {
-			return fmt.Errorf("%d is not a valid MTU value", mtu)
-		}
-		return nil
 	}
+	// RFC 791
+	if mtu < 576 || mtu > 9000 {
+		return fmt.Errorf("%d is not a valid MTU value", mtu)
+	}
+	return nil
 }
 
 func checkHwAddr(hwAddr string) error {
@@ -283,13 +305,36 @@ func checkToken(token string) error {
 	return nil
 }
 
+func checkPersistentStatePath(path string) error {
+	if !filepath.IsAbs(path) {
+		return errors.New("Invalid path. PersistentStatePath must be an absolute path")
+	}
+
+	for _, d := range persistentStateDirBlackList {
+		if path == d || strings.HasPrefix(path, d+string(os.PathSeparator)) {
+			return errors.Errorf("Invalid path. Parent dir of PersistentStatePath cannot be %s", d)
+		}
+	}
+
+	return nil
+}
+
+func checkPersistentStatePaths(persistentStatePaths []string) error {
+	for _, path := range persistentStatePaths {
+		if err := checkPersistentStatePath(path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func checkSystemSettings(systemSettings map[string]string) error {
 	if systemSettings == nil {
 		return nil
 	}
 
 	allowList := config.GetSystemSettingsAllowList()
-	for systemSetting := range systemSettings {
+	for systemSetting, value := range systemSettings {
 		isValid := false
 		for _, allowSystemSetting := range allowList {
 			if systemSetting == allowSystemSetting {
@@ -297,6 +342,14 @@ func checkSystemSettings(systemSettings map[string]string) error {
 				break
 			}
 		}
+
+		if systemSetting == "containerd-registry" {
+			var r registries.Registry
+			if err := json.NewDecoder(strings.NewReader(value)).Decode(&r); err != nil {
+				return errors.New(ErrContainerdRegistrySettingNotValidJSON)
+			}
+		}
+
 		if !isValid {
 			return errors.Errorf(ErrMsgSystemSettingsUnknown, systemSetting)
 		}
@@ -313,38 +366,31 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
 	if errs := validation.IsDNS1123Subdomain(cfg.OS.Hostname); len(errs) > 0 {
 		// TODO: show regexp for validation to users
-		return errors.Errorf("Invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.")
+		return errors.Errorf("invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'")
 	}
 
-	if err := checkDevice(cfg.Install.Device); err != nil {
+	if err := diskChecks(cfg); err != nil {
 		return err
 	}
 
-	if cfg.Install.DataDisk != "" {
-		if err := checkDevice(cfg.Install.DataDisk); err != nil {
+	if cfg.Install.Mode != config.ModeInstall {
+		if len(cfg.Install.ManagementInterface.Interfaces) == 0 {
+			return errors.Errorf(ErrMsgManagementInterfaceNotFound)
+		}
+
+		if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
 			return err
 		}
-	}
 
-	if cfg.ForceMBR {
-		if err := checkForceMBR(cfg.Install.Device); err != nil {
+		if err := checkToken(cfg.Token); err != nil {
 			return err
 		}
-	}
-
-	if len(cfg.Install.ManagementInterface.Interfaces) == 0 {
-		return errors.Errorf(ErrMsgManagementInterfaceNotFound)
-	}
-
-	if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
-		return err
 	}
 
 	if cfg.Install.Mode == config.ModeCreate {
 		if err := checkVip(cfg.Vip, cfg.VipHwAddr, cfg.VipMode); err != nil {
 			return err
 		}
-
 		if err := checkSystemSettings(cfg.SystemSettings); err != nil {
 			return err
 		}
@@ -354,17 +400,13 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		return err
 	}
 
-	if err := checkToken(cfg.Token); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func commonCheck(cfg *config.HarvesterConfig) error {
 	// modes
 	switch mode := cfg.Install.Mode; mode {
-	case config.ModeUpgrade:
+	case config.ModeUpgrade, config.ModeInstall:
 		return nil
 	case config.ModeCreate:
 		if cfg.ServerURL != "" {
@@ -378,18 +420,19 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 		return prettyError(ErrMsgModeUnknown, mode)
 	}
 
-	if cfg.Install.Automatic && cfg.Install.ISOURL == "" {
+	if !alreadyInstalled && cfg.Install.Mode != config.ModeInstall && cfg.Install.Automatic && cfg.Install.ISOURL == "" {
 		return errors.New(ErrMsgISOURLNotSpecified)
 	}
 
-	if cfg.Token == "" {
+	if cfg.Install.Mode != config.ModeInstall && cfg.Token == "" {
 		return errors.New(ErrMsgTokenNotSpecified)
 	}
 
 	if len(cfg.SSHAuthorizedKeys) == 0 && cfg.Password == "" {
 		return errors.New(ErrMsgNoCredentials)
 	}
-	return nil
+
+	return checkPersistentStatePaths(cfg.OS.PersistentStatePaths)
 }
 
 func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
@@ -398,4 +441,18 @@ func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
 		return err
 	}
 	return v.Validate(cfg)
+}
+
+func diskChecks(cfg *config.HarvesterConfig) error {
+	if err := checkDevice(cfg); err != nil {
+		return err
+	}
+
+	if cfg.ForceMBR {
+		if err := checkForceMBR(cfg.Install.Device); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

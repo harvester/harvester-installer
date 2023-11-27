@@ -1,7 +1,7 @@
 FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
-FROM quay.io/costoolkit/releases-green:luet-makeiso-toolchain-0.4.0 as makeiso
+FROM quay.io/costoolkit/elemental-cli:v0.2.5 as elemental
 
-FROM registry.suse.com/bci/bci-base:15.3
+FROM registry.suse.com/bci/golang:1.20
 
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
@@ -18,13 +18,16 @@ ENV ARCH $DAPPER_HOST_ARCH
 
 # mtools and dosfstools are requirements for luet-makeiso >= 0.4.0 to build hybrid ISO.
 RUN zypper -n rm container-suseconnect && \
-    zypper -n install go1.18 git curl docker gzip tar wget zstd squashfs xorriso awk jq mtools dosfstools
+    zypper -n install git curl docker gzip tar wget zstd squashfs xorriso awk jq mtools dosfstools unzip rsync
 RUN curl -sfL https://github.com/mikefarah/yq/releases/download/v4.21.1/yq_linux_${ARCH} -o /usr/bin/yq && chmod +x /usr/bin/yq
-RUN go install golang.org/x/lint/golint@latest
-RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN if [ "${ARCH}" == "amd64" ]; then \
-        curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.41.1; \
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.49.0; \
     fi
+
+RUN zypper addrepo http://download.opensuse.org/distribution/leap/15.4/repo/oss/ oss && \
+    zypper --gpg-auto-import-keys refresh && \
+    zypper in -y qemu-x86 qemu-tools
+
 # set up helm
 ENV HELM_VERSION v3.3.1
 ENV HELM_URL=https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz
@@ -32,16 +35,16 @@ RUN mkdir /usr/tmp && \
     curl ${HELM_URL} | tar xvzf - --strip-components=1 -C /usr/tmp/ && \
     mv /usr/tmp/helm /usr/bin/helm
 
-# luet & makeiso
+# luet & elemental
 COPY --from=luet /usr/bin/luet /usr/bin/luet
-COPY --from=makeiso /usr/bin/luet-makeiso /usr/bin/luet-makeiso
+COPY --from=elemental /usr/bin/elemental /usr/bin/elemental
 
 # You cloud defined your own rke2 url by setup `RKE2_IMAGE_REPO`
-ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS RKE2_IMAGE_REPO
+ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS RKE2_IMAGE_REPO USE_LOCAL_IMAGES BUILD_QCOW DRONE_BUILD_EVENT
 ENV DAPPER_SOURCE /go/src/github.com/harvester/harvester-installer/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
-ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock -v harvester-installer-go:/root/go -v harvester-installer-cache:/root/.cache"
+ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock -v harvester-installer-go:/root/go -v harvester-installer-cache:/root/.cache --privileged"
 
 ENV HOME ${DAPPER_SOURCE}
 WORKDIR ${DAPPER_SOURCE}

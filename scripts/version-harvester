@@ -1,6 +1,7 @@
 #!/bin/bash
 
 HARVESTER_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $VERSION)
+HARVESTER_APP_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $APP_VERSION)
 HARVESTER_CHART_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $CHART_VERSION)
 HARVESTER_KUBEVIRT_VERSION=$(yq e '.kubevirt-operator.containers.operator.image.tag' $1/deploy/charts/harvester/values.yaml)
 HARVESTER_MIN_UPGRADABLE_VERSION=$(cd $1; source ./scripts/version &> /dev/null; echo $MIN_UPGRADABLE_VERSION)

@@ -163,6 +163,48 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+func TestContainerdRegistrySettingValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantErrText string
+	}{
+		{
+			name:        "empty object",
+			input:       "{}",
+			wantErrText: "",
+		},
+		{
+			name:        "invalid JSON",
+			input:       `{"error"}`,
+			wantErrText: ErrContainerdRegistrySettingNotValidJSON,
+		},
+		{
+			name:        "invalid config type",
+			input:       `{"Configs": 1}`,
+			wantErrText: ErrContainerdRegistrySettingNotValidJSON,
+		},
+		{
+			name:        "invalid mirrors type",
+			input:       `{"Mirrors": 1}`,
+			wantErrText: ErrContainerdRegistrySettingNotValidJSON,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkSystemSettings(map[string]string{
+				"containerd-registry": tt.input,
+			})
+			if got == nil {
+				assert.Equal(t, tt.wantErrText, "")
+			} else {
+				assert.Equal(t, tt.wantErrText, got.Error())
+			}
+		})
+	}
+}
+
 func TestCheckToken(t *testing.T) {
 	testCases := []struct {
 		name       string
@@ -189,6 +231,86 @@ func TestCheckToken(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := checkToken(tc.tokenValue)
+			if tc.expectErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestCheckPersistentStatePath(t *testing.T) {
+	testCases := []struct {
+		name                string
+		persistentStatePath string
+		expectErr           bool
+	}{
+		{
+			name:                "empty path",
+			persistentStatePath: "",
+			expectErr:           true,
+		},
+		{
+			name:                "not a abs path",
+			persistentStatePath: "var/lib/test",
+			expectErr:           true,
+		},
+		{
+			name:                "valid path",
+			persistentStatePath: "/var/lib/test",
+			expectErr:           false,
+		},
+		{
+			name:                "tmp path1",
+			persistentStatePath: "/tmp",
+			expectErr:           true,
+		},
+		{
+			name:                "tmp path2",
+			persistentStatePath: "/tmp/",
+			expectErr:           true,
+		},
+		{
+			name:                "tmp path3",
+			persistentStatePath: "/tmp/test",
+			expectErr:           true,
+		},
+		{
+			name:                "not tmp path1",
+			persistentStatePath: "/tmptest",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path2",
+			persistentStatePath: "/tmptest/",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path3",
+			persistentStatePath: "/tmptest/tmp",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path4",
+			persistentStatePath: "/tmptest/tmp/",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path5",
+			persistentStatePath: "/tmptest/tmp/foo",
+			expectErr:           false,
+		},
+		{
+			name:                "not tmp path6",
+			persistentStatePath: "/tmptest/tmp/foo/",
+			expectErr:           false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkPersistentStatePath(tc.persistentStatePath)
 			if tc.expectErr {
 				assert.NotNil(t, err)
 			} else {
