@@ -456,6 +456,14 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		return err
 	}
 
+	// specific the node label for the specific node role
+	if hvstConfig.Role == config.RoleEtcd {
+		if hvstConfig.Labels == nil {
+			hvstConfig.Labels = make(map[string]string)
+		}
+		hvstConfig.Labels[util.HarvesterEtcdNodeLabelKey] = "true"
+	}
+
 	env, elementalConfig, err := generateEnvAndConfig(g, hvstConfig)
 	if err != nil {
 		return err
@@ -767,6 +775,14 @@ func configureInstalledNode(g *gocui.Gui, hvstConfig *config.HarvesterConfig, we
 	// copy hvstConfigFile and break execution here
 	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
+
+	// specific the node label for the specific node role
+	if hvstConfig.Role == config.RoleEtcd {
+		if hvstConfig.Labels == nil {
+			hvstConfig.Labels = make(map[string]string)
+		}
+		hvstConfig.Labels[util.HarvesterEtcdNodeLabelKey] = "true"
+	}
 
 	// skip rancherd and network config in the cos config
 	cosConfig, cosConfigFile, hvstConfigFile, err := generateTempConfigFiles(hvstConfig)

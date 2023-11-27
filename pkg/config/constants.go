@@ -6,6 +6,9 @@ const (
 	ModeUpgrade = "upgrade"
 	ModeInstall = "install"
 
+	RoleDefault = "default"
+	RoleEtcd    = "etcd"
+
 	NetworkMethodDHCP   = "dhcp"
 	NetworkMethodStatic = "static"
 	NetworkMethodNone   = "none"

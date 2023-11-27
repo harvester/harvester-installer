@@ -128,6 +128,7 @@ func setPanels(c *Console) error {
 		addNotePanel,
 		addFooterPanel,
 		addAskCreatePanel,
+		addAskRolePanel,
 		addDiskPanel,
 		addHostnamePanel,
 		addNetworkPanel,
@@ -423,7 +424,7 @@ func addDiskPanel(c *Console) error {
 				return false, updateValidatorMessage(err.Error())
 			}
 		}
-		return true, nil;
+		return true, nil
 	}
 	closeThisPage := func() {
 		c.CloseElements(
@@ -439,12 +440,15 @@ func addDiskPanel(c *Console) error {
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
 		diskConfirmed = false
+		if c.config.Install.Mode == config.ModeJoin {
+			return showNext(c, askRolePanel)
+		}
 		return showNext(c, askCreatePanel)
 	}
 	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
 		// Don't proceed to the next page if disk size validation fails
 		if valid, err := validateAllDiskSizes(); !valid || err != nil {
-			return err;
+			return err
 		}
 
 		installDisk := c.config.Install.Device
@@ -492,7 +496,7 @@ func addDiskPanel(c *Console) error {
 		if len(diskOpts) > 1 {
 			// Show error if disk size validation fails, but allow proceeding to next field
 			if _, err := validateAllDiskSizes(); err != nil {
-				return err;
+				return err
 			}
 			if device == dataDisk {
 				return showNext(c, persistentSizePanel, dataDiskPanel)
@@ -505,7 +509,7 @@ func addDiskPanel(c *Console) error {
 		}
 		// Show error if disk size validation fails, but allow proceeding to next field
 		if _, err := validateAllDiskSizes(); err != nil {
-			return err;
+			return err
 		}
 		return showNext(c, persistentSizePanel)
 	}
@@ -540,7 +544,7 @@ func addDiskPanel(c *Console) error {
 			}
 			// Show error if disk size validation fails, but allow proceeding to next field
 			if _, err := validateAllDiskSizes(); err != nil {
-				return err;
+				return err
 			}
 			return showNext(c, persistentSizePanel)
 		}
@@ -721,6 +725,10 @@ func addAskCreatePanel(c *Console) error {
 				installModeOnly = true
 			}
 
+			if c.config.Install.Mode == config.ModeCreate {
+				c.config.Install.Role = config.RoleDefault
+			}
+
 			askCreateV.Close()
 
 			if selected == config.ModeCreate {
@@ -732,6 +740,9 @@ func addAskCreatePanel(c *Console) error {
 
 			// all packages are already install
 			// configure hostname and network
+			if c.config.Install.Mode == config.ModeJoin {
+				return showRolePage(c)
+			}
 			if alreadyInstalled {
 				return showHostnamePage(c)
 			}
@@ -739,6 +750,59 @@ func addAskCreatePanel(c *Console) error {
 		},
 	}
 	c.AddElement(askCreatePanel, askCreateV)
+	return nil
+}
+
+func showRolePage(c *Console) error {
+	setLocation := createVerticalLocatorWithName(c)
+
+	if err := setLocation(askRolePanel, 3); err != nil {
+		return err
+	}
+
+	return showNext(c, askRolePanel)
+}
+
+func addAskRolePanel(c *Console) error {
+	askOptionsFunc := func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Value: config.RoleDefault,
+				Text:  "Default Role (Master or Worker)",
+			}, {
+				Value: config.RoleEtcd,
+				Text:  "Worker (Etcd only)",
+			},
+		}, nil
+	}
+	askRoleV, err := widgets.NewSelect(c.Gui, askRolePanel, "", askOptionsFunc)
+	if err != nil {
+		return err
+	}
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+		c.CloseElements(askRolePanel)
+		return showNext(c, askCreatePanel)
+	}
+	askRoleV.PreShow = func() error {
+		askRoleV.Value = c.config.Install.Role
+		return c.setContentByName(titlePanel, "Choose installation role")
+	}
+	askRoleV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			selected, err := askRoleV.GetData()
+			if err != nil {
+				return err
+			}
+			c.config.Install.Role = selected
+			askRoleV.Close()
+			if alreadyInstalled {
+				return showHostnamePage(c)
+			}
+			return showDiskPage(c)
+		},
+		gocui.KeyEsc: gotoPrevPage,
+	}
+	c.AddElement(askRolePanel, askRoleV)
 	return nil
 }
 
@@ -1041,6 +1105,9 @@ func addHostnamePanel(c *Console) error {
 	prev := func(g *gocui.Gui, v *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
 		if alreadyInstalled {
+			if c.config.Install.Mode == config.ModeJoin {
+				return showNext(c, askRolePanel)
+			}
 			return showNext(c, askCreatePanel)
 		}
 		return showDiskPage(c)
@@ -1732,6 +1799,9 @@ func addConfirmInstallPanel(c *Console) error {
 			return err
 		}
 		options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
+		if !installModeOnly {
+			options += fmt.Sprintf("install role: %v\n", c.config.Install.Role)
+		}
 		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
 		if userInputData.NTPServers != "" {
 			options += fmt.Sprintf("ntp servers: %v\n", userInputData.NTPServers)
