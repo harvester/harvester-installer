@@ -95,6 +95,10 @@ type Webhook struct {
 	BasicAuth HTTPBasicAuth       `json:"basicAuth,omitempty"`
 }
 
+type HarvesterChartValues struct {
+	EnableGoCoverDir bool `json:"enableGoCoverDir,omitempty"`
+}
+
 type Install struct {
 	Automatic           bool    `json:"automatic,omitempty"`
 	Mode                string  `json:"mode,omitempty"`
@@ -119,7 +123,8 @@ type Install struct {
 	ForceMBR bool   `json:"forceMbr,omitempty"`
 	DataDisk string `json:"dataDisk,omitempty"`
 
-	Webhooks []Webhook `json:"webhooks,omitempty"`
+	Webhooks  []Webhook            `json:"webhooks,omitempty"`
+	Harvester HarvesterChartValues `json:"harvester,omitempty"`
 }
 
 type Wifi struct {
