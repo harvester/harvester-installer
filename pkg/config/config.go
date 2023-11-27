@@ -122,8 +122,9 @@ type StorageClass struct {
 }
 
 type HarvesterChartValues struct {
-	StorageClass StorageClass        `json:"storageClass,omitempty"`
-	Longhorn     LonghornChartValues `json:"longhorn,omitempty"`
+	StorageClass     StorageClass        `json:"storageClass,omitempty"`
+	Longhorn         LonghornChartValues `json:"longhorn,omitempty"`
+	EnableGoCoverDir bool                `json:"enableGoCoverDir,omitempty"`
 }
 
 type Install struct {
