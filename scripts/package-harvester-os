@@ -52,13 +52,20 @@ else
   PROJECT_PREFIX+="-master"
 fi
 
+# Create kernel, initrd folder for iso
+# If we use the dir format on the manifest, we need to handle it
+mkdir -p /boot-files/boot
+
 # Copy kernel, initrd out for PXE boot
 KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/vmlinuz)
 INITRD=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/initrd)
 docker create --cidfile=os-img-container ${HARVESTER_OS_IMAGE}
 docker cp $(<os-img-container):/boot/${KERNEL} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-${ARCH}
 docker cp $(<os-img-container):/boot/${INITRD} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
+docker cp $(<os-img-container):/usr/bin/elemental /usr/bin/elemental
 chmod +r ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
+docker cp $(<os-img-container):/boot/${KERNEL} /boot-files/boot/kernel
+docker cp $(<os-img-container):/boot/${INITRD} /boot-files/boot/initrd
 docker rm $(<os-img-container) && rm -f os-img-container
 
 # Make sure files under bundle dir can be read by nginx
@@ -69,7 +76,7 @@ ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
 cp harvester-release.yaml iso
 echo "set harvester_version=${VERSION}" > iso/boot/grub2/harvester.cfg
 
-elemental build-iso --config-dir "$(pwd)" "docker:${HARVESTER_OS_IMAGE}" -a x86_64 \
+elemental build-iso --debug --config-dir "$(pwd)" "docker:${HARVESTER_OS_IMAGE}" \
           --local \
           -n "${ISO_PREFIX}" \
           -o "${ARTIFACTS_DIR}" \

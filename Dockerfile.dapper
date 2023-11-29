@@ -1,6 +1,5 @@
-FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
-FROM quay.io/costoolkit/elemental-cli:v0.2.5 as elemental
-
+FROM quay.io/costoolkit/releases-teal:grub2-live-0.0.4-2 as grub2-mbr
+FROM quay.io/costoolkit/releases-teal:grub2-efi-image-live-0.0.4-2 as grub2-efi
 FROM registry.suse.com/bci/golang:1.20
 
 ARG http_proxy=$http_proxy
@@ -28,16 +27,17 @@ RUN zypper addrepo http://download.opensuse.org/distribution/leap/15.4/repo/oss/
     zypper --gpg-auto-import-keys refresh && \
     zypper in -y qemu-x86 qemu-tools
 
+RUN mkdir /grub2-mbr
+COPY --from=grub2-mbr / /grub2-mbr
+RUN mkdir /grub2-efi
+COPY --from=grub2-efi / /grub2-efi
+
 # set up helm
 ENV HELM_VERSION v3.3.1
 ENV HELM_URL=https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz
 RUN mkdir /usr/tmp && \
     curl ${HELM_URL} | tar xvzf - --strip-components=1 -C /usr/tmp/ && \
     mv /usr/tmp/helm /usr/bin/helm
-
-# luet & elemental
-COPY --from=luet /usr/bin/luet /usr/bin/luet
-COPY --from=elemental /usr/bin/elemental /usr/bin/elemental
 
 # You cloud defined your own rke2 url by setup `RKE2_IMAGE_REPO`
 ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS RKE2_IMAGE_REPO USE_LOCAL_IMAGES BUILD_QCOW
