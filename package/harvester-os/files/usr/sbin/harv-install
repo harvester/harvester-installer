@@ -366,11 +366,20 @@ update_grub_settings()
     # stuck on the grub file search for about 30 minutes, this can be
     # mitigated by adding the `grubenv` file.
     #
-    # PATCH: add /oem/grubenv if it does not exist
+    # We need to patch grubenv, grubcustom
     oem_dir=${TARGET}/oem
-    GRUBENV_FILE="${oem_dir}/grubenv"
-    if ! [ -f ${GRUBENV_FILE} ]; then
-        grub2-editenv ${GRUBENV_FILE} create
+
+    # PATCH1: add /oem/grubenv if it does not exist
+    # grubenv use load_env to load, so we use grub2-editenv
+    TARGET_FILE="${oem_dir}/grubenv"
+    if ! [ -f ${TARGET_FILE} ]; then
+        grub2-editenv ${TARGET_FILE} create
+    fi
+    # PATCH2: add /oem/grubcustom if it does not exist
+    # grubcustom use source to load, so we can use touch directly
+    TARGET_FILE="${oem_dir}/grubcustom"
+    if ! [ -f ${TARGET_FILE} ]; then
+        touch ${TARGET_FILE}
     fi
 
     add_debug_grub_entry
