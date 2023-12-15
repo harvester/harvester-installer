@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 busybox:1.32.0
 alpine:3
+=======
+>>>>>>> a520d68 (feat: remove alpine:3)
 registry.suse.com/suse/vmdp/vmdp:2.5.4.2
 rancher/harvester-eventrouter:v0.1.1
