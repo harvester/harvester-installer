@@ -9,7 +9,7 @@ docker.io/rancher/mirrored-ingress-nginx-kube-webhook-certgen:v1.3.0
 docker.io/rancher/mirrored-kiwigrid-k8s-sidecar:1.19.2
 docker.io/rancher/mirrored-kube-state-metrics-kube-state-metrics:v2.6.0
 docker.io/rancher/mirrored-library-busybox:1.31.1
-docker.io/rancher/mirrored-library-nginx:1.21.1-alpine
+docker.io/rancher/mirrored-library-nginx:1.24.0-alpine
 docker.io/rancher/mirrored-prometheus-adapter-prometheus-adapter:v0.10.0
 docker.io/rancher/mirrored-prometheus-node-exporter:v1.3.1
 docker.io/rancher/mirrored-prometheus-operator-prometheus-config-reloader:v0.59.1
@@ -20,6 +20,7 @@ docker.io/rancher/rancher-webhook:v0.3.6
 docker.io/rancher/rancher:v2.7.9
 docker.io/rancher/shell:v0.1.21
 docker.io/rancher/shell:v0.1.18
+docker.io/rancher/shell:v0.1.19
 docker.io/rancher/system-agent:v0.3.3-suc
 docker.io/rancher/system-upgrade-controller:v0.11.0
 docker.io/rancher/mirrored-banzaicloud-fluentd:v1.14.6-alpine-5
