@@ -1,5 +1,5 @@
 {{- with $.Values.eventTailer }}
-# patch to 100.1.3+up3.17.7/templates/eventtailer.yaml
+# patch to 102.0.1+up3.17.10/templates/eventtailer.yaml
 # harvester-patch to import the event tailer feature
 apiVersion: logging-extensions.banzaicloud.io/v1alpha1
 kind: EventTailer

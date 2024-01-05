@@ -42,7 +42,7 @@ resources:
       namespace: cattle-logging-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "102.0.0+up3.17.10"
+      version: "102.0.1+up3.17.10"
       chart: rancher-logging
       {{- if and .Addons .Addons.rancher_logging }}
       enabled: {{ .Addons.rancher_logging.Enabled }}
@@ -96,7 +96,7 @@ resources:
           controlNamespace: cattle-logging-system
           workloadOverrides:
             containers:
-            - image: rancher/harvester-eventrouter:v0.1.1
+            - image: rancher/harvester-eventrouter:v0.1.2
               name: event-tailer
               resources:
                 limits:
@@ -112,7 +112,7 @@ resources:
       namespace: cattle-monitoring-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "102.0.0+up40.1.2"
+      version: "102.0.2+up40.1.2"
       chart: rancher-monitoring
       {{- if and .Addons .Addons.rancher_monitoring }}
       enabled: {{ .Addons.rancher_monitoring.Enabled }}
