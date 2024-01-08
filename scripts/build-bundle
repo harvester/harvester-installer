@@ -17,6 +17,7 @@ source ${SCRIPTS_DIR}/lib/image
 source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring
 source ${SCRIPTS_DIR}/hack/patch-rancher-logging
 source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring-crd
+source ${SCRIPTS_DIR}/hack/patch-harvester-chart
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 CHARTS_DIR="${PACKAGE_HARVESTER_REPO_DIR}/charts"
@@ -58,6 +59,15 @@ ${SCRIPTS_DIR}/patch-harvester ${TOP_DIR}/../harvester
 # Package harvester chart
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
+
+## for arm based builds we need to patch harvester chart
+## we also patch the version to v1.1.1 for now and this needs to be manually updated
+## in the function until mutli-arch image builds are available in registry.suse.com for kubevirt sles15
+if [ ${ARCH} == "arm64" ]
+then
+  patch_harvester_chart ${harvester_chart_path}
+fi
+
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
 
@@ -94,6 +104,9 @@ patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING
 # make chart sanity check again after patch
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
+# skip addons for now for arm builds
+if [ "{ARCH}" == "amd64" ]
+then
 # Prepare vm-import-controller-chart
 helm pull https://github.com/harvester/charts/releases/download/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
 # make chart sanity check
@@ -108,6 +121,7 @@ tar zxvf ${CHARTS_DIR}/harvester-pcidevices-controller-${PCIDEVICES_CONTROLLER_C
 helm pull https://github.com/harvester/charts/releases/download/harvester-seeder-${HARVESTER_SEEDER_CHART_VERSION}/harvester-seeder-${HARVESTER_SEEDER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
 # make chart sanity check
 tar zxvf ${CHARTS_DIR}/harvester-seeder-${HARVESTER_SEEDER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
+fi
 
 # Prepare nvidia-driver-toolkit chart
 helm pull https://github.com/harvester/charts/releases/download/nvidia-driver-runtime-${NVIDIA_DRIVER_RUNTIME_CHART_VERSION}/nvidia-driver-runtime-${NVIDIA_DRIVER_RUNTIME_CHART_VERSION}.tgz -d ${CHARTS_DIR}
@@ -138,13 +152,14 @@ save_image "common" $BUNDLE_DIR $image_list_file ${IMAGES_DIR}
 
 # RKE2 images
 RKE2_IMAGES_URL="${RKE2_IMAGE_REPO}${RKE2_VERSION}"
-image_list_file="${IMAGES_LISTS_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
-image_archive="${IMAGES_DIR}/rke2-images.linux-amd64-${RKE2_VERSION_NORMALIZED}.tar.zst"
-get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.txt" $image_list_file
-get_url "${RKE2_IMAGES_URL}/rke2-images.linux-amd64.tar.zst" $image_archive
+image_list_file="${IMAGES_LISTS_DIR}/rke2-images.linux-${ARCH}-${RKE2_VERSION_NORMALIZED}.txt"
+image_archive="${IMAGES_DIR}/rke2-images.linux-${ARCH}-${RKE2_VERSION_NORMALIZED}.tar.zst"
+get_url "${RKE2_IMAGES_URL}/rke2-images.linux-${ARCH}.txt" $image_list_file
+get_url "${RKE2_IMAGES_URL}/rke2-images.linux-${ARCH}.tar.zst" $image_archive
 add_image_list_to_metadata "rke2" $BUNDLE_DIR $image_list_file $image_archive
 
 # exclude SR-IOV images
+# use amd64 only image list as we already publish amd images
 image_list_file="${IMAGES_LISTS_DIR}/rke2-images-multus.linux-amd64-${RKE2_VERSION_NORMALIZED}.txt"
 save_image_list "rke2-images-multus" "${RKE2_IMAGES_URL}/rke2-images-multus.linux-amd64.txt" $image_list_file
 
@@ -166,6 +181,9 @@ for i in "${!repositories[@]}"; do
   echo "${repositories[$i]}:${tags[$i]}">>${image_list_file}
 done
 
+# skip addons for now for arm builds
+if [ "{ARCH}" == "amd64" ]
+then
 # vm-import-controller: get images from values.yaml
 echo ${VM_IMPORT_CONTROLLER_IMAGE} >>  ${image_list_file}
 # pcidevices-controller images
@@ -173,7 +191,7 @@ echo ${PCIDEVICES_CONTROLLER_IMAGE} >> ${image_list_file}
 
 # seeder images
 echo ${HARVESTER_SEEDER_IMAGE} >> ${image_list_file}
-
+fi
 # harvester additional images, which is not in rancher images, not in harvester images or any others
 # do not add any comment line into this file, each line should be an valid image name
 cat ${SCRIPTS_DIR}/images/harvester-additional-images.txt >> ${image_list_file}

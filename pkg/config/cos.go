@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -741,6 +742,16 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		}
 
 		bootstrapConfs[templateName] = string(templBytes)
+	}
+
+	// for arm based installs we need to deploy rancherd-23-multus-config.yaml which configures the multus helm chart
+	// to update node selector labels to match arch arm64
+	if goruntime.GOARCH == "arm64" {
+		rendered, err := render("rancherd-23-multus-config.yaml", config)
+		if err != nil {
+			return nil, err
+		}
+		bootstrapConfs["23-multus-config.yaml"] = rendered
 	}
 
 	return bootstrapConfs, nil

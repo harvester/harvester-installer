@@ -46,6 +46,7 @@ ${SCRIPTS_DIR}/collect-deps.sh harvester-release.yaml
 docker build --pull \
 	--build-arg BASE_OS_IMAGE="${BASE_OS_IMAGE}" \
 	--build-arg HARVESTER_PRETTY_NAME="${PRETTY_NAME}" \
+  --build-arg ARCH="${ARCH}" \
 	-t ${HARVESTER_OS_IMAGE} .
 
 PROJECT_PREFIX="harvester"
@@ -61,7 +62,16 @@ fi
 mkdir -p /boot-files/boot
 
 # Copy kernel, initrd out for PXE boot
-KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/vmlinuz)
+if [ ${ARCH} == "amd64" ]
+then
+  KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/vmlinuz)
+fi
+# arm images have `Image` softlink for kernel
+if [ ${ARCH} == "arm64" ]
+then
+  KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/Image)
+fi
+
 INITRD=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/initrd)
 docker create --cidfile=os-img-container ${HARVESTER_OS_IMAGE}
 docker cp $(<os-img-container):/boot/${KERNEL} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-${ARCH}
@@ -80,15 +90,30 @@ ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
 cp harvester-release.yaml iso
 echo "set harvester_version=${VERSION}" > iso/boot/grub2/harvester.cfg
 
-elemental build-iso --debug --config-dir "$(pwd)" "docker:${HARVESTER_OS_IMAGE}" \
+# Elemental platform expects amd64 or aarch64
+PLATFORM=$(uname -m)
+
+CONFIG_DIR="$(pwd)"
+if [ "${ARCH}" == "arm64" ]
+then
+  CONFIG_DIR="$(pwd)/arm"
+  cp $(pwd)/arm/grub.cfg iso/boot/grub2/grub.cfg
+fi
+
+
+elemental build-iso --config-dir "${CONFIG_DIR}" --debug "docker:${HARVESTER_OS_IMAGE}" \
           --local \
           -n "${ISO_PREFIX}" \
           -o "${ARTIFACTS_DIR}" \
           --overlay-iso "$(pwd)/iso" \
-          -x "-comp xz"
+          -x "-comp xz" \
+          --platform "linux/${PLATFORM}"
 
 rm -f ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
 
+# repackaging is only needed for amd64 builds. 
+if [ "${ARCH}" == "amd64" ]
+then
 # Unpack ISO for reconfiguring boot image
 # Elemental toolkit deprecated legacy BIOS boot support, and can only use one boot method (UEFI/BIOS) at the same time,
 # so we need to unpack the ISO, add legacy BIOS boot support back, and repack it.
@@ -138,6 +163,7 @@ pack_iso "${extract_dir}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}-net-inst
 
 # Cleanup
 rm -rf "${extract_dir}"
+fi
 
 if [ "${BUILD_QCOW}" == "true" ]; then
   echo "generating harvester install mode qcow"

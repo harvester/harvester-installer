@@ -205,7 +205,12 @@ preload_rke2_images()
 
       # extract RKE2 binary
       rke2_tmp="$inst_tmp/rke2"
-      mkdir -p $rke2_tmp && tar xf $inst_tmp/rke2.linux-amd64.tar.gz -C $rke2_tmp
+      if [ ${HOSTTYPE} = "aarch64" ]
+      then
+        mkdir -p $rke2_tmp && tar xf $inst_tmp/rke2.linux-arm64.tar.gz -C $rke2_tmp
+      else
+        mkdir -p $rke2_tmp && tar xf $inst_tmp/rke2.linux-amd64.tar.gz -C $rke2_tmp
+      fi
 
       $rke2_tmp/bin/rke2 server &> /rke2.log &
 
@@ -362,6 +367,13 @@ update_grub_settings()
         sed -i "s/console_params=\"console=tty1\"/console_params=\"console=${TTY} console=tty1\"/g" ${TARGET}/etc/cos/bootargs.cfg
     fi
 
+    PLATFORM=$(uname -m)
+    if [ "${PLATFORM}" == "aarch64" ]
+    then
+        # patch kernel in bootargs.cfg to Image on arm nodes
+        sed -i "s/kernel=\/boot\/vmlinuz/kernel=\/boot\/Image/g" ${TARGET}/etc/cos/bootargs.cfg
+    fi
+    
     # calculate recommended crashkernel allocation size
     CRASH_KERNEL_PARAMS=$(get_crashkernel_params || true)
     if [ -n "$CRASH_KERNEL_PARAMS" ]; then
