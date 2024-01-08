@@ -47,6 +47,15 @@ rm -rf "/etc/systemd/system/serial-getty*"
 for TTY in $(cat /sys/class/tty/console/active); do
   tty_num=${TTY#tty}
 
+ #for arm64 the terminals are named /dev/ttyAMA*
+  PLATFORM=$(uname -m)
+  if [ $PLATFORM == "aarch64" ]
+  then
+    if  [[ $tty_num =~ ^AMA[0-9]+$ ]]; then
+      continue
+    fi
+  fi
+
   # tty1 ~ tty64
   if [[ $tty_num =~ ^[0-9]+$ ]]; then
     create_drop_in "/etc/systemd/system/getty@${TTY}.service.d"
@@ -54,6 +63,7 @@ for TTY in $(cat /sys/class/tty/console/active); do
     break
   fi
 
+ 
   # might be serial console
 
   # check type is not 0

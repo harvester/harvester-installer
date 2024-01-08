@@ -1,0 +1,11 @@
+#!/bin/bash
+
+patch_harvester_chart(){
+    local kubevirt_arm_version="v1.1.0"
+    local kubevirt_arm_registry="quay.io\/kubevirt"
+    local kubevirt_amd_registry="registry.suse.com\/suse\/sles\/15.5"
+    local harvester_chart_dir=$1
+    local values_file="${harvester_chart_dir}/values.yaml"
+    sed -ie "s/${kubevirt_amd_registry}/${kubevirt_arm_registry}/g" ${values_file}
+    version=${kubevirt_arm_version} yq -i '.kubevirt-operator.containers.operator.image.tag = env(version)' ${values_file}
+}
