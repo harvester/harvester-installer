@@ -374,6 +374,23 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		},
 	)
 
+	if config.Role == RoleWitness {
+		rke2WitnessConfig, err := render("rke2-99-harvester-witness.yaml", config)
+		if err != nil {
+			return err
+		}
+		rke2WitnessConfig = strings.TrimSpace(rke2WitnessConfig)
+		stage.Files = append(stage.Files,
+			yipSchema.File{
+				Path:        "/etc/rancher/rke2/config.yaml.d/99-harvester-witness.yaml",
+				Content:     rke2WitnessConfig,
+				Permissions: 0600,
+				Owner:       0,
+				Group:       0,
+			},
+		)
+	}
+
 	return nil
 }
 

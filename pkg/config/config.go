@@ -277,6 +277,10 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 		)
 	}
 
+	if c.Role == RoleWitness {
+		args = append(args, "--register-with-taints=node-role.kubernetes.io/etcd=true:NoExecute")
+	}
+
 	return args, nil
 }
 
