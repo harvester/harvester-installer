@@ -7,7 +7,7 @@ const (
 	ModeInstall = "install"
 
 	RoleDefault = "default"
-	RoleEtcd    = "etcd"
+	RoleWitness = "witness"
 
 	NetworkMethodDHCP   = "dhcp"
 	NetworkMethodStatic = "static"

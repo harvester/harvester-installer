@@ -770,8 +770,8 @@ func addAskRolePanel(c *Console) error {
 				Value: config.RoleDefault,
 				Text:  "Default Role (Master or Worker)",
 			}, {
-				Value: config.RoleEtcd,
-				Text:  "Worker (Etcd only)",
+				Value: config.RoleWitness,
+				Text:  "Witness Role",
 			},
 		}, nil
 	}
