@@ -59,6 +59,28 @@ On the newly installed system, `harvester-installer` remains active
 on the console in order to show the cluster management URL along with
 the current node's hostname and IP address.
 
+## Hacking the Interactive Part of `harvester-installer`
+
+Ordinarily `harvester-installer` needs to be run from a booted ISO
+so it can actually install a system.  But, if you're only working
+on changes to the interactive part of the installer (e.g. adding
+or changing fields, or altering the workflow) and don't actually
+need to perform final installation, the binary can be quickly tested
+using vagrant with vagrant-libvirt.  Here's how:
+
+```sh
+ $ USE_LOCAL_IMAGES=true make build
+ $ vagrant up
+ $ vagrant ssh
+ > sudo DEBUG=true TTY=/dev/tty /vagrant/harvester-installer
+```
+
+Be sure the terminal window you use is fairly tall, or it will bail
+out with "panic: invalid dimensions" after you get past the networking
+screen.  To break out of the installer, hit CTRL-C.  If you rebuild
+the binary it can be sync'd back to a running vagrant box with
+`vagrant rsync`.
+
 ## License
 Copyright (c) 2024 [Rancher Labs, Inc.](http://rancher.com)
 
