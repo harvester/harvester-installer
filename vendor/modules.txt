@@ -13,10 +13,10 @@ github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
 github.com/docker/cli/cli/config/types
-# github.com/docker/distribution v2.8.1+incompatible
+# github.com/docker/distribution v2.8.2+incompatible
 ## explicit
 github.com/docker/distribution/registry/client/auth/challenge
-# github.com/docker/docker v20.10.20+incompatible
+# github.com/docker/docker v20.10.27+incompatible
 ## explicit
 github.com/docker/docker/pkg/homedir
 # github.com/docker/docker-credential-helpers v0.7.0
@@ -140,8 +140,8 @@ github.com/rancher/mapper/convert
 github.com/rancher/mapper/definition
 github.com/rancher/mapper/mappers
 github.com/rancher/mapper/values
-# github.com/rancher/wharfie v0.6.2
-## explicit; go 1.19
+# github.com/rancher/wharfie v0.6.5
+## explicit; go 1.20
 github.com/rancher/wharfie/pkg/registries
 # github.com/rancher/wrangler v0.0.0-20190426050201-5946f0eaed19 => github.com/rancher/wrangler v1.1.1
 ## explicit; go 1.19

@@ -13,6 +13,11 @@ import (
 var _ authn.Keychain = &endpoint{}
 var _ http.RoundTripper = &endpoint{}
 
+const (
+	defaultRegistry     = "docker.io"
+	defaultRegistryHost = "index.docker.io"
+)
+
 type endpoint struct {
 	auth     authn.Authenticator
 	keychain authn.Keychain
@@ -69,10 +74,17 @@ func (e endpoint) RoundTrip(req *http.Request) (*http.Response, error) {
 			}
 		}
 
-		// override request host and scheme
+		// override request host and scheme; set ns from original host
+		q := req.URL.Query()
+		if req.Host == defaultRegistryHost {
+			q.Set("ns", defaultRegistry)
+		} else {
+			q.Set("ns", req.Host)
+		}
 		req.Host = endpointURL.Host
 		req.URL.Host = endpointURL.Host
 		req.URL.Scheme = endpointURL.Scheme
+		req.URL.RawQuery = q.Encode()
 	}
 
 	if newURL := req.URL.String(); originalURL != newURL {

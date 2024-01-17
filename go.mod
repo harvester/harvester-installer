@@ -10,7 +10,7 @@ require (
 	github.com/mudler/yip v0.0.0-20211129144714-088f39125cf7
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
-	github.com/rancher/wharfie v0.6.2
+	github.com/rancher/wharfie v0.6.5
 	github.com/sirupsen/logrus v1.9.2
 	github.com/stretchr/testify v1.8.1
 	github.com/tredoe/osutil v1.3.6
@@ -28,8 +28,8 @@ require (
 	github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.20+incompatible // indirect
-	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker v20.10.20+incompatible // indirect
+	github.com/docker/distribution v2.8.2+incompatible // indirect
+	github.com/docker/docker v20.10.27+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
