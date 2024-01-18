@@ -1873,13 +1873,13 @@ func addConfirmInstallPanel(c *Console) error {
 		if !c.config.Install.Silent {
 			if alreadyInstalled {
 				confirmV.SetContent(options +
-					"\nHarvester is already installed. It will be configured with \nthe above configuration.\n Continue?\n")
+					"\nHarvester is already installed. It will be configured with the above configuration. Continue?\n")
 			} else if installModeOnly {
 				confirmV.SetContent(options +
-					"\nHarvester will be copied to local disk.\n No configuration will be performed.\n Continue?\n")
+					"\nHarvester will be copied to local disk. No configuration will be performed. Continue?\n")
 			} else {
 				confirmV.SetContent(options +
-					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+					"\nYour disk will be formatted and Harvester will be installed with the above configuration. Continue?\n")
 			}
 		}
 		c.Gui.Cursor = false
