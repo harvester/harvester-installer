@@ -8,6 +8,8 @@ const (
 
 	RoleDefault = "default"
 	RoleWitness = "witness"
+	RoleMgmt    = "management"
+	RoleWorker  = "worker"
 
 	NetworkMethodDHCP   = "dhcp"
 	NetworkMethodStatic = "static"
