@@ -50,3 +50,17 @@ func isAtEnd(v *gocui.View) bool {
 	}
 	return false
 }
+
+// This will insert linebreaks in a string so that it doesn't exceed
+// the specified number of columns.
+func wrapText(text string, columns int) string {
+	if len(text) < columns {
+		return text
+	}
+	for i := len(text) - 1; i >= 0; i-- {
+		if text[i] == ' ' && i < columns {
+			return text[:i] + "\n" + wrapText(text[i+1:], columns)
+		}
+	}
+	return text
+}

@@ -2,6 +2,7 @@ package widgets
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jroimartin/gocui"
 )
@@ -66,17 +67,18 @@ func (p *Panel) Close() error {
 }
 
 func (p *Panel) Show() error {
-	if p.PreShow != nil {
-		if err := p.PreShow(); err != nil {
-			return err
-		}
-	}
 	if p.X0 == 0 && p.X1 == 0 && p.Y0 == 0 && p.Y1 == 0 {
 		maxX, maxY := p.g.Size()
 		p.X0 = maxX / 8
 		p.X1 = maxX / 8 * 7
 		p.Y0 = maxY / 8
 		p.Y1 = maxY / 8 * 7
+	}
+	// Need to set panel size before calling PreShow in case PreShow calls SetContent
+	if p.PreShow != nil {
+		if err := p.PreShow(); err != nil {
+			return err
+		}
 	}
 	v, err := p.g.SetView(p.Name, p.X0, p.Y0, p.X1, p.Y1)
 	if err != nil {
@@ -137,7 +139,24 @@ func (p *Panel) SetLocation(x0, y0, x1, y1 int) {
 }
 
 func (p *Panel) SetContent(content string) {
-	p.Content = content
+	panelWidth := p.X1 - p.X0
+	if panelWidth > 0 {
+		p.Content = ""
+		lines := strings.Split(content, "\n")
+		for i, line := range lines {
+			if i > 0 {
+				p.Content += "\n"
+			}
+			if len(line) < panelWidth {
+				p.Content += line
+			} else {
+				p.Content += wrapText(line, panelWidth)
+			}
+		}
+	} else {
+		// Just in case we somehow get here without valid dimensions
+		p.Content = content
+	}
 	p.g.Update(func(g *gocui.Gui) error {
 		v, err := p.g.View(p.Name)
 		if err != nil {
