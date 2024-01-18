@@ -51,9 +51,10 @@ var (
 	mgmtNetwork = config.Network{
 		DefaultRoute: true,
 	}
-	alreadyInstalled bool
-	installModeOnly  bool
-	diskConfirmed    bool
+	alreadyInstalled  bool
+	installModeOnly   bool
+	diskConfirmed     bool
+	preflightWarnings []string
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -61,6 +62,11 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 	once.Do(func() {
 		setPanels(c)
 		initPanel := askCreatePanel
+
+		// If there's any preflight warnings, show those first.
+		if len(preflightWarnings) > 0 {
+			initPanel = preflightCheckPanel
+		}
 
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
@@ -127,6 +133,7 @@ func setPanels(c *Console) error {
 		addValidatorPanel,
 		addNotePanel,
 		addFooterPanel,
+		addPreflightCheckPanel,
 		addAskCreatePanel,
 		addAskRolePanel,
 		addDiskPanel,
@@ -654,6 +661,55 @@ func addDiskPanel(c *Console) error {
 		gocui.KeyArrowDown: mbrConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
 	}
+	return nil
+}
+
+func addPreflightCheckPanel(c *Console) error {
+	ackWarningsFunc := func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Value: "yes",
+				Text:  "Yes",
+			}, {
+				Value: "no",
+				Text:  "No",
+			},
+		}, nil
+	}
+	preflightCheckV, err := widgets.NewSelect(c.Gui, preflightCheckPanel, "", ackWarningsFunc)
+	if err != nil {
+		return err
+	}
+	preflightCheckV.FirstPage = true
+	preflightCheckV.Wrap = true
+	preflightCheckV.PreShow = func() error {
+		var warnings string
+		for _, w := range preflightWarnings {
+			warnings += w + "\n"
+		}
+		preflightCheckV.SetContent(warnings +
+			"\nDo you wish to proceed?\n")
+		c.Gui.Cursor = false
+		return c.setContentByName(titlePanel, "Hardware Checks")
+	}
+	preflightCheckV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			proceed, err := preflightCheckV.GetData()
+			if err != nil {
+				return err
+			}
+			if proceed == "no" {
+				preflightCheckV.Close()
+				c.setContentByName(titlePanel, "")
+				c.setContentByName(footerPanel, "")
+				go util.SleepAndReboot()
+				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
+			}
+			preflightCheckV.Close()
+			return showNext(c, askCreatePanel)
+		},
+	}
+	c.AddElement(preflightCheckPanel, preflightCheckV)
 	return nil
 }
 
