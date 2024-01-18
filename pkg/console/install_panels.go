@@ -768,10 +768,16 @@ func addAskRolePanel(c *Console) error {
 		return []widgets.Option{
 			{
 				Value: config.RoleDefault,
-				Text:  "Default Role (Master or Worker)",
+				Text:  "Default Role (Management or Worker)",
+			}, {
+				Value: config.RoleMgmt,
+				Text:  "Management Role",
 			}, {
 				Value: config.RoleWitness,
 				Text:  "Witness Role",
+			}, {
+				Value: config.RoleWorker,
+				Text:  "Worker Role",
 			},
 		}, nil
 	}
@@ -1990,9 +1996,12 @@ func addInstallPanel(c *Console) error {
 			}
 
 			if alreadyInstalled {
-				configureInstalledNode(c.Gui, c.config, webhooks)
+				err = configureInstalledNode(c.Gui, c.config, webhooks)
 			} else {
-				doInstall(c.Gui, c.config, webhooks)
+				err = doInstall(c.Gui, c.config, webhooks)
+			}
+			if err != nil {
+				printToPanel(c.Gui, fmt.Sprintf("install failed: %s", err), installPanel)
 			}
 		}()
 		return c.setContentByName(footerPanel, "")
