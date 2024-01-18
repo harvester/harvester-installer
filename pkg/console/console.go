@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/harvester/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/preflight"
 	"github.com/harvester/harvester-installer/pkg/widgets"
 )
 
@@ -150,6 +151,26 @@ func (c *Console) doRun() error {
 		logrus.Info("harvester already installed")
 		alreadyInstalled = true
 		c.config.Install.Mode = ""
+	}
+
+	if !alreadyInstalled {
+		checks := []preflight.PreflightCheck{
+			preflight.CPUCheck{},
+			preflight.MemoryCheck{},
+			preflight.VirtCheck{},
+		}
+		for _, c := range checks {
+			msg, err := c.Run()
+			if err != nil {
+				// Preflight checks that fail to run at all are
+				// logged, rather than killing the installer
+				logrus.Error(err)
+				continue
+			}
+			if len(msg) > 0 {
+				preflightWarnings = append(preflightWarnings, msg)
+			}
+		}
 	}
 
 	c.SetManagerFunc(dashboard)
