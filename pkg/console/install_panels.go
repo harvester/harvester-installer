@@ -705,6 +705,7 @@ func addPreflightCheckPanel(c *Console) error {
 				go util.SleepAndReboot()
 				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
 			}
+			c.config.SkipChecks = true
 			preflightCheckV.Close()
 			return showNext(c, askCreatePanel)
 		},
@@ -1958,6 +1959,25 @@ func addInstallPanel(c *Console) error {
 	installV := widgets.NewPanel(c.Gui, installPanel)
 	installV.PreShow = func() error {
 		go func() {
+			if !alreadyInstalled && len(preflightWarnings) > 0 {
+				if c.config.SkipChecks {
+					// User is happy to skip checks so let installation proceed,
+					// but still log the warning messages (this happens for both
+					// interactive and automatic/PXE install)
+					for _, warning := range preflightWarnings {
+						logrus.Warning(warning)
+					}
+				} else {
+					// Checks were not explicitly skipped, fail the install
+					// (this will happen when PXE booted if checks fail and
+					// you don't set harvester.install.skipcheck=true)
+					for _, warning := range preflightWarnings {
+						logrus.Error(warning)
+						printToPanel(c.Gui, warning, installPanel)
+					}
+					return
+				}
+			}
 			// in alreadyInstalled mode and auto configuration, the network is not available
 			if alreadyInstalled && c.config.Automatic == true && c.config.ManagementInterface.Method == "dhcp" {
 				configureInstallModeDHCP(c)
