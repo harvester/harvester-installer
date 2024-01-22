@@ -49,6 +49,17 @@ command line parameter `harvester.install.automatic=true` causes the
 interactive part to be skipped, and config will be retrieved from the
 URL specified by `harvester.install.config_url`.
 
+The installer will run some preflight checks to ensure the system
+meets minimum hardware requirements.  If any of these checks
+fail when run interactively, the first page of the installer will
+indicate which checks failed, and give you the option to proceed or
+not.  When installing via PXE, if any checks fail, installation will
+abort and the failed checks will be visible on the system console,
+and also logged to /var/log/console.log in the installation environment.
+If you wish to bypass the preflight checks for testing purposes during
+automated installation, set the `harvester.install.skipchecks=true`
+kernel command line parmaeter.
+
 Either way (ISO or PXE), the installer writes the final config out to
 a temporary file which is passed to [harv-install](https://github.com/harvester/harvester-installer/blob/master/package/harvester-os/files/usr/sbin/harv-install)
 which in turn calls `elemental install` to provision the system.

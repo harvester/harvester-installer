@@ -129,6 +129,7 @@ type HarvesterChartValues struct {
 
 type Install struct {
 	Automatic           bool    `json:"automatic,omitempty"`
+	SkipChecks          bool    `json:"skipchecks,omitempty"`
 	Mode                string  `json:"mode,omitempty"`
 	ManagementInterface Network `json:"managementInterface,omitempty"`
 
