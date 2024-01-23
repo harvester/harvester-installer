@@ -19,6 +19,12 @@ const (
 	MinMemoryProd = 64
 )
 
+var (
+	// So that we can fake this stuff up for unit tests
+	execCommand = exec.Command
+	procMemInfo = "/proc/meminfo"
+)
+
 // The Run() method of a preflight.Check returns a string.  If the string
 // is empty, it means the check passed.  Otherwise, the string contains
 // some text explaining why the check failed.  The error value will be set
@@ -32,7 +38,7 @@ type MemoryCheck struct{}
 type VirtCheck struct{}
 
 func (c CPUCheck) Run() (msg string, err error) {
-	out, err := exec.Command("/usr/bin/nproc", "--all").CombinedOutput()
+	out, err := execCommand("/usr/bin/nproc", "--all").Output()
 	if err != nil {
 		return
 	}
@@ -48,7 +54,7 @@ func (c CPUCheck) Run() (msg string, err error) {
 }
 
 func (c MemoryCheck) Run() (msg string, err error) {
-	meminfo, err := os.Open("/proc/meminfo")
+	meminfo, err := os.Open(procMemInfo)
 	if err != nil {
 		return
 	}
@@ -95,7 +101,7 @@ func (c MemoryCheck) Run() (msg string, err error) {
 }
 
 func (c VirtCheck) Run() (msg string, err error) {
-	out, err := exec.Command("/usr/bin/systemd-detect-virt", "--vm").CombinedOutput()
+	out, err := execCommand("/usr/bin/systemd-detect-virt", "--vm").Output()
 	virt := strings.TrimSpace(string(out))
 	if err != nil {
 		// systemd-detect-virt will return a non-zero exit code
