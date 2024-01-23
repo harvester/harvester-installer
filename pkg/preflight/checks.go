@@ -19,11 +19,11 @@ const (
 	MinMemoryProd = 64
 )
 
-// The Run() method of a PreflightCheck returns a string.  If the string
+// The Run() method of a preflight.Check returns a string.  If the string
 // is empty, it means the check passed.  Otherwise, the string contains
 // some text explaining why the check failed.  The error value will be set
 // if the check itself failed to run at all for some reason.
-type PreflightCheck interface {
+type Check interface {
 	Run() (string, error)
 }
 

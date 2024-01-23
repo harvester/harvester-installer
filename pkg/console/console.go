@@ -154,7 +154,7 @@ func (c *Console) doRun() error {
 	}
 
 	if !alreadyInstalled {
-		checks := []preflight.PreflightCheck{
+		checks := []preflight.Check{
 			preflight.CPUCheck{},
 			preflight.MemoryCheck{},
 			preflight.VirtCheck{},
