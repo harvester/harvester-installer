@@ -79,9 +79,9 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 		}
 
 		if cfg, err := config.ReadConfig(); err == nil {
+			c.config.Merge(cfg)
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
-				c.config.Merge(cfg)
 				// setup InstallMode to ensure that during automatic install
 				// we are only copying binaries and ignoring network / rancherd setup
 				// needed for generating pre-installed qcow2 image
