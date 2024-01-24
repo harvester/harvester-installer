@@ -282,6 +282,13 @@ preload_rancherd_images()
     cp ${ISOMNT}/bundle/rancherd/images/* $TARGET/var/lib/rancher/agent/images
 }
 
+defer_preload_images()
+{
+    echo "Save image tarball(s) to $TARGET/var/lib/rancher/rke2/agent/images"
+    mkdir -p $TARGET/var/lib/rancher/rke2/agent/images
+    cp ${ISOMNT}/bundle/harvester/images/*.tar.zst $TARGET/var/lib/rancher/rke2/agent/images
+}
+
 do_preload()
 {
     # Bind mount persistent folder to preload images
@@ -294,8 +301,14 @@ do_preload()
         mount -o bind $TARGET/$state_dir $TARGET/$i
     done
 
-    preload_rancherd_images
-    preload_rke2_images
+    if [ -n "$HARVESTER_WITH_NET_IMAGES" ]; then
+        # Preload images after the installing node reboots and RKE2 starts
+        defer_preload_images
+    else
+        # Preload all images now
+        preload_rancherd_images
+        preload_rke2_images
+    fi
 
     for i in ${BIND_MOUNTS[@]}; do
         umount $TARGET/$i
