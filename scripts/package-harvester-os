@@ -16,6 +16,7 @@ source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-logging
+source ${SCRIPTS_DIR}/lib/iso
 
 BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
@@ -111,25 +112,29 @@ mcopy -s -i "${uefi_img}" "${extract_dir}/EFI" ::
 
 # Remove original ISO, and repack it using xorriso
 rm -f "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
-xorriso -volid "$(yq '.iso.label' manifest.yaml)" \
-    -joliet on -padding 0 \
-    -outdev "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso" \
-    -map "${extract_dir}" / -chmod 0755 -- \
-    -boot_image grub bin_path="boot/x86_64/loader/eltorito.img" \
-    -boot_image grub grub2_mbr="${extract_dir}/boot/x86_64/loader/boot_hybrid.img" \
-    -boot_image grub grub2_boot_info=on \
-    -boot_image any partition_offset=16 \
-    -boot_image any cat_path="boot/x86_64/boot.catalog" \
-    -boot_image any cat_hidden=on \
-    -boot_image any boot_info_table=on \
-    -boot_image any platform_id=0x00 \
-    -boot_image any emul_type=no_emulation \
-    -boot_image any load_size=2048 \
-    -append_partition 2 0xef "${extract_dir}/boot/uefi.img" \
-    -boot_image any next \
-    -boot_image any efi_path=--interval:appended_partition_2:all:: \
-    -boot_image any platform_id=0xef \
-    -boot_image any emul_type=no_emulation
+iso_vol_id="$(yq '.iso.label' manifest.yaml)"
+pack_iso "${extract_dir}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
+
+
+# Net-install ISO
+echo "set extra_iso_cmdline=harvester.install.with_net_images=true" >> ${extract_dir}/boot/grub2/harvester.cfg
+
+# bundle the harvester-cluster-repo image for net-install ISO
+mkdir ${extract_dir}/bundle.new
+yq '.images.common[] | select(.list == "*harvester-repo-images-*.txt") | {"images": {"common": [.]}}' \
+  ${extract_dir}/bundle/metadata.yaml > ${extract_dir}/bundle.new/metadata.yaml
+cluster_repo_image_list=$(yq '.images.common[0].list' ${extract_dir}/bundle.new/metadata.yaml)
+cluster_repo_image_list_dir=${extract_dir}/bundle.new/$(dirname $cluster_repo_image_list)
+cluster_repo_image_archive=$(yq '.images.common[0].archive' ${extract_dir}/bundle.new/metadata.yaml)
+cluster_repo_image_archive_dir=${extract_dir}/bundle.new/$(dirname $cluster_repo_image_archive)
+mkdir -p $cluster_repo_image_list_dir && cp ${extract_dir}/bundle/$cluster_repo_image_list $cluster_repo_image_list_dir
+mkdir -p $cluster_repo_image_archive_dir && cp ${extract_dir}/bundle/$cluster_repo_image_archive $cluster_repo_image_archive_dir
+rm -rf ${extract_dir}/bundle
+mv ${extract_dir}/bundle.new ${extract_dir}/bundle
+chmod -R a=r,u+w,a+X "${extract_dir}/bundle"
+
+pack_iso "${extract_dir}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}-net-install.iso"
+
 
 # Cleanup
 rm -rf "${extract_dir}"

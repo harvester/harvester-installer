@@ -137,17 +137,18 @@ type Install struct {
 	VipHwAddr string `json:"vipHwAddr,omitempty"`
 	VipMode   string `json:"vipMode,omitempty"`
 
-	ForceEFI  bool   `json:"forceEfi,omitempty"`
-	Device    string `json:"device,omitempty"`
-	ConfigURL string `json:"configUrl,omitempty"`
-	Silent    bool   `json:"silent,omitempty"`
-	ISOURL    string `json:"isoUrl,omitempty"`
-	PowerOff  bool   `json:"powerOff,omitempty"`
-	NoFormat  bool   `json:"noFormat,omitempty"`
-	Debug     bool   `json:"debug,omitempty"`
-	TTY       string `json:"tty,omitempty"`
-	ForceGPT  bool   `json:"forceGpt,omitempty"`
-	Role      string `json:"role,omitempty"`
+	ForceEFI      bool   `json:"forceEfi,omitempty"`
+	Device        string `json:"device,omitempty"`
+	ConfigURL     string `json:"configUrl,omitempty"`
+	Silent        bool   `json:"silent,omitempty"`
+	ISOURL        string `json:"isoUrl,omitempty"`
+	PowerOff      bool   `json:"powerOff,omitempty"`
+	NoFormat      bool   `json:"noFormat,omitempty"`
+	Debug         bool   `json:"debug,omitempty"`
+	TTY           string `json:"tty,omitempty"`
+	ForceGPT      bool   `json:"forceGpt,omitempty"`
+	Role          string `json:"role,omitempty"`
+	WithNetImages bool   `json:"withNetImages,omitempty"`
 
 	// Following options are not cOS installer flag
 	ForceMBR bool   `json:"forceMbr,omitempty"`

@@ -1,0 +1,27 @@
+pack_iso() {
+    local extract_dir=$1
+    local vol_id=$2
+    local iso_file=$3
+
+    echo "Creating ISO ${iso_file} from ${extract_dir}, vol_id: ${vol_id}..."
+
+    xorriso -volid "$vol_id" \
+        -joliet on -padding 0 \
+        -outdev "$iso_file" \
+        -map "${extract_dir}" / -chmod 0755 -- \
+        -boot_image grub bin_path="boot/x86_64/loader/eltorito.img" \
+        -boot_image grub grub2_mbr="${extract_dir}/boot/x86_64/loader/boot_hybrid.img" \
+        -boot_image grub grub2_boot_info=on \
+        -boot_image any partition_offset=16 \
+        -boot_image any cat_path="boot/x86_64/boot.catalog" \
+        -boot_image any cat_hidden=on \
+        -boot_image any boot_info_table=on \
+        -boot_image any platform_id=0x00 \
+        -boot_image any emul_type=no_emulation \
+        -boot_image any load_size=2048 \
+        -append_partition 2 0xef "${extract_dir}/boot/uefi.img" \
+        -boot_image any next \
+        -boot_image any efi_path=--interval:appended_partition_2:all:: \
+        -boot_image any platform_id=0xef \
+        -boot_image any emul_type=no_emulation
+}
