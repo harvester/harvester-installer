@@ -174,6 +174,7 @@ preload_rke2_images()
     cd $TARGET
     mount --bind /dev dev
     mount --bind /proc proc
+    mount --rbind /sys sys
 
     echo "Loading images. This may take a few minutes..."
     install_mode="$INSTALL_MODE" tmp_images_dir="$TMP_IMAGES_DIR" images_lists_dir="$IMAGES_LISTS_DIR" chroot . /bin/bash <<"EOF"
