@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"strconv"
@@ -23,6 +24,7 @@ var (
 	// So that we can fake this stuff up for unit tests
 	execCommand = exec.Command
 	procMemInfo = "/proc/meminfo"
+	devKvm      = "/dev/kvm"
 )
 
 // The Run() method of a preflight.Check returns a string.  If the string
@@ -36,6 +38,7 @@ type Check interface {
 type CPUCheck struct{}
 type MemoryCheck struct{}
 type VirtCheck struct{}
+type KVMHostCheck struct{}
 
 func (c CPUCheck) Run() (msg string, err error) {
 	out, err := execCommand("/usr/bin/nproc", "--all").Output()
@@ -116,5 +119,13 @@ func (c VirtCheck) Run() (msg string, err error) {
 		return
 	}
 	msg = fmt.Sprintf("System is virtualized (%s) which is not supported.", virt)
+	return
+}
+
+func (c KVMHostCheck) Run() (msg string, err error) {
+	if _, err = os.Stat(devKvm); errors.Is(err, fs.ErrNotExist) {
+		msg = "Harvester requires hardware-assisted virtualization, but /dev/kvm does not exist."
+		err = nil
+	}
 	return
 }

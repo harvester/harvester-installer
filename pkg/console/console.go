@@ -158,6 +158,7 @@ func (c *Console) doRun() error {
 			preflight.CPUCheck{},
 			preflight.MemoryCheck{},
 			preflight.VirtCheck{},
+			preflight.KVMHostCheck{},
 		}
 		for _, c := range checks {
 			msg, err := c.Run()
