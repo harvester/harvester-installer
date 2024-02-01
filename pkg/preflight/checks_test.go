@@ -129,3 +129,21 @@ func TestMemoryCheck(t *testing.T) {
 		assert.Equal(t, expectedOutput, msg)
 	}
 }
+
+func TestKVMHostCheck(t *testing.T) {
+	defaultDevKvm := devKvm
+	defer func() { devKvm = defaultDevKvm }()
+
+	expectedOutputs := map[string]string{
+		"./testdata/dev-kvm-does-not-exist": "Harvester requires hardware-assisted virtualization, but /dev/kvm does not exist.",
+		"./testdata/dev-kvm":                "",
+	}
+
+	check := KVMHostCheck{}
+	for file, expectedOutput := range expectedOutputs {
+		devKvm = file
+		msg, err := check.Run()
+		assert.Nil(t, err)
+		assert.Equal(t, expectedOutput, msg)
+	}
+}
