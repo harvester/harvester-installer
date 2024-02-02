@@ -433,6 +433,20 @@ func addDiskPanel(c *Console) error {
 		}
 		return true, nil
 	}
+	validatePersistentPartitionSize := func(persistentSize string) (bool, error) {
+		installDisk := c.config.Install.Device
+		dataDisk := c.config.Install.DataDisk
+		if dataDisk == "" || installDisk == dataDisk {
+			diskSize, err := util.GetDiskSizeBytes(installDisk)
+			if err != nil {
+				return false, err
+			}
+			if _, err := util.ParsePartitionSize(diskSize, persistentSize); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+		}
+		return true, nil
+	}
 	closeThisPage := func() {
 		c.CloseElements(
 			diskPanel,
@@ -458,17 +472,10 @@ func addDiskPanel(c *Console) error {
 			return err
 		}
 
-		installDisk := c.config.Install.Device
-		dataDisk := c.config.Install.DataDisk
-		persistentSize := c.config.Install.PersistentPartitionSize
-		if dataDisk == "" || installDisk == dataDisk {
-			diskSize, err := util.GetDiskSizeBytes(c.config.Install.Device)
-			if err != nil {
-				return err
-			}
-			if _, err := util.ParsePartitionSize(diskSize, persistentSize); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
+		// Make sure the persistent partition size is in the correct size.
+		// Do NOT allow proceeding to next field.
+		if valid, err := validatePersistentPartitionSize(c.config.Install.PersistentPartitionSize); !valid || err != nil {
+			return err
 		}
 
 		if !diskConfirmed {
@@ -583,6 +590,17 @@ func addDiskPanel(c *Console) error {
 		if err != nil {
 			return err
 		}
+
+		// Clear previous error message.
+		if err := updateValidatorMessage(""); err != nil {
+			return err
+		}
+
+		// Make sure that the specified size meets the requirements.
+		if valid, err := validatePersistentPartitionSize(persistentSize); !valid || err != nil {
+			return err
+		}
+
 		c.config.Install.PersistentPartitionSize = persistentSize
 
 		if systemIsBIOS() {
