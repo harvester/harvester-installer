@@ -64,7 +64,7 @@ Either way (ISO or PXE), the installer writes the final config out to
 a temporary file which is passed to [harv-install](https://github.com/harvester/harvester-installer/blob/master/package/harvester-os/files/usr/sbin/harv-install)
 which in turn calls `elemental install` to provision the system.
 The harv-install script also preloads all the container images.
-Finally the system is rebooted.
+Finally, the system is rebooted.
 
 On the newly installed system, `harvester-installer` remains active
 on the console in order to show the cluster management URL along with
@@ -72,7 +72,7 @@ the current node's hostname and IP address.
 
 ## Hacking the Interactive Part of `harvester-installer`
 
-Ordinarily `harvester-installer` needs to be run from a booted ISO
+Ordinarily `harvester-installer` needs to be run from a booted ISO,
 so it can actually install a system.  But, if you're only working
 on changes to the interactive part of the installer (e.g. adding
 or changing fields, or altering the workflow) and don't actually
@@ -91,6 +91,34 @@ out with "panic: invalid dimensions" after you get past the networking
 screen.  To break out of the installer, hit CTRL-C.  If you rebuild
 the binary it can be sync'd back to a running vagrant box with
 `vagrant rsync`.
+
+To remote debug the `harvester-installer` in your IDE, you need to
+install the `delve` package in your Vagrant box first.
+
+```sh
+ $ zypper addrepo https://download.opensuse.org/repositories/devel:languages:go/15.4/devel:languages:go.repo
+ $ zypper refresh
+ $ zypper install delve
+```
+
+Then rebuild the `harvester-installer` app and start it in the
+Vagrant box.
+
+```sh
+ $ REMOTE_DEBUG=true USE_LOCAL_IMAGES=true make build
+ $ vagrant rsync
+ $ vagrant ssh
+ > sudo DEBUG=true TTY=/dev/tty dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /vagrant/harvester-installer
+```
+
+The `harvester-installer` app will now listen for remote connections
+on port `2345`.
+
+Run `vagrant ssh-config` on your host to get the IP address that is 
+needed to connect the IDE debugger to the `harvester-installer` app.
+If you are using the Goland IDE, check out their [documentation](https://www.jetbrains.com/help/go/go-remote.html)
+how to attach to the `harvester-installer` process on the remote
+Vagrant box.
 
 ## License
 Copyright (c) 2024 [Rancher Labs, Inc.](http://rancher.com)
