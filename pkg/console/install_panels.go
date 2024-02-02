@@ -581,6 +581,16 @@ func addDiskPanel(c *Console) error {
 		}
 
 		c.CloseElements(persistentSizePanel)
+
+		// Make sure disk settings are correct. Do NOT allow proceeding to
+		// next field.
+		if _, err := validateAllDiskSizes(); err != nil {
+			return err
+		}
+
+		// At this point the disk configuration is valid.
+		diskConfirmed = true
+
 		if systemIsBIOS() {
 			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
 				return err
@@ -619,6 +629,9 @@ func addDiskPanel(c *Console) error {
 		}
 
 		c.config.Install.PersistentPartitionSize = persistentSize
+
+		// At this point the disk configuration is valid.
+		diskConfirmed = true
 
 		if systemIsBIOS() {
 			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
