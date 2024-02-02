@@ -6,6 +6,11 @@ const (
 	ModeUpgrade = "upgrade"
 	ModeInstall = "install"
 
+	RoleDefault = "default"
+	RoleWitness = "witness"
+	RoleMgmt    = "management"
+	RoleWorker  = "worker"
+
 	NetworkMethodDHCP   = "dhcp"
 	NetworkMethodStatic = "static"
 	NetworkMethodNone   = "none"

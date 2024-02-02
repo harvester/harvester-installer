@@ -47,9 +47,12 @@ func (s *Select) Show() error {
 		return err
 	}
 	optionViewName := s.Name + "-options"
-	offset := len(strings.Split(s.Content, "\n"))
-	y0 := s.Y0 + offset - 1
-	y1 := s.Y0 + offset + len(s.options)
+	offset := 0
+	if len(s.Content) > 0 {
+		offset = len(strings.Split(s.Content, "\n")) + 1
+	}
+	y0 := s.Y0 + offset
+	y1 := s.Y0 + offset + len(s.options) + 1
 	v, err := s.g.SetView(optionViewName, s.X0, y0, s.X1, y1)
 	if err != nil {
 		if err != gocui.ErrUnknownView {

@@ -122,12 +122,14 @@ type StorageClass struct {
 }
 
 type HarvesterChartValues struct {
-	StorageClass StorageClass        `json:"storageClass,omitempty"`
-	Longhorn     LonghornChartValues `json:"longhorn,omitempty"`
+	StorageClass     StorageClass        `json:"storageClass,omitempty"`
+	Longhorn         LonghornChartValues `json:"longhorn,omitempty"`
+	EnableGoCoverDir bool                `json:"enableGoCoverDir,omitempty"`
 }
 
 type Install struct {
 	Automatic           bool    `json:"automatic,omitempty"`
+	SkipChecks          bool    `json:"skipchecks,omitempty"`
 	Mode                string  `json:"mode,omitempty"`
 	ManagementInterface Network `json:"managementInterface,omitempty"`
 
@@ -145,6 +147,7 @@ type Install struct {
 	Debug     bool   `json:"debug,omitempty"`
 	TTY       string `json:"tty,omitempty"`
 	ForceGPT  bool   `json:"forceGpt,omitempty"`
+	Role      string `json:"role,omitempty"`
 
 	// Following options are not cOS installer flag
 	ForceMBR bool   `json:"forceMbr,omitempty"`
@@ -184,8 +187,16 @@ type OS struct {
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
+	SSHD           SSHDConfig        `json:"sshd,omitempty"`
 
 	PersistentStatePaths []string `json:"persistentStatePaths,omitempty"`
+}
+
+// SSHDConfig is the SSHD configuration for the node
+//
+//   - SFTP: the switch to enable/disable SFTP
+type SSHDConfig struct {
+	SFTP bool `json:"sftp,omitempty"`
 }
 
 type HarvesterConfig struct {
@@ -265,6 +276,10 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 		args = append(args,
 			fmt.Sprintf("node-labels=%s", strings.Join(labelStrs, ",")),
 		)
+	}
+
+	if c.Role == RoleWitness {
+		args = append(args, "--register-with-taints=node-role.kubernetes.io/etcd=true:NoExecute")
 	}
 
 	return args, nil

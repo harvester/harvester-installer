@@ -447,12 +447,39 @@ func saveTemp(obj interface{}, prefix string) (string, error) {
 	return tempFile.Name(), nil
 }
 
+func roleSetup(c *config.HarvesterConfig) error {
+	if c.Role == "" {
+		return nil
+	}
+	if c.Labels == nil {
+		c.Labels = make(map[string]string)
+	}
+	switch c.Role {
+	case config.RoleMgmt:
+		c.Labels[util.HarvesterMgmtNodeLabelKey] = "true"
+	case config.RoleWorker:
+		c.Labels[util.HarvesterWorkerNodeLabelKey] = "true"
+	case config.RoleWitness:
+		c.Labels[util.HarvesterWitnessNodeLabelKey] = "true"
+	case config.RoleDefault:
+		// do not set any label
+	default:
+		return fmt.Errorf("unknown role %s, please correct it!", c.Role)
+	}
+	return nil
+}
+
 func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks RendererWebhooks) error {
 	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
 
 	err := updateSystemSettings(hvstConfig)
 	if err != nil {
+		return err
+	}
+
+	// specific the node label for the specific node role
+	if err := roleSetup(hvstConfig); err != nil {
 		return err
 	}
 
@@ -638,7 +665,7 @@ func validateDiskSize(devPath string, single bool) error {
 		limit = config.MultipleDiskMinSizeGiB
 	}
 	if util.ByteToGi(diskSizeBytes) < uint64(limit) {
-		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", limit)
+		return fmt.Errorf("Installation disk size is too small. Minimum %dGi is required", limit)
 	}
 
 	return nil
@@ -650,7 +677,7 @@ func validateDataDiskSize(devPath string) error {
 		return err
 	}
 	if util.ByteToGi(diskSizeBytes) < config.HardMinDataDiskSizeGiB {
-		return fmt.Errorf("Disk size is too small. Minimum %dGi is required", config.HardMinDataDiskSizeGiB)
+		return fmt.Errorf("Data disk size is too small. Minimum %dGi is required", config.HardMinDataDiskSizeGiB)
 	}
 
 	return nil
@@ -767,6 +794,11 @@ func configureInstalledNode(g *gocui.Gui, hvstConfig *config.HarvesterConfig, we
 	// copy hvstConfigFile and break execution here
 	ctx := context.TODO()
 	webhooks.Handle(EventInstallStarted)
+
+	// specific the node label for the specific node role
+	if err := roleSetup(hvstConfig); err != nil {
+		return err
+	}
 
 	// skip rancherd and network config in the cos config
 	cosConfig, cosConfigFile, hvstConfigFile, err := generateTempConfigFiles(hvstConfig)

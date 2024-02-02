@@ -51,9 +51,10 @@ var (
 	mgmtNetwork = config.Network{
 		DefaultRoute: true,
 	}
-	alreadyInstalled bool
-	installModeOnly  bool
-	diskConfirmed    bool
+	alreadyInstalled  bool
+	installModeOnly   bool
+	diskConfirmed     bool
+	preflightWarnings []string
 )
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
@@ -61,6 +62,11 @@ func (c *Console) layoutInstall(g *gocui.Gui) error {
 	once.Do(func() {
 		setPanels(c)
 		initPanel := askCreatePanel
+
+		// If there's any preflight warnings, show those first.
+		if len(preflightWarnings) > 0 {
+			initPanel = preflightCheckPanel
+		}
 
 		c.config.OS.Modules = []string{"kvm", "vhost_net"}
 
@@ -127,7 +133,9 @@ func setPanels(c *Console) error {
 		addValidatorPanel,
 		addNotePanel,
 		addFooterPanel,
+		addPreflightCheckPanel,
 		addAskCreatePanel,
+		addAskRolePanel,
 		addDiskPanel,
 		addHostnamePanel,
 		addNetworkPanel,
@@ -407,6 +415,24 @@ func addDiskPanel(c *Console) error {
 	c.AddElement(diskValidatorPanel, diskValidatorV)
 
 	// Helper functions
+	validateAllDiskSizes := func() (bool, error) {
+		installDisk := c.config.Install.Device
+		dataDisk := c.config.Install.DataDisk
+
+		if dataDisk == "" || installDisk == dataDisk {
+			if err := validateDiskSize(installDisk, true); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+		} else {
+			if err := validateDiskSize(installDisk, false); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+			if err := validateDataDiskSize(dataDisk); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+		}
+		return true, nil
+	}
 	closeThisPage := func() {
 		c.CloseElements(
 			diskPanel,
@@ -421,30 +447,26 @@ func addDiskPanel(c *Console) error {
 	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
 		closeThisPage()
 		diskConfirmed = false
+		if c.config.Install.Mode == config.ModeJoin {
+			return showNext(c, askRolePanel)
+		}
 		return showNext(c, askCreatePanel)
 	}
 	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+		// Don't proceed to the next page if disk size validation fails
+		if valid, err := validateAllDiskSizes(); !valid || err != nil {
+			return err
+		}
+
 		installDisk := c.config.Install.Device
 		dataDisk := c.config.Install.DataDisk
 		persistentSize := c.config.Install.PersistentPartitionSize
-
 		if dataDisk == "" || installDisk == dataDisk {
-			if err := validateDiskSize(installDisk, true); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
-
 			diskSize, err := util.GetDiskSizeBytes(c.config.Install.Device)
 			if err != nil {
 				return err
 			}
 			if _, err := util.ParsePartitionSize(diskSize, persistentSize); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
-		} else {
-			if err := validateDiskSize(installDisk, false); err != nil {
-				return updateValidatorMessage(err.Error())
-			}
-			if err := validateDataDiskSize(dataDisk); err != nil {
 				return updateValidatorMessage(err.Error())
 			}
 		}
@@ -479,7 +501,8 @@ func addDiskPanel(c *Console) error {
 		c.config.Install.Device = device
 
 		if len(diskOpts) > 1 {
-			if err := updateValidatorMessage(""); err != nil {
+			// Show error if disk size validation fails, but allow proceeding to next field
+			if _, err := validateAllDiskSizes(); err != nil {
 				return err
 			}
 			if device == dataDisk {
@@ -491,7 +514,8 @@ func addDiskPanel(c *Console) error {
 		if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
 			return err
 		}
-		if err := updateValidatorMessage(""); err != nil {
+		// Show error if disk size validation fails, but allow proceeding to next field
+		if _, err := validateAllDiskSizes(); err != nil {
 			return err
 		}
 		return showNext(c, persistentSizePanel)
@@ -523,6 +547,10 @@ func addDiskPanel(c *Console) error {
 		}
 		if installDisk == dataDisk {
 			if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
+				return err
+			}
+			// Show error if disk size validation fails, but allow proceeding to next field
+			if _, err := validateAllDiskSizes(); err != nil {
 				return err
 			}
 			return showNext(c, persistentSizePanel)
@@ -636,6 +664,56 @@ func addDiskPanel(c *Console) error {
 	return nil
 }
 
+func addPreflightCheckPanel(c *Console) error {
+	ackWarningsFunc := func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Value: "yes",
+				Text:  "Yes",
+			}, {
+				Value: "no",
+				Text:  "No",
+			},
+		}, nil
+	}
+	preflightCheckV, err := widgets.NewSelect(c.Gui, preflightCheckPanel, "", ackWarningsFunc)
+	if err != nil {
+		return err
+	}
+	preflightCheckV.FirstPage = true
+	preflightCheckV.Wrap = true
+	preflightCheckV.PreShow = func() error {
+		var warnings string
+		for _, w := range preflightWarnings {
+			warnings += w + "\n"
+		}
+		preflightCheckV.SetContent(warnings +
+			"\nDo you wish to proceed?\n")
+		c.Gui.Cursor = false
+		return c.setContentByName(titlePanel, "Hardware Checks")
+	}
+	preflightCheckV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			proceed, err := preflightCheckV.GetData()
+			if err != nil {
+				return err
+			}
+			if proceed == "no" {
+				preflightCheckV.Close()
+				c.setContentByName(titlePanel, "")
+				c.setContentByName(footerPanel, "")
+				go util.SleepAndReboot()
+				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
+			}
+			c.config.SkipChecks = true
+			preflightCheckV.Close()
+			return showNext(c, askCreatePanel)
+		},
+	}
+	c.AddElement(preflightCheckPanel, preflightCheckV)
+	return nil
+}
+
 func addAskCreatePanel(c *Console) error {
 	askOptionsFunc := func() ([]widgets.Option, error) {
 		options := []widgets.Option{
@@ -704,6 +782,10 @@ func addAskCreatePanel(c *Console) error {
 				installModeOnly = true
 			}
 
+			if c.config.Install.Mode == config.ModeCreate {
+				c.config.Install.Role = config.RoleDefault
+			}
+
 			askCreateV.Close()
 
 			if selected == config.ModeCreate {
@@ -715,6 +797,9 @@ func addAskCreatePanel(c *Console) error {
 
 			// all packages are already install
 			// configure hostname and network
+			if c.config.Install.Mode == config.ModeJoin {
+				return showRolePage(c)
+			}
 			if alreadyInstalled {
 				return showHostnamePage(c)
 			}
@@ -722,6 +807,65 @@ func addAskCreatePanel(c *Console) error {
 		},
 	}
 	c.AddElement(askCreatePanel, askCreateV)
+	return nil
+}
+
+func showRolePage(c *Console) error {
+	setLocation := createVerticalLocatorWithName(c)
+
+	if err := setLocation(askRolePanel, 3); err != nil {
+		return err
+	}
+
+	return showNext(c, askRolePanel)
+}
+
+func addAskRolePanel(c *Console) error {
+	askOptionsFunc := func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Value: config.RoleDefault,
+				Text:  "Default Role (Management or Worker)",
+			}, {
+				Value: config.RoleMgmt,
+				Text:  "Management Role",
+			}, {
+				Value: config.RoleWitness,
+				Text:  "Witness Role",
+			}, {
+				Value: config.RoleWorker,
+				Text:  "Worker Role",
+			},
+		}, nil
+	}
+	askRoleV, err := widgets.NewSelect(c.Gui, askRolePanel, "", askOptionsFunc)
+	if err != nil {
+		return err
+	}
+	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+		c.CloseElements(askRolePanel)
+		return showNext(c, askCreatePanel)
+	}
+	askRoleV.PreShow = func() error {
+		askRoleV.Value = c.config.Install.Role
+		return c.setContentByName(titlePanel, "Choose installation role")
+	}
+	askRoleV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+			selected, err := askRoleV.GetData()
+			if err != nil {
+				return err
+			}
+			c.config.Install.Role = selected
+			askRoleV.Close()
+			if alreadyInstalled {
+				return showHostnamePage(c)
+			}
+			return showDiskPage(c)
+		},
+		gocui.KeyEsc: gotoPrevPage,
+	}
+	c.AddElement(askRolePanel, askRoleV)
 	return nil
 }
 
@@ -1024,6 +1168,9 @@ func addHostnamePanel(c *Console) error {
 	prev := func(g *gocui.Gui, v *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
 		if alreadyInstalled {
+			if c.config.Install.Mode == config.ModeJoin {
+				return showNext(c, askRolePanel)
+			}
 			return showNext(c, askCreatePanel)
 		}
 		return showDiskPage(c)
@@ -1715,6 +1862,9 @@ func addConfirmInstallPanel(c *Console) error {
 			return err
 		}
 		options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
+		if !installModeOnly {
+			options += fmt.Sprintf("install role: %v\n", c.config.Install.Role)
+		}
 		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
 		if userInputData.NTPServers != "" {
 			options += fmt.Sprintf("ntp servers: %v\n", userInputData.NTPServers)
@@ -1730,13 +1880,13 @@ func addConfirmInstallPanel(c *Console) error {
 		if !c.config.Install.Silent {
 			if alreadyInstalled {
 				confirmV.SetContent(options +
-					"\nHarvester is already installed. It will be configured with \nthe above configuration.\n Continue?\n")
+					"\nHarvester is already installed. It will be configured with the above configuration. Continue?\n")
 			} else if installModeOnly {
 				confirmV.SetContent(options +
-					"\nHarvester will be copied to local disk.\n No configuration will be performed.\n Continue?\n")
+					"\nHarvester will be copied to local disk. No configuration will be performed. Continue?\n")
 			} else {
 				confirmV.SetContent(options +
-					"\nYour disk will be formatted and Harvester will be installed with \nthe above configuration. Continue?\n")
+					"\nYour disk will be formatted and Harvester will be installed with the above configuration. Continue?\n")
 			}
 		}
 		c.Gui.Cursor = false
@@ -1815,6 +1965,25 @@ func addInstallPanel(c *Console) error {
 	installV := widgets.NewPanel(c.Gui, installPanel)
 	installV.PreShow = func() error {
 		go func() {
+			if !alreadyInstalled && len(preflightWarnings) > 0 {
+				if c.config.SkipChecks {
+					// User is happy to skip checks so let installation proceed,
+					// but still log the warning messages (this happens for both
+					// interactive and automatic/PXE install)
+					for _, warning := range preflightWarnings {
+						logrus.Warning(warning)
+					}
+				} else {
+					// Checks were not explicitly skipped, fail the install
+					// (this will happen when PXE booted if checks fail and
+					// you don't set harvester.install.skipcheck=true)
+					for _, warning := range preflightWarnings {
+						logrus.Error(warning)
+						printToPanel(c.Gui, warning, installPanel)
+					}
+					return
+				}
+			}
 			// in alreadyInstalled mode and auto configuration, the network is not available
 			if alreadyInstalled && c.config.Automatic == true && c.config.ManagementInterface.Method == "dhcp" {
 				configureInstallModeDHCP(c)
@@ -1903,9 +2072,12 @@ func addInstallPanel(c *Console) error {
 			}
 
 			if alreadyInstalled {
-				configureInstalledNode(c.Gui, c.config, webhooks)
+				err = configureInstalledNode(c.Gui, c.config, webhooks)
 			} else {
-				doInstall(c.Gui, c.config, webhooks)
+				err = doInstall(c.Gui, c.config, webhooks)
+			}
+			if err != nil {
+				printToPanel(c.Gui, fmt.Sprintf("install failed: %s", err), installPanel)
 			}
 		}()
 		return c.setContentByName(footerPanel, "")

@@ -1,11 +1,8 @@
 iso:
   uefi:
-    - channel:live/grub2-efi-image
+    - dir:/grub2-efi
   image:
-    - channel:live/grub2
-    - channel:live/grub2-efi-image
+    - dir:/grub2-mbr
+    - dir:/grub2-efi
+    - dir:/boot-files
   label: "COS_LIVE"
-repositories:
-  - name: cOS
-    uri: quay.io/costoolkit/releases-teal
-    type: docker

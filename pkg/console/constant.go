@@ -12,6 +12,7 @@ const (
 	askForceMBRTitlePanel       = "askForceMBRTitle"
 	askForceMBRPanel            = "askForceMBR"
 	diskNotePanel               = "diskNote"
+	preflightCheckPanel         = "preflightCheck"
 	askCreatePanel              = "askCreate"
 	serverURLPanel              = "serverUrl"
 	passwordPanel               = "osPassword"
@@ -45,6 +46,7 @@ const (
 	vipPanel                    = "vipPanel"
 	vipTextPanel                = "vipTextPanel"
 	ntpServersPanel             = "ntpServersPanel"
+	askRolePanel                = "askRolePanel"
 
 	hostnameTitle         = "Configure hostname for this instance"
 	networkTitle          = "Configure network"

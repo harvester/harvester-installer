@@ -91,10 +91,11 @@ data:
       }
 
       map $http_referer $final_appSubUrl {
-        ~.*/k8s/clusters/(c-m-.+)/.*      '"appSubUrl":"/k8s/clusters/$1/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
+        ~.*/k8s/clusters/(c-m-.+)/api/v1/namespaces/cattle-monitoring-system/.*      '"appSubUrl":"/k8s/clusters/$1/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
         ~.*/dashboard/harvester/c/(c-m-.+)/kubevirt.io.virtualmachine/.*/.* '"appSubUrl":"/k8s/clusters/$1/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
         ~.*/dashboard/harvester/c/(c-m-.+)/.*      '"appSubUrl":"/k8s/clusters/$1/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
-        default '"appSubUrl":"/k8s/clusters/local/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
+        ~.*/api/v1/namespaces/cattle-monitoring-system/.*    '"appSubUrl":"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
+        default '"appSubUrl":"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy"';
       }
 
     }
