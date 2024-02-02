@@ -42,7 +42,7 @@ const (
 	ErrMsgVLANShouldBeANumberInRange string = "VLAN ID should be a number 1 ~ 4094."
 	ErrMsgMTUShouldBeANumber         string = "MTU should be a number."
 	NtpSettingName                   string = "ntp-servers"
-        ErrMsgNoDefaultRoute		 string = "No default route found. Please check the router setting on the DHCP server."
+	ErrMsgNoDefaultRoute             string = "No default route found. Please check the router setting on the DHCP server."
 )
 
 var (
@@ -582,6 +582,16 @@ func addDiskPanel(c *Console) error {
 		}
 
 		c.CloseElements(persistentSizePanel)
+
+		// Make sure disk settings are correct. Do NOT allow proceeding to
+		// next field.
+		if _, err := validateAllDiskSizes(); err != nil {
+			return err
+		}
+
+		// At this point the disk configuration is valid.
+		diskConfirmed = true
+
 		if systemIsBIOS() {
 			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
 				return err
@@ -620,6 +630,9 @@ func addDiskPanel(c *Console) error {
 		}
 
 		c.config.Install.PersistentPartitionSize = persistentSize
+
+		// At this point the disk configuration is valid.
+		diskConfirmed = true
 
 		if systemIsBIOS() {
 			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
@@ -668,8 +681,12 @@ func addDiskPanel(c *Console) error {
 				return updateValidatorMessage("Disk too large for MBR. Must be less than 2TiB")
 			}
 		}
-
-		c.config.ForceMBR = forceMBR == "yes"
+		if c.config.ForceMBR != (forceMBR == "yes") {
+			// Force another `ENTER` hit to proceed to the next page if the
+			// value is changed.
+			c.config.ForceMBR = forceMBR == "yes"
+			return nil
+		}
 		return gotoNextPage(g, v)
 	}
 	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
