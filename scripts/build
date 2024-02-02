@@ -40,10 +40,15 @@ LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$R
            $LINKFLAGS"
 
 if [ "$(uname)" = "Linux" ]; then
-    OTHER_LINKFLAGS="-extldflags -static -s"
+    if [ -n "${REMOTE_DEBUG}" ]; then
+        OTHER_COMPILERFLAGS="all=-N -l"
+        OTHER_LINKFLAGS="-extldflags -static"
+    else
+        OTHER_LINKFLAGS="-extldflags -static -s"
+    fi
 fi
 
-CGO_ENABLED=0 go build -ldflags "$LINKFLAGS $OTHER_LINKFLAGS" -o bin/harvester-installer .
+CGO_ENABLED=0 go build -gcflags "${OTHER_COMPILERFLAGS}" -ldflags "$LINKFLAGS $OTHER_LINKFLAGS" -o bin/harvester-installer .
 
 # Copy to harvester package folder
 mkdir -p ${PACKAGE_HARVESTER_OS_DIR}/files/usr/bin
