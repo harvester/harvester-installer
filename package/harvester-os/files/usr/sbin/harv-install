@@ -161,10 +161,10 @@ preload_rke2_images()
     # Otherwise (PXE), use bind-mount directly to speed up the process
     if [ "$INSTALL_MODE" = "ISO" ]; then
         echo "Copying RKE2 images to the target location..."
-        rsync -ah --progress ${ISOMNT}/bundle/harvester/images/rke2-images.*.tar.zst $TARGET/$RKE2_IMAGES_DIR
+        rsync -ahv ${ISOMNT}/bundle/harvester/images/rke2-images.*.tar.zst $TARGET/$RKE2_IMAGES_DIR
         echo "Copying remaining images temporary location..."
-        rsync -ah --progress ${ISOMNT}/bundle/harvester/images/ $TARGET/$TMP_IMAGES_DIR
-        rsync -ah --progress ${ISOMNT}/bundle/harvester/images-lists/ $TARGET/$IMAGES_LISTS_DIR
+        rsync -ahv ${ISOMNT}/bundle/harvester/images/ $TARGET/$TMP_IMAGES_DIR
+        rsync -ahv ${ISOMNT}/bundle/harvester/images-lists/ $TARGET/$IMAGES_LISTS_DIR
     else
         echo "Bind-mount images directory to the target location..."
         mount --bind ${ISOMNT}/bundle/harvester/images $TARGET/$RKE2_IMAGES_DIR
