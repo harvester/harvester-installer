@@ -116,9 +116,24 @@ on port `2345`.
 
 Run `vagrant ssh-config` on your host to get the IP address that is 
 needed to connect the IDE debugger to the `harvester-installer` app.
+
 If you are using the Goland IDE, check out their [documentation](https://www.jetbrains.com/help/go/go-remote.html)
-how to attach to the `harvester-installer` process on the remote
-Vagrant box.
+for information on how to attach to the `harvester-installer` process
+on the remote Vagrant box.
+
+If you are using VS Code, create a remote debug configuration in
+`.vscode/launch.json` then press F5 to start debugging:
+
+```json
+{
+	"name": "Remote",
+	"type": "go",
+	"request": "attach",
+	"mode": "remote",
+	"port": 2345,
+	"host": "IP_ADDRESS_OF_VAGRANT_BOX",
+}
+```
 
 ## License
 Copyright (c) 2024 [Rancher Labs, Inc.](http://rancher.com)
