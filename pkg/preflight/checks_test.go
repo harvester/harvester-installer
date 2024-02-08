@@ -147,3 +147,23 @@ func TestKVMHostCheck(t *testing.T) {
 		assert.Equal(t, expectedOutput, msg)
 	}
 }
+
+func TestNetworkSpeedCheck(t *testing.T) {
+	defaultSysClassNetDevSpeed := sysClassNetDevSpeed
+	defer func() { sysClassNetDevSpeed = defaultSysClassNetDevSpeed }()
+
+	expectedOutputs := map[string]string{
+		"./testdata/%s-speed-100":   "Link speed of eth0 is only 100Mpbs. Harvester requires at least 1Gbps for testing and 10Gbps for production use.",
+		"./testdata/%s-speed-1000":  "Link speed of eth0 is 1Gbps. Harvester requires at least 10Gbps for production use.",
+		"./testdata/%s-speed-2500":  "Link speed of eth0 is 2.5Gbps. Harvester requires at least 10Gbps for production use.",
+		"./testdata/%s-speed-10000": "",
+	}
+
+	check := NetworkSpeedCheck{"eth0"}
+	for file, expectedOutput := range expectedOutputs {
+		sysClassNetDevSpeed = file
+		msg, err := check.Run()
+		assert.Nil(t, err)
+		assert.Equal(t, expectedOutput, msg)
+	}
+}
