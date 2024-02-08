@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/harvester/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/preflight"
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/version"
 	"github.com/harvester/harvester-installer/pkg/widgets"
@@ -56,6 +57,22 @@ var (
 	diskConfirmed     bool
 	preflightWarnings []string
 )
+
+func (c *Console) doNetworkSpeedCheck(interfaces []config.NetworkInterface) (warnings []string) {
+	for _, iface := range interfaces {
+		msg, err := preflight.NetworkSpeedCheck{Dev: iface.Name}.Run()
+		if err != nil {
+			// Preflight checks that fail to run at all are
+			// logged, rather than killing the installer
+			logrus.Error(err)
+			continue
+		}
+		if len(msg) > 0 {
+			warnings = append(warnings, msg)
+		}
+	}
+	return
+}
 
 func (c *Console) layoutInstall(g *gocui.Gui) error {
 	var err error
@@ -705,7 +722,6 @@ func addPreflightCheckPanel(c *Console) error {
 				go util.SleepAndReboot()
 				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
 			}
-			c.config.SkipChecks = true
 			preflightCheckV.Close()
 			return showNext(c, askCreatePanel)
 		},
@@ -753,6 +769,11 @@ func addAskCreatePanel(c *Console) error {
 	}
 	askCreateV.FirstPage = true
 	askCreateV.PreShow = func() error {
+		// If we're in the interactive installer at this point, it means the
+		// user wants the installation to succeed, regardless of whether any
+		// of the initial preflight checks failed, or if the later network
+		// speed check fails.
+		c.config.SkipChecks = true
 		askCreateV.Value = c.config.Install.Mode
 		if alreadyInstalled {
 			return c.setContentByName(titlePanel, "Harvester already installed. Choose configuration mode")
@@ -1269,7 +1290,12 @@ func addNetworkPanel(c *Console) error {
 			return err
 		}
 		bondNoteV.Focus = false
-		return c.setContentByName(bondNotePanel, bondNote)
+		bondNoteMsg := bondNote
+		// This is just for display purposes on the network screen
+		for _, warning := range c.doNetworkSpeedCheck(mgmtNetwork.Interfaces) {
+			bondNoteMsg += "\n" + warning
+		}
+		return c.setContentByName(bondNotePanel, bondNoteMsg)
 	}
 
 	updateValidatorMessage := func(msg string) error {
@@ -1965,25 +1991,6 @@ func addInstallPanel(c *Console) error {
 	installV := widgets.NewPanel(c.Gui, installPanel)
 	installV.PreShow = func() error {
 		go func() {
-			if !alreadyInstalled && len(preflightWarnings) > 0 {
-				if c.config.SkipChecks {
-					// User is happy to skip checks so let installation proceed,
-					// but still log the warning messages (this happens for both
-					// interactive and automatic/PXE install)
-					for _, warning := range preflightWarnings {
-						logrus.Warning(warning)
-					}
-				} else {
-					// Checks were not explicitly skipped, fail the install
-					// (this will happen when PXE booted if checks fail and
-					// you don't set harvester.install.skipcheck=true)
-					for _, warning := range preflightWarnings {
-						logrus.Error(warning)
-						printToPanel(c.Gui, warning, installPanel)
-					}
-					return
-				}
-			}
 			// in alreadyInstalled mode and auto configuration, the network is not available
 			if alreadyInstalled && c.config.Automatic == true && c.config.ManagementInterface.Method == "dhcp" {
 				configureInstallModeDHCP(c)
@@ -2049,6 +2056,31 @@ func addInstallPanel(c *Console) error {
 				tmpInterfaces = append(tmpInterfaces, iface)
 			}
 			c.config.ManagementInterface.Interfaces = tmpInterfaces
+
+			if !alreadyInstalled {
+				// Have to handle preflight warnings here because we can't check
+				// the NIC speed until we've got the correct set of interfaces.
+				preflightWarnings = append(preflightWarnings, c.doNetworkSpeedCheck(c.config.ManagementInterface.Interfaces)...)
+				if len(preflightWarnings) > 0 {
+					if c.config.SkipChecks {
+						// User is happy to skip checks so let installation proceed,
+						// but still log the warning messages (this happens for both
+						// interactive and automatic/PXE install)
+						for _, warning := range preflightWarnings {
+							logrus.Warning(warning)
+						}
+					} else {
+						// Checks were not explicitly skipped, fail the install
+						// (this will happen when PXE booted if checks fail and
+						// you don't set harvester.install.skipcheck=true)
+						for _, warning := range preflightWarnings {
+							logrus.Error(warning)
+							printToPanel(c.Gui, warning, installPanel)
+						}
+						return
+					}
+				}
+			}
 
 			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
 			c.config.ForceGPT = !c.config.ForceMBR

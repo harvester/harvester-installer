@@ -14,17 +14,20 @@ import (
 const (
 	// Constants here from Hardware Requirements in the documentaiton
 	// https://docs.harvesterhci.io/v1.3/install/requirements/#hardware-requirements
-	MinCPUTest    = 8
-	MinCPUProd    = 16
-	MinMemoryTest = 32
-	MinMemoryProd = 64
+	MinCPUTest         = 8
+	MinCPUProd         = 16
+	MinMemoryTest      = 32
+	MinMemoryProd      = 64
+	MinNetworkGbpsTest = 1
+	MinNetworkGbpsProd = 10
 )
 
 var (
 	// So that we can fake this stuff up for unit tests
-	execCommand = exec.Command
-	procMemInfo = "/proc/meminfo"
-	devKvm      = "/dev/kvm"
+	execCommand         = exec.Command
+	procMemInfo         = "/proc/meminfo"
+	devKvm              = "/dev/kvm"
+	sysClassNetDevSpeed = "/sys/class/net/%s/speed"
 )
 
 // The Run() method of a preflight.Check returns a string.  If the string
@@ -39,6 +42,9 @@ type CPUCheck struct{}
 type MemoryCheck struct{}
 type VirtCheck struct{}
 type KVMHostCheck struct{}
+type NetworkSpeedCheck struct {
+	Dev string
+}
 
 func (c CPUCheck) Run() (msg string, err error) {
 	out, err := execCommand("/usr/bin/nproc", "--all").Output()
@@ -126,6 +132,35 @@ func (c KVMHostCheck) Run() (msg string, err error) {
 	if _, err = os.Stat(devKvm); errors.Is(err, fs.ErrNotExist) {
 		msg = "Harvester requires hardware-assisted virtualization, but /dev/kvm does not exist."
 		err = nil
+	}
+	return
+}
+
+func (c NetworkSpeedCheck) Run() (msg string, err error) {
+	speedPath := fmt.Sprintf(sysClassNetDevSpeed, c.Dev)
+	out, err := os.ReadFile(speedPath)
+	if err != nil {
+		return
+	}
+	speedMbps, _ := strconv.Atoi(strings.TrimSpace(string(out)))
+	if speedMbps < 1 {
+		// speedMbps will be 0 if strconv.Atoi fails for some reason,
+		// or -1 (if you can believe that) when using virtio NICs when
+		// testing under virtualization.
+		err = fmt.Errorf("unable to determine NIC speed from %s (got %d)", speedPath, speedMbps)
+		return
+	}
+	// We need floats because 2.5Gbps ethernet is a thing.
+	var speedGbps float32 = float32(speedMbps) / 1000
+	if speedGbps < MinNetworkGbpsTest {
+		// Does anyone even _have_ < 1Gbps networking kit anymore?
+		// Still, it's theoretically possible someone could have messed
+		// up their switch config and be running 100Mbps...
+		msg = fmt.Sprintf("Link speed of %s is only %dMpbs. Harvester requires at least %dGbps for testing and %dGbps for production use.",
+			c.Dev, speedMbps, MinNetworkGbpsTest, MinNetworkGbpsProd)
+	} else if speedGbps < MinNetworkGbpsProd {
+		msg = fmt.Sprintf("Link speed of %s is %gGbps. Harvester requires at least %dGbps for production use.",
+			c.Dev, speedGbps, MinNetworkGbpsProd)
 	}
 	return
 }
