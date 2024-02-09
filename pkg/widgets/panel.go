@@ -139,7 +139,9 @@ func (p *Panel) SetLocation(x0, y0, x1, y1 int) {
 }
 
 func (p *Panel) SetContent(content string) {
-	panelWidth := p.X1 - p.X0
+	// Need to subtract 1 from panelWidth here to match the view.Size()
+	// calculation done in gocui's view.Draw() function
+	panelWidth := p.X1 - p.X0 - 1
 	if panelWidth > 0 {
 		p.Content = ""
 		lines := strings.Split(content, "\n")
