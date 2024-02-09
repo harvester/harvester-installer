@@ -497,7 +497,7 @@ resources:
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "Network Receive Bytes",
+            "title": "Network Receive Bits",
             "tooltip": {
               "shared": true,
               "sort": 0,
@@ -592,7 +592,7 @@ resources:
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "Network Transmit Bytes",
+            "title": "Network Transmit Bits",
             "tooltip": {
               "shared": true,
               "sort": 0,
