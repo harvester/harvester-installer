@@ -95,7 +95,7 @@ func TestVirtCheck(t *testing.T) {
 	defer func() { execCommand = exec.Command }()
 
 	expectedOutputs := map[string]string{
-		"kvm":   "System is virtualized (kvm) which is not supported.",
+		"kvm":   "System is virtualized (kvm) which is not supported in production.",
 		"metal": "",
 	}
 

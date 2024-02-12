@@ -118,7 +118,7 @@ func (c VirtCheck) Run() (msg string, err error) {
 		}
 		return
 	}
-	msg = fmt.Sprintf("System is virtualized (%s) which is not supported.", virt)
+	msg = fmt.Sprintf("System is virtualized (%s) which is not supported in production.", virt)
 	return
 }
 
