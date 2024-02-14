@@ -25,6 +25,20 @@ patch_rancher_logging_chart()
   cp -f ${pkg_logging_path}/${logging_version}/eventtailer.yaml ./rancher-logging/templates/eventtailer.yaml
   grep "harvester-patch" ./rancher-logging/templates/eventtailer.yaml || true
 
+  # replace fluentbit image version; yq can also work, but it strips all blank lines; use patch instead
+  local valuesfile="./rancher-logging/values.yaml"
+  local difffile="${pkg_logging_path}/${logging_version}/patch-vaues-fluentbit-image.diff"
+  echo "patch fluentbit image version"
+  echo "the current values.yaml has following fluentbit image version"
+  grep "rancher/mirrored-fluent-fluent-bit" $valuesfile -1 || true
+  if [ -f "$difffile" ]; then
+    patch $valuesfile $difffile
+  else
+    echo "diff file $difffile is not found"
+  fi
+  echo "the patched values.yaml has following fluentbit image version"
+  grep "rancher/mirrored-fluent-fluent-bit" $valuesfile -1 || true
+
   # remove existing chart
   rm ${chart_dir}/rancher-logging-${logging_version}.tgz
 
