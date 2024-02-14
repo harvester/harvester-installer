@@ -42,7 +42,7 @@ resources:
       namespace: cattle-logging-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "102.0.1+up3.17.10"
+      version: "103.0.0+up3.17.10"
       chart: rancher-logging
       {{- if and .Addons .Addons.rancher_logging }}
       enabled: {{ .Addons.rancher_logging.Enabled }}
@@ -50,11 +50,6 @@ resources:
       enabled: false
       {{- end }}
       valuesContent: |
-        images:
-          fluentbit:
-            tag: 1.9.5 # replace the default 1.9.3, which has bug in systemd log
-          fluentbit_debug:
-            tag: 1.9.5-debug
         systemdLogPath: /var/log/journal
         disablePvc: true
         additionalLoggingSources:

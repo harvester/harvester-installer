@@ -1,5 +1,5 @@
 {{- if .Values.additionalLoggingSources.rke2.enabled }}
-# patch to 102.0.1+up3.17.10/templates/loggings/rke2/configmap.yaml
+# patch to ./templates/loggings/rke2/configmap.yaml
 # when harvester-installer makes ISO, the original file is replaced
 # harvester-patch to configmap fluent-bit.conf
 apiVersion: v1
