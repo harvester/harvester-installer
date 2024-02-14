@@ -33,6 +33,20 @@ patch_rancher_monitoring_chart()
   echo "patched file"
   ls -alth "$origfile"
 
+  # replace shell image version; yq can also work, but it strips all blank lines; use patch instead
+  local valuesfile="./rancher-monitoring/values.yaml"
+  local difffile="${pkg_monitoring_path}/${monitoring_version}/patch-values-shell-version.diff"
+  echo "patch rancher/shell image version"
+  echo "the current values.yaml has following shell image version"
+  grep "rancher/shell" $valuesfile -1 || true
+  if [ -f "$difffile" ]; then
+    patch $valuesfile $difffile
+  else
+    echo "diff file $difffile is not found"
+  fi
+  echo "the patched values.yaml has following shell image version"
+  grep "rancher/shell" $valuesfile -1 || true
+
   # remove existing chart
   rm -f ${chart_dir}/rancher-monitoring-${monitoring_version}.tgz
 

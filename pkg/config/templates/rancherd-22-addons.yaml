@@ -112,7 +112,7 @@ resources:
       namespace: cattle-monitoring-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "102.0.2+up40.1.2"
+      version: "103.0.3+up45.31.1"
       chart: rancher-monitoring
       {{- if and .Addons .Addons.rancher_monitoring }}
       enabled: {{ .Addons.rancher_monitoring.Enabled }}
@@ -237,4 +237,4 @@ resources:
         image:
           tag: sle-micro-head
         driverLocation:  "HTTPENDPOINT/NVIDIA-Linux-x86_64-vgpu-kvm.run" 
-        fullnameOverride: nvidia-driver-runtime        
+        fullnameOverride: nvidia-driver-runtime
