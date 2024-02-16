@@ -24,7 +24,7 @@ resources:
       namespace: harvester-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.3.1"
+      version: "0.3.2"
       chart: harvester-pcidevices-controller
       {{- if and .Addons .Addons.harvester_pcidevices_controller }}
       enabled: {{ .Addons.harvester_pcidevices_controller.Enabled }}
@@ -33,7 +33,7 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.3.1
+          tag: v0.3.2
         fullnameOverride: harvester-pcidevices-controller
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
@@ -231,5 +231,6 @@ resources:
       valuesContent: |
         image:
           tag: sle-micro-head
+          repo: rancher/harvester-nvidia-driver-toolkit
         driverLocation:  "HTTPENDPOINT/NVIDIA-Linux-x86_64-vgpu-kvm.run" 
         fullnameOverride: nvidia-driver-runtime
