@@ -149,6 +149,7 @@ type Install struct {
 	ForceGPT      bool   `json:"forceGpt,omitempty"`
 	Role          string `json:"role,omitempty"`
 	WithNetImages bool   `json:"withNetImages,omitempty"`
+	WipeDisks     bool   `json:"wipeDisks,omitempty"`
 
 	// Following options are not cOS installer flag
 	ForceMBR bool   `json:"forceMbr,omitempty"`
