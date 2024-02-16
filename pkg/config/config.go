@@ -136,6 +136,7 @@ type Install struct {
 	VipHwAddr string `json:"vipHwAddr,omitempty"`
 	VipMode   string `json:"vipMode,omitempty"`
 
+<<<<<<< HEAD
 	ForceEFI  bool   `json:"forceEfi,omitempty"`
 	Device    string `json:"device,omitempty"`
 	ConfigURL string `json:"configUrl,omitempty"`
@@ -146,6 +147,21 @@ type Install struct {
 	Debug     bool   `json:"debug,omitempty"`
 	TTY       string `json:"tty,omitempty"`
 	ForceGPT  bool   `json:"forceGpt,omitempty"`
+=======
+	ForceEFI      bool   `json:"forceEfi,omitempty"`
+	Device        string `json:"device,omitempty"`
+	ConfigURL     string `json:"configUrl,omitempty"`
+	Silent        bool   `json:"silent,omitempty"`
+	ISOURL        string `json:"isoUrl,omitempty"`
+	PowerOff      bool   `json:"powerOff,omitempty"`
+	NoFormat      bool   `json:"noFormat,omitempty"`
+	Debug         bool   `json:"debug,omitempty"`
+	TTY           string `json:"tty,omitempty"`
+	ForceGPT      bool   `json:"forceGpt,omitempty"`
+	Role          string `json:"role,omitempty"`
+	WithNetImages bool   `json:"withNetImages,omitempty"`
+	WipeDisks     bool   `json:"wipeDisks,omitempty"`
+>>>>>>> 63fd292 (additional installer option to wipe all disks before install)
 
 	// Following options are not cOS installer flag
 	ForceMBR bool   `json:"forceMbr,omitempty"`
