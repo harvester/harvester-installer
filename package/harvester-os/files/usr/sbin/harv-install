@@ -7,17 +7,46 @@ DATA_DISK_FSLABEL="HARV_LH_DEFAULT"
 
 clear_disk_label()
 {
-    # Clear the label of partitions that has $DATA_DISK_FSLABEL to prevent misidentification
-    # Also, while yip is partitioning the disk, if it sees the LABEL to be used exists,
-    # it won't create the partition. So it's necessary to clear the label
-    for part in $(blkid -t LABEL="$DATA_DISK_FSLABEL" -o device); do
-        echo "Remove filesystem label from $part"
-        # Run this tune2fs twice because sometimes the first run would show "Recovering journal"
-        # and label is not modified
-        tune2fs -L "" $part > /dev/null
-        tune2fs -L "" $part > /dev/null
-    done
-    udevadm settle
+    # For internal automation environments we need to be able to wipe all disks on the node
+    # to ensure that host does not boot off partitions from another disk in the host
+    # lsblk produces the following json output, which we filter using jq to identify disks
+    # which we will be wiping
+    # lsblk -d -n -J -o NAME,TYPE
+    # {
+    #  "blockdevices": [
+    #  {
+    #     "name": "loop0",
+    #     "type": "loop"
+    #  },{
+    #     "name": "sr0",
+    #     "type": "rom"
+    #  },{
+    #     "name": "vda",
+    #     "type": "disk"
+    #     }
+    #   ]
+    # }
+    if [ "$HARVESTER_WIPE_DISKS" == "true" ]; then
+        echo "wiping all disks"
+        for disk in $(lsblk -d -n -J -o NAME,TYPE | jq -r '.blockdevices[] | select(.type == "disk") | .name')
+        do
+            sgdisk -Z /dev/$disk
+            partprobe -s /dev/$disk
+        done
+    else
+        # Clear the label of partitions that has $DATA_DISK_FSLABEL to prevent misidentification
+        # Also, while yip is partitioning the disk, if it sees the LABEL to be used exists,
+        # it won't create the partition. So it's necessary to clear the label
+        for part in $(blkid -t LABEL="$DATA_DISK_FSLABEL" -o device); do
+            echo "Remove filesystem label from $part"
+            # Run this tune2fs twice because sometimes the first run would show "Recovering journal"
+            # and label is not modified
+            tune2fs -L "" $part > /dev/null
+            tune2fs -L "" $part > /dev/null
+        done
+        udevadm settle
+    fi
+   
 }
 
 umount_target() {
