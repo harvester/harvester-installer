@@ -7,6 +7,11 @@ PACKAGE_HARVESTER_OS_DIR="${TOP_DIR}/package/harvester-os"
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
 IMAGES_LISTS_DIR="${BUNDLE_DIR}/harvester/images-lists"
 RANCHERD_IMAGES_DIR="${BUNDLE_DIR}/rancherd/images"
+VERSION_FILE="version.yaml"
+if [ "${ARCH}" == "arm64" ]
+then
+  VERSION_FILE="version-arm64.yaml"
+fi
 
 mkdir -p ${ARTIFACTS_DIR}
 
@@ -196,7 +201,7 @@ fi
 # Write version.yaml
 if [[ -n "${DRONE_TAG}" ]]; then
 	RELEASE_DATE=$(date +'%Y%m%d')
-	cat > version.yaml <<EOF
+	cat > ${VERSION_FILE} <<EOF
 apiVersion: harvesterhci.io/v1beta1
 kind: Version
 metadata:
