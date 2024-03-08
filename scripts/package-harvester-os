@@ -116,9 +116,7 @@ elemental build-iso --config-dir "${CONFIG_DIR}" --debug "docker:${HARVESTER_OS_
 
 rm -f ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
 
-# repackaging is only needed for amd64 builds. 
-if [ "${ARCH}" == "amd64" ]
-then
+
 # Unpack ISO for reconfiguring boot image
 # Elemental toolkit deprecated legacy BIOS boot support, and can only use one boot method (UEFI/BIOS) at the same time,
 # so we need to unpack the ISO, add legacy BIOS boot support back, and repack it.
@@ -133,6 +131,9 @@ chmod -R a=r,u+w,a+X "${extract_dir}"
 # Copy squashfs image for PXE boot
 cp "${extract_dir}/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
 
+# repackaging is only needed for amd64 builds.
+if [ "${ARCH}" == "amd64" ]
+then
 # Use dd to create empty image, create an empty FAT32 filesystem
 # and copy EFI files to it to make it UEFI bootable
 uefi_img="${extract_dir}/boot/uefi.img"
@@ -165,10 +166,9 @@ chmod -R a=r,u+w,a+X "${extract_dir}/bundle"
 
 pack_iso "${extract_dir}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}-net-install.iso"
 
-
+fi
 # Cleanup
 rm -rf "${extract_dir}"
-fi
 
 if [ "${BUILD_QCOW}" == "true" ]; then
   echo "generating harvester install mode qcow"
