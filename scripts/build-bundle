@@ -105,7 +105,7 @@ patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # skip addons for now for arm builds
-if [ "{ARCH}" == "amd64" ]
+if [ "${ARCH}" == "amd64" ]
 then
 # Prepare vm-import-controller-chart
 helm pull https://github.com/harvester/charts/releases/download/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}/harvester-vm-import-controller-${VM_IMPORT_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
@@ -182,7 +182,7 @@ for i in "${!repositories[@]}"; do
 done
 
 # skip addons for now for arm builds
-if [ "{ARCH}" == "amd64" ]
+if [ "${ARCH}" == "amd64" ]
 then
 # vm-import-controller: get images from values.yaml
 echo ${VM_IMPORT_CONTROLLER_IMAGE} >>  ${image_list_file}
