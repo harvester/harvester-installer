@@ -27,6 +27,7 @@ echo "Harvester chart version: ${HARVESTER_CHART_VERSION}"
 echo "Rancher version: ${RANCHER_VERSION}"
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 echo "Rancher logging version: ${LOGGING_VERSION}"
+echo "The ARCH is: ${ARCH}"
 
 mkdir -p bin
 
