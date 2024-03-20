@@ -1,5 +1,5 @@
 {{- if .Values.additionalLoggingSources.rke2.enabled }}
-# patch to 100.1.3+up3.17.7/templates/loggings/rke2/configmap.yaml
+# patch to ./templates/loggings/rke2/configmap.yaml
 # when harvester-installer makes ISO, the original file is replaced
 apiVersion: apps/v1
 kind: DaemonSet
@@ -33,7 +33,7 @@ spec:
             - mountPath: {{ .Values.systemdLogPath | default "/var/log/journal" }}
               name: journal
               readOnly: true
-            - mountPath: "/var/lib/rancher/rke2/agent/logs/kubelet.log"
+            - mountPath: "/var/lib/rancher/rke2/agent/logs"
               name: kubelet
               readOnly: true
             - mountPath: /etc/machine-id
@@ -58,7 +58,7 @@ spec:
             path: {{ .Values.systemdLogPath | default "/var/log/journal" }}
         - name: kubelet
           hostPath:
-            path: "/var/lib/rancher/rke2/agent/logs/kubelet.log"
+            path: "/var/lib/rancher/rke2/agent/logs"
         - name: machine-id
           hostPath:
             path: /etc/machine-id
