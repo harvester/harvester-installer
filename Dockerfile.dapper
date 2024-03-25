@@ -1,6 +1,6 @@
 FROM quay.io/costoolkit/releases-teal:grub2-live-0.0.4-2 as grub2-mbr
 FROM quay.io/costoolkit/releases-teal:grub2-efi-image-live-0.0.4-2 as grub2-efi
-FROM registry.suse.com/bci/golang:1.20
+FROM registry.suse.com/bci/golang:1.21
 
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
