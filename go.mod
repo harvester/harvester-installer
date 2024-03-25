@@ -1,6 +1,6 @@
 module github.com/harvester/harvester-installer
 
-go 1.20
+go 1.21
 
 require (
 	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
