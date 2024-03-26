@@ -28,7 +28,7 @@ func (f *FuzzyNames) addName(name, toName string) {
 	f.names[strings.ToLower(convert.ToYAMLKey(name))] = toName
 }
 
-func (f *FuzzyNames) ModifySchema(schema *mapper.Schema, schemas *mapper.Schemas) error {
+func (f *FuzzyNames) ModifySchema(schema *mapper.Schema, _ *mapper.Schemas) error {
 	f.names = map[string]string{}
 
 	for name := range schema.ResourceFields {

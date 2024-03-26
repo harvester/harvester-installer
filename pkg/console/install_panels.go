@@ -423,7 +423,7 @@ func addDiskPanel(c *Console) error {
 				return false, updateValidatorMessage(err.Error())
 			}
 		}
-		return true, nil;
+		return true, nil
 	}
 	closeThisPage := func() {
 		c.CloseElements(
@@ -436,15 +436,15 @@ func addDiskPanel(c *Console) error {
 			persistentSizePanel,
 		)
 	}
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		diskConfirmed = false
 		return showNext(c, askCreatePanel)
 	}
-	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoNextPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		// Don't proceed to the next page if disk size validation fails
 		if valid, err := validateAllDiskSizes(); !valid || err != nil {
-			return err;
+			return err
 		}
 
 		installDisk := c.config.Install.Device
@@ -474,7 +474,7 @@ func addDiskPanel(c *Console) error {
 		return showHostnamePage(c)
 	}
 
-	diskConfirm := func(g *gocui.Gui, v *gocui.View) error {
+	diskConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
 		device, err := diskV.GetData()
 		if err != nil {
 			return err
@@ -492,7 +492,7 @@ func addDiskPanel(c *Console) error {
 		if len(diskOpts) > 1 {
 			// Show error if disk size validation fails, but allow proceeding to next field
 			if _, err := validateAllDiskSizes(); err != nil {
-				return err;
+				return err
 			}
 			if device == dataDisk {
 				return showNext(c, persistentSizePanel, dataDiskPanel)
@@ -505,7 +505,7 @@ func addDiskPanel(c *Console) error {
 		}
 		// Show error if disk size validation fails, but allow proceeding to next field
 		if _, err := validateAllDiskSizes(); err != nil {
-			return err;
+			return err
 		}
 		return showNext(c, persistentSizePanel)
 	}
@@ -513,7 +513,7 @@ func addDiskPanel(c *Console) error {
 	diskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter:     diskConfirm,
 		gocui.KeyArrowDown: diskConfirm,
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
 			return updateValidatorMessage("")
 		},
 		gocui.KeyEsc: gotoPrevPage,
@@ -540,7 +540,7 @@ func addDiskPanel(c *Console) error {
 			}
 			// Show error if disk size validation fails, but allow proceeding to next field
 			if _, err := validateAllDiskSizes(); err != nil {
-				return err;
+				return err
 			}
 			return showNext(c, persistentSizePanel)
 		}
@@ -557,7 +557,7 @@ func addDiskPanel(c *Console) error {
 	dataDiskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter:     dataDiskConfirm,
 		gocui.KeyArrowDown: dataDiskConfirm,
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
 			if err := updateValidatorMessage(""); err != nil {
 				return err
 			}
@@ -584,7 +584,7 @@ func addDiskPanel(c *Console) error {
 	}
 	persistentSizeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: persistentSizeConfirm,
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
 			diskConfirmed = false
 			if len(diskOpts) > 1 {
 				if err := updateValidatorMessage(""); err != nil {
@@ -627,7 +627,7 @@ func addDiskPanel(c *Console) error {
 	}
 	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: mbrConfirm,
-		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
 			diskConfirmed = false
 
 			disk, err := diskV.GetData()
@@ -699,7 +699,7 @@ func addAskCreatePanel(c *Console) error {
 		return c.setContentByName(titlePanel, "Choose installation mode")
 	}
 	askCreateV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			selected, err := askCreateV.GetData()
 			if err != nil {
 				return err
@@ -756,7 +756,7 @@ func addServerURLPanel(c *Console) error {
 		return c.setContentByName(notePanel, serverURLNote)
 	}
 	serverURLV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			asyncTaskV, err := c.GetElement(spinnerPanel)
 			if err != nil {
 				return err
@@ -787,21 +787,21 @@ func addServerURLPanel(c *Console) error {
 			go func(g *gocui.Gui) {
 				if err = validatePingServerURL(pingServerURL); err != nil {
 					spinner.Stop(true, err.Error())
-					g.Update(func(g *gocui.Gui) error {
+					g.Update(func(_ *gocui.Gui) error {
 						return showNext(c, serverURLPanel)
 					})
 					return
 				}
 				spinner.Stop(false, "")
 				c.config.ServerURL = fmtServerURL
-				g.Update(func(g *gocui.Gui) error {
+				g.Update(func(_ *gocui.Gui) error {
 					serverURLV.Close()
 					return showNext(c, tokenPanel)
 				})
 			}(c.Gui)
 			return nil
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(g *gocui.Gui, _ *gocui.View) error {
 			g.Cursor = false
 			serverURLV.Close()
 			return showNext(c, dnsServersPanel)
@@ -888,7 +888,7 @@ func addSSHKeyPanel(c *Console) error {
 		return showNext(c, cloudInitPanel)
 	}
 	sshKeyV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			url, err := sshKeyV.GetData()
 			if err != nil {
 				return err
@@ -911,7 +911,7 @@ func addSSHKeyPanel(c *Console) error {
 					pubKeys, err := getRemoteSSHKeys(url)
 					if err != nil {
 						spinner.Stop(true, err.Error())
-						g.Update(func(g *gocui.Gui) error {
+						g.Update(func(_ *gocui.Gui) error {
 							return showNext(c, sshKeyPanel)
 						})
 						return
@@ -919,7 +919,7 @@ func addSSHKeyPanel(c *Console) error {
 					spinner.Stop(false, "")
 					logrus.Debug("SSH public keys: ", pubKeys)
 					c.config.SSHAuthorizedKeys = pubKeys
-					g.Update(func(g *gocui.Gui) error {
+					g.Update(func(_ *gocui.Gui) error {
 						return gotoNextPage()
 					})
 				}(c.Gui)
@@ -927,7 +927,7 @@ func addSSHKeyPanel(c *Console) error {
 			}
 			return gotoNextPage()
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
 			closeThisPage()
 			return showNext(c, proxyPanel)
 		},
@@ -968,7 +968,7 @@ func addTokenPanel(c *Console) error {
 		return tokenV.Close()
 	}
 	tokenV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			token, err := tokenV.GetData()
 			if err != nil {
 				return err
@@ -983,7 +983,7 @@ func addTokenPanel(c *Console) error {
 			closeThisPage()
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(g *gocui.Gui, _ *gocui.View) error {
 			closeThisPage()
 			if c.config.Install.Mode == config.ModeCreate {
 				g.Cursor = false
@@ -1038,7 +1038,7 @@ func addHostnamePanel(c *Console) error {
 		return showNetworkPage(c)
 	}
 
-	prev := func(g *gocui.Gui, v *gocui.View) error {
+	prev := func(_ *gocui.Gui, _ *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
 		if alreadyInstalled {
 			return showNext(c, askCreatePanel)
@@ -1070,7 +1070,7 @@ func addHostnamePanel(c *Console) error {
 	}
 	hostnameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: prev,
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			message, err := validate()
 			if err != nil {
 				return err
@@ -1154,7 +1154,7 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	gotoNextPanel := func(c *Console, name []string, hooks ...func() (string, error)) func(g *gocui.Gui, v *gocui.View) error {
-		return func(g *gocui.Gui, v *gocui.View) error {
+		return func(_ *gocui.Gui, _ *gocui.View) error {
 			c.CloseElement(networkValidatorPanel)
 			for _, hook := range hooks {
 				msg, err := hook()
@@ -1240,12 +1240,12 @@ func addNetworkPanel(c *Console) error {
 
 				spinner.Stop(isErr, errMsg)
 				// Go back to the panel that triggered gotoNextPage
-				g.Update(func(g *gocui.Gui) error {
+				g.Update(func(_ *gocui.Gui) error {
 					return showNext(c, fromPanel)
 				})
 			} else {
 				spinner.Stop(false, "")
-				g.Update(func(g *gocui.Gui) error {
+				g.Update(func(_ *gocui.Gui) error {
 					closeThisPage()
 					return showNext(c, getNextPagePanel()...)
 				})
@@ -1254,7 +1254,7 @@ func addNetworkPanel(c *Console) error {
 		return nil
 	}
 
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		return showHostnamePage(c)
 	}
@@ -1352,7 +1352,7 @@ func addNetworkPanel(c *Console) error {
 		}
 		return nil
 	}
-	askBondModeVConfirm := func(g *gocui.Gui, v *gocui.View) error {
+	askBondModeVConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
 		mode, err := askBondModeV.GetData()
 		mgmtNetwork.BondOptions = map[string]string{
 			"mode":   mode,
@@ -1379,7 +1379,7 @@ func addNetworkPanel(c *Console) error {
 	c.AddElement(askBondModePanel, askBondModeV)
 
 	// askNetworkMethodV
-	askNetworkMethodVConfirm := func(g *gocui.Gui, _ *gocui.View) error {
+	askNetworkMethodVConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
 		selected, err := askNetworkMethodV.GetData()
 		if err != nil {
 			return err
@@ -1503,7 +1503,7 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.MTU = mtu
 		return "", nil
 	}
-	mtuVConfirm := func(g *gocui.Gui, v *gocui.View) error {
+	mtuVConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
 		msg, err := validateMTU()
 		if err != nil {
 			return err
@@ -1615,7 +1615,7 @@ func addProxyPanel(c *Console) error {
 		return c.setContentByName(notePanel, proxyNote)
 	}
 	proxyV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			proxy, err := proxyV.GetData()
 			if err != nil {
 				return err
@@ -1635,7 +1635,7 @@ func addProxyPanel(c *Console) error {
 			noteV.Close()
 			return showNext(c, sshKeyPanel)
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
 			proxyV.Close()
 			c.CloseElement(notePanel)
 			return showNext(c, ntpServersPanel)
@@ -1660,7 +1660,7 @@ func addCloudInitPanel(c *Console) error {
 		return showNext(c, confirmInstallPanel)
 	}
 	cloudInitV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			configURL, err := cloudInitV.GetData()
 			if err != nil {
 				return err
@@ -1680,13 +1680,13 @@ func addCloudInitPanel(c *Console) error {
 				go func(g *gocui.Gui) {
 					if _, err = getRemoteConfig(configURL); err != nil {
 						spinner.Stop(true, err.Error())
-						g.Update(func(g *gocui.Gui) error {
+						g.Update(func(_ *gocui.Gui) error {
 							return showNext(c, cloudInitPanel)
 						})
 						return
 					}
 					spinner.Stop(false, "")
-					g.Update(func(g *gocui.Gui) error {
+					g.Update(func(_ *gocui.Gui) error {
 						return gotoNextPage()
 					})
 				}(c.Gui)
@@ -1694,7 +1694,7 @@ func addCloudInitPanel(c *Console) error {
 			}
 			return gotoNextPage()
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
 			cloudInitV.Close()
 			return showNext(c, sshKeyPanel)
 		},
@@ -1760,7 +1760,7 @@ func addConfirmInstallPanel(c *Console) error {
 		return c.setContentByName(titlePanel, "Confirm installation options")
 	}
 	confirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			confirmed, err := confirmV.GetData()
 			if err != nil {
 				return err
@@ -1775,7 +1775,7 @@ func addConfirmInstallPanel(c *Console) error {
 			confirmV.Close()
 			return showNext(c, installPanel)
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
 			confirmV.Close()
 			if installModeOnly {
 				return showNext(c, passwordConfirmPanel, passwordPanel)
@@ -1807,7 +1807,7 @@ func addConfirmUpgradePanel(c *Console) error {
 		return c.setContentByName(titlePanel, fmt.Sprintf("Confirm upgrading Harvester to %s?", version.Version))
 	}
 	confirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			confirmed, err := confirmV.GetData()
 			if err != nil {
 				return err
@@ -1818,7 +1818,7 @@ func addConfirmUpgradePanel(c *Console) error {
 			}
 			return showNext(c, upgradePanel)
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
 			confirmV.Close()
 			return showNext(c, askCreatePanel)
 		},
@@ -1980,15 +1980,15 @@ func addVIPPanel(c *Console) error {
 			vipTextPanel)
 	}
 
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		return showNext(c, dnsServersPanel)
 	}
-	gotoNextPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoNextPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		return showNext(c, tokenPanel)
 	}
-	gotoVipPanel := func(g *gocui.Gui, v *gocui.View) error {
+	gotoVipPanel := func(g *gocui.Gui, _ *gocui.View) error {
 		selected, err := askVipMethodV.GetData()
 		if err != nil {
 			return err
@@ -2001,7 +2001,7 @@ func addVIPPanel(c *Console) error {
 				vip, err := getVipThroughDHCP(mgmtName)
 				if err != nil {
 					spinner.Stop(true, err.Error())
-					g.Update(func(g *gocui.Gui) error {
+					g.Update(func(_ *gocui.Gui) error {
 						return showNext(c, askVipMethodPanel)
 					})
 					return
@@ -2010,13 +2010,13 @@ func addVIPPanel(c *Console) error {
 				c.config.Vip = vip.ipv4Addr
 				c.config.VipMode = selected
 				c.config.VipHwAddr = vip.hwAddr
-				g.Update(func(g *gocui.Gui) error {
+				g.Update(func(_ *gocui.Gui) error {
 					return vipV.SetData(vip.ipv4Addr)
 				})
 			}(c.Gui)
 		} else {
 			vipTextV.SetContent("")
-			g.Update(func(gui *gocui.Gui) error {
+			g.Update(func(_ *gocui.Gui) error {
 				return vipV.SetData("")
 			})
 			c.config.VipMode = config.NetworkMethodStatic
@@ -2054,7 +2054,7 @@ func addVIPPanel(c *Console) error {
 
 		return gotoNextPage(g, v)
 	}
-	gotoAskVipMethodPanel := func(g *gocui.Gui, v *gocui.View) error {
+	gotoAskVipMethodPanel := func(_ *gocui.Gui, _ *gocui.View) error {
 		return showNext(c, askVipMethodPanel)
 	}
 	askVipMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -2109,7 +2109,7 @@ func addNTPServersPanel(c *Console) error {
 		c.CloseElement(notePanel)
 		return ntpServersV.Close()
 	}
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		userInputData.HasCheckedNTPServers = false
 		closeThisPage()
 		return showNext(c, passwordConfirmPanel, passwordPanel)
@@ -2121,13 +2121,13 @@ func addNTPServersPanel(c *Console) error {
 	}
 	gotoSpinnerErrorPage := func(g *gocui.Gui, spinner *Spinner, msg string) {
 		spinner.Stop(true, msg)
-		g.Update(func(g *gocui.Gui) error {
+		g.Update(func(_ *gocui.Gui) error {
 			return showNext(c, ntpServersPanel)
 		})
 	}
 
 	ntpServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			// get ntp servers input
 			ntpServers, err := ntpServersV.GetData()
 			if err != nil {
@@ -2182,7 +2182,7 @@ func addNTPServersPanel(c *Console) error {
 				}
 
 				spinner.Stop(false, "")
-				g.Update(func(g *gocui.Gui) error {
+				g.Update(func(_ *gocui.Gui) error {
 					return gotoNextPage()
 				})
 			}(c.Gui)
@@ -2224,7 +2224,7 @@ func addDNSServersPanel(c *Console) error {
 		c.CloseElement(notePanel)
 		return dnsServersV.Close()
 	}
-	gotoPrevPage := func(g *gocui.Gui, v *gocui.View) error {
+	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		return showNetworkPage(c)
 	}
@@ -2237,13 +2237,13 @@ func addDNSServersPanel(c *Console) error {
 	}
 	gotoSpinnerErrorPage := func(g *gocui.Gui, spinner *Spinner, msg string) {
 		spinner.Stop(true, msg)
-		g.Update(func(g *gocui.Gui) error {
+		g.Update(func(_ *gocui.Gui) error {
 			return showNext(c, dnsServersPanel)
 		})
 	}
 
 	dnsServersV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			// init asyncTaskV
 			asyncTaskV, err := c.GetElement(spinnerPanel)
 			if err != nil {
@@ -2287,7 +2287,7 @@ func addDNSServersPanel(c *Console) error {
 					c.config.OS.DNSNameservers = dnsServerList
 				}
 				spinner.Stop(false, "")
-				g.Update(func(g *gocui.Gui) error {
+				g.Update(func(_ *gocui.Gui) error {
 					return gotoNextPage()
 				})
 			}(c.Gui)

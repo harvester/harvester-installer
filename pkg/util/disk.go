@@ -22,7 +22,7 @@ func ParsePartitionSize(diskSizeBytes uint64, partitionSize string) (uint64, err
 	actualDiskSizeBytes := diskSizeBytes - fixedOccupiedSize
 
 	if !sizeRegexp.MatchString(partitionSize) {
-		return 0, fmt.Errorf("Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed.")
+		return 0, fmt.Errorf("Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed")
 	}
 
 	size, err := strconv.ParseUint(partitionSize[:len(partitionSize)-2], 10, 64)
