@@ -159,7 +159,7 @@ func (p *Panel) SetContent(content string) {
 		// Just in case we somehow get here without valid dimensions
 		p.Content = content
 	}
-	p.g.Update(func(g *gocui.Gui) error {
+	p.g.Update(func(_ *gocui.Gui) error {
 		v, err := p.g.View(p.Name)
 		if err != nil {
 			if err != gocui.ErrUnknownView {

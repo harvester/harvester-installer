@@ -45,7 +45,7 @@ func fakeExecCommand(command string) *exec.Cmd {
 // may emit junk to STDERR, so this mocking technique only really
 // works for mocking return codes and content on STDOUT.  Still,
 // that's OK for our purposes here.
-func TestHelperProcess(t *testing.T) {
+func TestHelperProcess(_ *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
@@ -65,10 +65,10 @@ func TestHelperProcess(t *testing.T) {
 	output, ok := execOutputs[args[0]]
 	if !ok {
 		os.Exit(1)
-	} else {
-		fmt.Print(output.output)
-		os.Exit(output.rc)
 	}
+
+	fmt.Print(output.output)
+	os.Exit(output.rc)
 }
 
 func TestCPUCheck(t *testing.T) {
@@ -82,7 +82,7 @@ func TestCPUCheck(t *testing.T) {
 
 	check := CPUCheck{}
 	for key, expectedOutput := range expectedOutputs {
-		execCommand = func(command string, args ...string) *exec.Cmd {
+		execCommand = func(_ string, _ ...string) *exec.Cmd {
 			return fakeExecCommand(key)
 		}
 		msg, err := check.Run()
@@ -101,7 +101,7 @@ func TestVirtCheck(t *testing.T) {
 
 	check := VirtCheck{}
 	for key, expectedOutput := range expectedOutputs {
-		execCommand = func(command string, args ...string) *exec.Cmd {
+		execCommand = func(_ string, _ ...string) *exec.Cmd {
 			return fakeExecCommand(key)
 		}
 		msg, err := check.Run()
