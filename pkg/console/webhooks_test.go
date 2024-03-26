@@ -150,7 +150,7 @@ func TestParsedWebhook_Send(t *testing.T) {
 			if tt.fields.TLS {
 				newTestServer = httptest.NewTLSServer
 			}
-			ts := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ts := newTestServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				recorder.Method = r.Method
 				recorder.Headers = dupHeaders(r.Header)
 				defer r.Body.Close()

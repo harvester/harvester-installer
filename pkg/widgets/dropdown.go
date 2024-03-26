@@ -88,7 +88,7 @@ func (d *DropDown) Show() error {
 				d.Text = d.Select.options[0].Text
 			}
 		}
-		err = d.g.SetKeybinding(d.ViewName, gocui.KeyTab, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		err = d.g.SetKeybinding(d.ViewName, gocui.KeyTab, gocui.ModNone, func(_ *gocui.Gui, _ *gocui.View) error {
 			d.Select.Value = d.Value
 			d.Select.Panel.SetLocation(x0, y0, x1, y0+1)
 			return d.Select.Show()
@@ -122,7 +122,7 @@ func (d *DropDown) Show() error {
 			}
 			return d.KeyBindings[gocui.KeyEnter](g, v)
 		}
-		d.Select.KeyBindings[gocui.KeyEsc] = func(g *gocui.Gui, v *gocui.View) error {
+		d.Select.KeyBindings[gocui.KeyEsc] = func(_ *gocui.Gui, _ *gocui.View) error {
 			if err = d.Select.Close(); err != nil {
 				return err
 			}
