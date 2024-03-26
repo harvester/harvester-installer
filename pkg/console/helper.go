@@ -13,7 +13,7 @@ type passwordWrapper struct {
 	passwordConfirmV *widgets.Input
 }
 
-func (p *passwordWrapper) passwordVConfirmKeyBinding(g *gocui.Gui, v *gocui.View) error {
+func (p *passwordWrapper) passwordVConfirmKeyBinding(_ *gocui.Gui, _ *gocui.View) error {
 	password1V, err := p.c.GetElement(passwordPanel)
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func (p *passwordWrapper) passwordVConfirmKeyBinding(g *gocui.Gui, v *gocui.View
 	return showNext(p.c, passwordConfirmPanel)
 }
 
-func (p *passwordWrapper) passwordVEscapeKeyBinding(g *gocui.Gui, v *gocui.View) error {
+func (p *passwordWrapper) passwordVEscapeKeyBinding(_ *gocui.Gui, _ *gocui.View) error {
 	p.passwordV.Close()
 	p.passwordConfirmV.Close()
 	if installModeOnly {
@@ -40,7 +40,7 @@ func (p *passwordWrapper) passwordVEscapeKeyBinding(g *gocui.Gui, v *gocui.View)
 	return showNext(p.c, tokenPanel)
 }
 
-func (p *passwordWrapper) passwordConfirmVArrowUpKeyBinding(g *gocui.Gui, v *gocui.View) error {
+func (p *passwordWrapper) passwordConfirmVArrowUpKeyBinding(_ *gocui.Gui, _ *gocui.View) error {
 	var err error
 	userInputData.PasswordConfirm, err = p.passwordConfirmV.GetData()
 	if err != nil {
@@ -49,7 +49,7 @@ func (p *passwordWrapper) passwordConfirmVArrowUpKeyBinding(g *gocui.Gui, v *goc
 	return showNext(p.c, passwordPanel)
 }
 
-func (p *passwordWrapper) passwordConfirmVKeyEnter(g *gocui.Gui, v *gocui.View) error {
+func (p *passwordWrapper) passwordConfirmVKeyEnter(_ *gocui.Gui, _ *gocui.View) error {
 	var err error
 	userInputData.PasswordConfirm, err = p.passwordConfirmV.GetData()
 	if err != nil {
@@ -72,7 +72,7 @@ func (p *passwordWrapper) passwordConfirmVKeyEnter(g *gocui.Gui, v *gocui.View) 
 	return showNext(p.c, ntpServersPanel)
 }
 
-func (p *passwordWrapper) passwordConfirmVKeyEscape(g *gocui.Gui, v *gocui.View) error {
+func (p *passwordWrapper) passwordConfirmVKeyEscape(_ *gocui.Gui, _ *gocui.View) error {
 	p.passwordV.Close()
 	p.passwordConfirmV.Close()
 	if err := p.c.setContentByName(notePanel, ""); err != nil {

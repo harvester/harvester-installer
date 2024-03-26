@@ -201,7 +201,7 @@ func (s *Select) updateSelectedStatus(v *gocui.View) error {
 func (s *Select) setOptionsKeyBindings(viewName string) error {
 	setOptionsKeyBindings(s.g, viewName)
 	if s.multi {
-		handler := func(g *gocui.Gui, v *gocui.View) error {
+		handler := func(_ *gocui.Gui, v *gocui.View) error {
 			_, cy := v.Cursor()
 			if len(s.options) >= cy+1 {
 				s.selectedIndexes[cy] = !s.selectedIndexes[cy]
