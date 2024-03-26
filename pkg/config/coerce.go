@@ -34,7 +34,7 @@ func (t *typeConverter) ToInternal(data map[string]interface{}) error {
 	return t.mappers.ToInternal(data)
 }
 
-func (t *typeConverter) ModifySchema(schema *mapper.Schema, schemas *mapper.Schemas) error {
+func (t *typeConverter) ModifySchema(schema *mapper.Schema, _ *mapper.Schemas) error {
 	for name, field := range schema.ResourceFields {
 		if field.Type == t.fieldType {
 			t.mappers = append(t.mappers, fieldConverter{

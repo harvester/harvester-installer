@@ -171,7 +171,7 @@ func logoPanel(g *gocui.Gui) error {
 	return nil
 }
 
-func toShell(g *gocui.Gui, v *gocui.View) error {
+func toShell(g *gocui.Gui, _ *gocui.View) error {
 	g.Cursor = true
 	maxX, _ := g.Size()
 	adminPasswordFrameV := widgets.NewPanel(g, "adminPasswordFrame")
@@ -191,7 +191,7 @@ func toShell(g *gocui.Gui, v *gocui.View) error {
 	validatorV.Focus = false
 
 	adminPasswordV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
 			passwd, err := adminPasswordV.GetData()
 			if err != nil {
 				return err
@@ -205,7 +205,7 @@ func toShell(g *gocui.Gui, v *gocui.View) error {
 			validatorV.SetContent("Invalid credential or password hash algorithm not supported.")
 			return nil
 		},
-		gocui.KeyEsc: func(g *gocui.Gui, v *gocui.View) error {
+		gocui.KeyEsc: func(g *gocui.Gui, _ *gocui.View) error {
 			g.Cursor = false
 			if err := adminPasswordFrameV.Close(); err != nil {
 				return err
