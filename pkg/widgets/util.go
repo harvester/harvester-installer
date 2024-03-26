@@ -4,7 +4,7 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-func ArrowUp(g *gocui.Gui, v *gocui.View) error {
+func ArrowUp(_ *gocui.Gui, v *gocui.View) error {
 	if v == nil || isAtTop(v) {
 		return nil
 	}
@@ -19,7 +19,7 @@ func ArrowUp(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-func ArrowDown(g *gocui.Gui, v *gocui.View) error {
+func ArrowDown(_ *gocui.Gui, v *gocui.View) error {
 	if v == nil || isAtEnd(v) {
 		return nil
 	}

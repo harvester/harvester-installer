@@ -464,7 +464,7 @@ func roleSetup(c *config.HarvesterConfig) error {
 	case config.RoleDefault:
 		// do not set any label
 	default:
-		return fmt.Errorf("unknown role %s, please correct it!", c.Role)
+		return fmt.Errorf("unknown role %s, please correct it", c.Role)
 	}
 	return nil
 }

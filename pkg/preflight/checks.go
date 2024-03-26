@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	// Constants here from Hardware Requirements in the documentaiton
+	// Constants here from Hardware Requirements in the documentation
 	// https://docs.harvesterhci.io/v1.3/install/requirements/#hardware-requirements
 	MinCPUTest         = 8
 	MinCPUProd         = 16
@@ -86,7 +86,7 @@ func (c MemoryCheck) Run() (msg string, err error) {
 	// - A host with 32GiB RAM may report MemTotal 32856636 = 31.11GiB
 	// - A host with 64GiB RAM may report MemTotal 65758888 = 62.71GiB
 	// - A host with 128GiB RAM may report MemTotal 131841120 = 125.73GiB
-	// This means we have to test against a slighly lower number.  Knocking
+	// This means we have to test against a slightly lower number.  Knocking
 	// 5% off is somewhat arbitrary but probably not unreasonable (e.g. for
 	// 32GB we're actually allowing anything over 30.4GB, and for 64GB we're
 	// allowing anything over 60.8GB).
@@ -151,7 +151,7 @@ func (c NetworkSpeedCheck) Run() (msg string, err error) {
 		return
 	}
 	// We need floats because 2.5Gbps ethernet is a thing.
-	var speedGbps float32 = float32(speedMbps) / 1000
+	var speedGbps = float32(speedMbps) / 1000
 	if speedGbps < MinNetworkGbpsTest {
 		// Does anyone even _have_ < 1Gbps networking kit anymore?
 		// Still, it's theoretically possible someone could have messed
