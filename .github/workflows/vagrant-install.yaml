@@ -68,10 +68,6 @@ jobs:
         working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
         run: |
           ./setup_harvester.sh
-      - name: Enable soft emulation
-        working-directory: ./ci/terraform
-        run: |
-          ./enable_soft_emulation.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
       - name: Clean the previous temp files
         working-directory: ./ci/terraform
         run: |
