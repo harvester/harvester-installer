@@ -13,9 +13,9 @@ version_compare() {
     local v1=$1
     local v2=$2
     if [[ "$(printf "%s\n" "$v1" "$v2" | sort -V | head -n1)" == "$v2" ]]; then
-        echo 1  # v1 is greater than or equal to v2
+        echo "1"  # v1 is greater than or equal to v2
     else
-        echo 0  # v1 is less than v2
+        echo "0"  # v1 is less than v2
     fi
 }
 
@@ -41,7 +41,7 @@ for prev_ver in $(echo "$previous_versions"); do
 
   image_lists_url=https://releases.rancher.com/harvester/"$prev_ver"/image-lists.tar.gz
   # arch-aware image is available after v1.3.0
-  if [ "$(version_compare "$prev_ver" "v1.3.0")" -eq 1 ]; then
+  if [ "$(version_compare "$prev_ver" "v1.3.0")" = "1" ]; then
     image_lists_url=https://releases.rancher.com/harvester/"$prev_ver"/image-lists-"$ARCH".tar.gz
   fi
 
