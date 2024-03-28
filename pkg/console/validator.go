@@ -387,7 +387,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		}
 	}
 
-	if cfg.Install.Mode == config.ModeCreate {
+	if cfg.Install.Mode == config.ModeCreate && cfg.Vip != "" {
 		if err := checkVip(cfg.Vip, cfg.VipHwAddr, cfg.VipMode); err != nil {
 			return err
 		}
