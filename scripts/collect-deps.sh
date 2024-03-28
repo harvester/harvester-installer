@@ -72,9 +72,9 @@ update_rancher_deps()
   docker rm $(<$cid_file)
 
   # Get the latest version >= min_version and update it to yaml file
-  update_chart_app_versions $repo_index fleet $CATTLE_FLEET_MIN_VERSION $output_file
-  update_chart_app_versions $repo_index fleet-crd $CATTLE_FLEET_MIN_VERSION $output_file
-  update_chart_app_versions $repo_index rancher-webhook $CATTLE_RANCHER_WEBHOOK_MIN_VERSION $output_file
+  update_chart_app_versions $repo_index fleet "$CATTLE_FLEET_MIN_VERSION" $output_file
+  update_chart_app_versions $repo_index fleet-crd "$CATTLE_FLEET_MIN_VERSION" $output_file
+  update_chart_app_versions $repo_index rancher-webhook "$CATTLE_RANCHER_WEBHOOK_MIN_VERSION" $output_file
 }
 
 
