@@ -1,12 +1,23 @@
-#!/usr/bin/env sh
+#!/bin/bash
 set -e
 
 UPGRADE_MATRIX_FILE=$1
 IMAGES_LISTS_DIR=$2
 RANCHERD_IMAGES_DIR=$3
 IMAGES_LISTS_ARCHIVE_DIR=$4
+ARCH=$5
 
 WORKING_DIR=$(mktemp -d)
+
+version_compare() {
+    local v1=$1
+    local v2=$2
+    if [[ "$(printf "%s\n" "$v1" "$v2" | sort -V | head -n1)" == "$v2" ]]; then
+        echo 1  # v1 is greater than or equal to v2
+    else
+        echo 0  # v1 is less than v2
+    fi
+}
 
 if [ ! -e "$UPGRADE_MATRIX_FILE" ]; then
   echo "Could not find $UPGRADE_MATRIX_FILE, skip it"
@@ -28,7 +39,14 @@ for prev_ver in $(echo "$previous_versions"); do
 
   mkdir "$WORKING_DIR"/"$prev_ver"
 
-  curl -fL https://releases.rancher.com/harvester/"$prev_ver"/image-lists.tar.gz -o "$WORKING_DIR"/image-lists.tar.gz || ret=$?
+  image_lists_url=https://releases.rancher.com/harvester/"$prev_ver"/image-lists.tar.gz
+  # arch-aware image is available after v1.3.0
+  if [ "$(version_compare "$prev_ver" "v1.3.0")" -eq 1 ]; then
+    image_lists_url=https://releases.rancher.com/harvester/"$prev_ver"/image-lists-"$ARCH".tar.gz
+  fi
+
+  echo "Download image lists tarball from $image_lists_url"
+  curl -fL "$image_lists_url" -o "$WORKING_DIR"/image-lists.tar.gz || ret=$?
   if [ "$ret" -ne 0 ]; then
     echo "Cannot download image list tarball for version $prev_ver, skip it"
     continue
