@@ -41,7 +41,7 @@ for prev_ver in $(echo "$previous_versions"); do
 
   image_lists_url=https://releases.rancher.com/harvester/"$prev_ver"/image-lists.tar.gz
   # arch-aware image is available after v1.3.0
-  if [ "$(version_compare "$prev_ver" "v1.3.0")"  -eq 1 ]; then
+  if [ "$(version_compare "$prev_ver" "v1.3.0")" -eq 1 ]; then
     image_lists_url=https://releases.rancher.com/harvester/"$prev_ver"/image-lists-"$ARCH".tar.gz
   fi
 
