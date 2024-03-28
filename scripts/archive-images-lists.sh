@@ -47,7 +47,7 @@ for prev_ver in $(echo "$previous_versions"); do
 
   echo "Download image lists tarball from $image_lists_url"
   curl -fL "$image_lists_url" -o "$WORKING_DIR"/image-lists.tar.gz || ret=$?
-  if [ "$ret" -ne 0 ]; then
+  if [ $ret -ne 0 ]; then
     echo "Cannot download image list tarball for version $prev_ver, skip it"
     continue
   fi
