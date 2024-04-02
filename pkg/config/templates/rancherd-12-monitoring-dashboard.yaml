@@ -96,7 +96,7 @@ resources:
             "steppedLine": false,
             "targets": [
               {
-                "expr": "topk(${count}, (avg(rate(kubevirt_vmi_vcpu_seconds[5m])) by (domain, name))) ",
+                "expr": "topk(${count}, (avg(rate(kubevirt_vmi_vcpu_seconds_total[5m])) by (domain, name))) ",
                 "instant": false,
                 "interval": "",
                 "legendFormat": "{{name}}",
@@ -903,7 +903,7 @@ resources:
             "pluginVersion": "7.5.8",
             "targets": [
               {
-                "expr": "sum(avg(rate(kubevirt_vmi_vcpu_seconds{namespace=\"$namespace\", name=\"$vm\"}[5m])) by (domain, name))",
+                "expr": "sum(avg(rate(kubevirt_vmi_vcpu_seconds_total{namespace=\"$namespace\", name=\"$vm\"}[5m])) by (domain, name))",
                 "format": "time_series",
                 "instant": false,
                 "interval": "",
@@ -1136,7 +1136,7 @@ resources:
             "steppedLine": false,
             "targets": [
               {
-                "expr": "irate(kubevirt_vmi_storage_read_times_ms_total{namespace=\"$namespace\", name=\"$vm\"}[5m])",
+                "expr": "irate(kubevirt_vmi_storage_read_times_seconds_total{namespace=\"$namespace\", name=\"$vm\"}[5m])",
                 "format": "time_series",
                 "interval": "",
                 "intervalFactor": 1,
@@ -1144,7 +1144,7 @@ resources:
                 "refId": "A"
               },
               {
-                "expr": "irate(kubevirt_vmi_storage_write_times_ms_total{namespace=\"$namespace\", name=\"$vm\"}[5m])",
+                "expr": "irate(kubevirt_vmi_storage_write_times_seconds_total{namespace=\"$namespace\", name=\"$vm\"}[5m])",
                 "interval": "",
                 "legendFormat": "{{drive}}-write",
                 "refId": "B"
@@ -1171,7 +1171,7 @@ resources:
             "yaxes": [
               {
                 "$$hashKey": "object:361",
-                "format": "ms",
+                "format": "s",
                 "label": null,
                 "logBase": 1,
                 "max": null,
@@ -1417,7 +1417,7 @@ resources:
                 "value": "default"
               },
               "datasource": null,
-              "definition": "label_values(kubevirt_vmi_vcpu_seconds, namespace)",
+              "definition": "label_values(kubevirt_vmi_vcpu_seconds_total, namespace)",
               "description": null,
               "error": null,
               "hide": 0,
@@ -1427,7 +1427,7 @@ resources:
               "name": "namespace",
               "options": [],
               "query": {
-                "query": "label_values(kubevirt_vmi_vcpu_seconds, namespace)",
+                "query": "label_values(kubevirt_vmi_vcpu_seconds_total, namespace)",
                 "refId": "Prometheus-namespace-Variable-Query"
               },
               "refresh": 1,
@@ -1448,7 +1448,7 @@ resources:
                 "value": "tt"
               },
               "datasource": null,
-              "definition": "label_values(kubevirt_vmi_vcpu_seconds{namespace=\"$namespace\"}, name)",
+              "definition": "label_values(kubevirt_vmi_vcpu_seconds_total{namespace=\"$namespace\"}, name)",
               "description": null,
               "error": null,
               "hide": 0,
@@ -1458,7 +1458,7 @@ resources:
               "name": "vm",
               "options": [],
               "query": {
-                "query": "label_values(kubevirt_vmi_vcpu_seconds{namespace=\"$namespace\"}, name)",
+                "query": "label_values(kubevirt_vmi_vcpu_seconds_total{namespace=\"$namespace\"}, name)",
                 "refId": "Prometheus-vm-Variable-Query"
               },
               "refresh": 1,
