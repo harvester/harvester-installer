@@ -59,8 +59,8 @@ github.com/google/go-containerregistry/pkg/v1/types
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 ## explicit; go 1.13
 github.com/google/shlex
-# github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
-## explicit; go 1.19
+# github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5 => github.com/votdev/go-common v0.0.0-20240326104347-ec43f3796fea
+## explicit; go 1.21
 github.com/harvester/go-common
 # github.com/hashicorp/errwrap v1.0.0
 ## explicit
@@ -236,3 +236,4 @@ k8s.io/utils/net
 # k8s.io/api => k8s.io/api v0.24.10
 # k8s.io/apimachinery => k8s.io/apimachinery v0.24.10
 # k8s.io/client-go => k8s.io/client-go v0.24.10
+# github.com/harvester/go-common => github.com/votdev/go-common v0.0.0-20240326104347-ec43f3796fea

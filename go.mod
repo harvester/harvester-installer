@@ -71,3 +71,5 @@ replace (
 	k8s.io/apimachinery => k8s.io/apimachinery v0.24.10
 	k8s.io/client-go => k8s.io/client-go v0.24.10
 )
+
+replace github.com/harvester/go-common => github.com/votdev/go-common v0.0.0-20240326104347-ec43f3796fea
