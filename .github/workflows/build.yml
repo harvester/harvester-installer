@@ -1,0 +1,44 @@
+name: build
+on:
+  push:
+    branches:
+    - master
+    - v*
+  pull_request:
+env:
+  # Fake up DRONE_BRANCH so it's picked up when dapper gets to
+  # scripts/version.  For branches, github.ref_name will be
+  # "master" or "v1.x", which is fine, but for PRs it will be
+  # something like "697/merge", which doesn't work as a version,
+  # so wet just set it to master in this case.
+  DRONE_BRANCH: ${{ endsWith(github.ref_name, '/merge') && 'master' || github.ref_name }}
+jobs:
+  build-iso-images:
+    name: Build ISO Images
+    strategy:
+      matrix:
+        arch:
+        - amd64
+        - arm64
+    # hdd=50 is somewhat arbitrary here, but seems to give a
+    # 77G disk, which is sufficient for ISO builds.
+    # The VM runners are named "x64", not "amd64" like other docker things.
+    runs-on: runs-on,runner=4cpu-linux-${{ matrix.arch == 'amd64' && 'x64' || matrix.arch }},hdd=50,run-id=${{ github.run_id }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Build ISO
+    - name: Run make ci
+      run: make ci
+
+    # This gives us ZIP files of ISO images saved against the
+    # workflow run, in case they're useful for manual testing
+    # We're not publishing to releases.rancher.com here, so as
+    # not to potentially collide with ISO images published from
+    # the main harvester repository.
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: artifacts_${{ matrix.arch }}
+        path: ./dist/artifacts/*
