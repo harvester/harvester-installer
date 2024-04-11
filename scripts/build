@@ -12,6 +12,19 @@ harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
     echo "No existed harvester source. Pulling..."
     git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
+else
+    # When building against locally modified harvester source with
+    # "-v /path/to/local/harvester/repo:/go/src/github.com/harvester/harvester"
+    # added to DAPPER_RUNARGS, invocations of `git` run from `scripts/version`
+    # inside that path will fail with the error:
+    #   fatal: detected dubious ownership in repository at
+    #   '/go/src/github.com/harvester/harvester'
+    # This in turn breaks the harvester version detection.  HARVESTER_VERSION
+    # will be set to an empty string, and HARVESTER_CHART_VERSION will be set
+    # to "0.0.0--" which later messes up the harvester charts when
+    # `scripts/patch-harvester` is run.  Things do not end well after that.
+    # Happily, we can fix it with this git config option:
+    git config --global --add safe.directory /go/src/github.com/harvester/harvester
 fi
 
 source ${SCRIPTS_DIR}/version-harvester $harvester_path
