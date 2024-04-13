@@ -104,6 +104,34 @@ resources:
         - /status/storedVersions
         kind: CustomResourceDefinition
         name: volumes.longhorn.io
+      - apiVersion: apiextensions.k8s.io/v1
+        jsonPointers:
+        - /status/acceptedNames
+        - /status/conditions
+        - /status/storedVersions
+        kind: CustomResourceDefinition
+        name: settings.longhorn.io
+      - apiVersion: apiextensions.k8s.io/v1
+        jsonPointers:
+        - /status/acceptedNames
+        - /status/conditions
+        - /status/storedVersions
+        kind: CustomResourceDefinition
+        name: replicas.longhorn.io
+      - apiVersion: apiextensions.k8s.io/v1
+        jsonPointers:
+        - /status/acceptedNames
+        - /status/conditions
+        - /status/storedVersions
+        kind: CustomResourceDefinition
+        name: instancemanagers.longhorn.io
+      - apiVersion: apiextensions.k8s.io/v1
+        jsonPointers:
+        - /status/acceptedNames
+        - /status/conditions
+        - /status/storedVersions
+        kind: CustomResourceDefinition
+        name: engines.longhorn.io
     repoName: harvester-charts
     targets:
     - clusterName: local
