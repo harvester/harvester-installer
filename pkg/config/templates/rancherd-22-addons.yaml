@@ -6,7 +6,11 @@ resources:
       namespace: harvester-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
+<<<<<<< HEAD
       version: "0.1.5"
+=======
+      version: "0.1.8"
+>>>>>>> 35173a6 (update vm-import-controller to v0.1.8)
       chart: harvester-vm-import-controller
       {{- if and .Addons .Addons.harvester_vm_import_controller }}
       enabled: {{ .Addons.harvester_vm_import_controller.Enabled }}
@@ -15,7 +19,11 @@ resources:
       {{- end }}
       valuesContent: |
         image:
+<<<<<<< HEAD
           tag: v0.1.5
+=======
+          tag: v0.1.8
+>>>>>>> 35173a6 (update vm-import-controller to v0.1.8)
         fullnameOverride: harvester-vm-import-controller
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
