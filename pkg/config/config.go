@@ -110,6 +110,9 @@ type LHDefaultSettings struct {
 	// 0 is valid, means not setting CPU resources, use pointer to check if it is set
 	GuaranteedEngineManagerCPU  *uint32 `json:"guaranteedEngineManagerCPU,omitempty"`
 	GuaranteedReplicaManagerCPU *uint32 `json:"guaranteedReplicaManagerCPU,omitempty"`
+	// from Longhorn v1.5.0, LH merges the above two into one
+	// the above two are not used afterwards, but Harvester keeps them for compatibility
+	GuaranteedInstanceManagerCPU *uint32 `json:"guaranteedInstanceManagerCPU,omitempty"`
 }
 
 type LonghornChartValues struct {
