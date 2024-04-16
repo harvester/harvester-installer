@@ -171,11 +171,8 @@ resources:
         defaultSettings:
           taintToleration: "kubevirt.io/drain:NoSchedule"
           defaultDataPath: "/var/lib/harvester/defaultdisk"
-          {{- if .Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU }}
-          guaranteedEngineManagerCPU: {{ .Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU }}
-          {{- end }}
-          {{- if .Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU }}
-          guaranteedReplicaManagerCPU: {{ .Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU }}
+          {{- if .Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU }}
+          guaranteedInstanceManagerCPU: {{ .Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU }}
           {{- end }}
       harvester-network-controller:
         enabled: true

@@ -29,11 +29,12 @@ const (
 	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
 	ifrouteGlobPattern     = networkConfigDirectory + "ifroute-*"
 
-	bootstrapConfigCount               = 6
-	defaultReplicaCount                = 3
-	defaultGuaranteedEngineManagerCPU  = 12   // means percentage 12%
-	defaultGuaranteedReplicaManagerCPU = 12   // means percentage 12%
-	defaultSystemImageSize             = 3072 // size of /run/initramfs/cos-state/cOS/active.img in MB
+	bootstrapConfigCount                = 6
+	defaultReplicaCount                 = 3
+	defaultGuaranteedEngineManagerCPU   = 12   // means percentage 12%
+	defaultGuaranteedReplicaManagerCPU  = 12   // means percentage 12%
+	defaultGuaranteedInstanceManagerCPU = 12   // means percentage 12%
+	defaultSystemImageSize              = 3072 // size of /run/initramfs/cos-state/cOS/active.img in MB
 )
 
 var (
@@ -278,6 +279,10 @@ func setConfigDefaultValues(config *HarvesterConfig) {
 
 	if config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU != nil && *config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU > defaultGuaranteedReplicaManagerCPU {
 		*config.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU = defaultGuaranteedReplicaManagerCPU
+	}
+
+	if config.Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU != nil && *config.Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU > defaultGuaranteedInstanceManagerCPU {
+		*config.Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU = defaultGuaranteedInstanceManagerCPU
 	}
 }
 
