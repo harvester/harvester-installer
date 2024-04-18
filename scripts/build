@@ -27,6 +27,12 @@ else
     git config --global --add safe.directory /go/src/github.com/harvester/harvester
 fi
 
+addons_path=../addons
+if [ ! -d ${addons_path} ];then
+    echo "No existed addons source. Pulling..."
+    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
+fi
+
 source ${SCRIPTS_DIR}/version-harvester $harvester_path
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version
@@ -61,6 +67,9 @@ if [ "$(uname)" = "Linux" ]; then
         OTHER_LINKFLAGS="-extldflags -static -s"
     fi
 fi
+
+# render template files
+cp ${addons_path}/pkg/templates/*.yaml ./pkg/config/templates
 
 CGO_ENABLED=0 go build -gcflags "${OTHER_COMPILERFLAGS}" -ldflags "$LINKFLAGS $OTHER_LINKFLAGS" -o bin/harvester-installer .
 
