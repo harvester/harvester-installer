@@ -495,6 +495,26 @@ trap cleanup exit
 
 check_iso
 
+# When `lvm` is run (which happens inside `blkdeactivate` in our case),
+# it will complain of leaked file descriptors for /dev/tty1 (the console)
+# and a socket.  This is harmless, it just means those FDs weren't closed
+# by `harvester-installer` before invoking this script (they don't have
+# the FD_CLOEXEC flag set), so let's suppress these warnings to avoid
+# making a mess of the console output.
+export LVM_SUPPRESS_FD_WARNINGS=1
+
+# https://github.com/harvester/os2/pull/86 adds a global_filter to
+# /etc/lvm/lvm.conf to avoid activing LVM on the host.  Unfortunately,
+# dracut-initqueue runs _very_ early in the boot process (before any of
+# the elemental stages are run), so this filter isn't taken into account
+# on boot, and LVM volumes are still potentially activated.  Later, when
+# we try to run `blkdeactivate` here, it doesn't work, because the filter
+# _is_ active then, so it skips deactivation and then the subsequent
+# disk repartitioning fails.  We can work around this here by setting up
+# a temporary lvm config which has that global_filter stripped out.
+export LVM_SYSTEM_DIR=$(mktemp -d)
+lvmconfig | sed /global_filter/d > ${LVM_SYSTEM_DIR}/lvm.conf
+
 # Tear down LVM and MD devices on the system, if the installing device is occuipied, the
 # partitioning operation could fail later. Be forgiven here.
 blkdeactivate --lvmoptions wholevg,retry --dmoptions force,retry --errors || true
