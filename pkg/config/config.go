@@ -183,6 +183,7 @@ type OS struct {
 	SSHAuthorizedKeys          []string `json:"sshAuthorizedKeys,omitempty"`
 	WriteFiles                 []File   `json:"writeFiles,omitempty"`
 	Hostname                   string   `json:"hostname,omitempty"`
+	DhclientSetHostname        bool     `json:"dhclientSetHostname,omitempty"`
 
 	Modules        []string          `json:"modules,omitempty"`
 	Sysctls        map[string]string `json:"sysctls,omitempty"`

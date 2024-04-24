@@ -26,6 +26,7 @@ const (
 	bondNotePanel               = "bondNote"
 	askNetworkMethodPanel       = "askNetworkMethod"
 	hostnamePanel               = "hostname"
+	askDhclientSetHostnamePanel = "askDhclientSetHostnamePanel"
 	addressPanel                = "address"
 	gatewayPanel                = "gateway"
 	mtuPanel                    = "mtu"

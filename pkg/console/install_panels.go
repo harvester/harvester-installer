@@ -1176,14 +1176,25 @@ func showHostnamePage(c *Console) error {
 		return err
 	}
 
+	if err := setLocation(askDhclientSetHostnamePanel, 3); err != nil {
+		return err
+	}
+
 	if err := setLocation(hostnameValidatorPanel, 0); err != nil {
 		return err
 	}
-	return showNext(c, hostnamePanel)
+	return showNext(c, askDhclientSetHostnamePanel, hostnamePanel)
 }
 
 func addHostnamePanel(c *Console) error {
 	hostnameV, err := widgets.NewInput(c.Gui, hostnamePanel, hostNameLabel, false)
+	if err != nil {
+		return err
+	}
+
+	askDhclientSetHostnameV, err := widgets.NewDropDown(c.Gui, askDhclientSetHostnamePanel, "Set via DHCP", func() ([]widgets.Option, error) {
+		return []widgets.Option{{Value: "no", Text: "No"}, {Value: "yes", Text: "Yes"}}, nil
+	})
 	if err != nil {
 		return err
 	}
@@ -1199,13 +1210,27 @@ func addHostnamePanel(c *Console) error {
 		return c.setContentByName(hostnameValidatorPanel, message)
 	}
 
-	next := func() error {
-		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
+	next := func(_ *gocui.Gui, _ *gocui.View) error {
+		dhclientSetHostname, err := askDhclientSetHostnameV.GetData()
+		if err != nil {
+			return err
+		}
+		currentVal := c.config.DhclientSetHostname
+		c.config.DhclientSetHostname = dhclientSetHostname == "yes"
+		if c.config.DhclientSetHostname != currentVal {
+			// Don't immediately advance to the next screen if the
+			// value was changed, i.e. you hit ENTER once to accept
+			// the new value, then again to proceed to the next screen.
+			// But, if you've left the value unchanged, a single
+			// ENTER is sufficient.
+			return nil
+		}
+		c.CloseElements(hostnamePanel, hostnameValidatorPanel, askDhclientSetHostnamePanel)
 		return showNetworkPage(c)
 	}
 
 	prev := func(_ *gocui.Gui, _ *gocui.View) error {
-		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
+		c.CloseElements(hostnamePanel, hostnameValidatorPanel, askDhclientSetHostnamePanel)
 		if alreadyInstalled {
 			if c.config.Install.Mode == config.ModeJoin {
 				return showNext(c, askRolePanel)
@@ -1232,28 +1257,52 @@ func addHostnamePanel(c *Console) error {
 		return "", nil
 	}
 
+	hostnameConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
+		message, err := validate()
+		if err != nil {
+			return err
+		}
+
+		if message != "" {
+			return updateValidateMessage(message)
+		}
+		// Need to close this here or we'll potentially leave
+		// stale failure messages onscreen after the user enters
+		// a valid hostname
+		validatorV.Close()
+		return showNext(c, askDhclientSetHostnamePanel)
+	}
+
 	hostnameV.PreShow = func() error {
 		c.Gui.Cursor = true
 		hostnameV.Value = c.config.Hostname
 		return c.setContentByName(titlePanel, hostnameTitle)
 	}
 	hostnameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: prev,
-		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
-			message, err := validate()
-			if err != nil {
-				return err
-			}
+		gocui.KeyEsc:       prev,
+		gocui.KeyArrowUp:   prev,
+		gocui.KeyArrowDown: hostnameConfirm,
+		gocui.KeyEnter:     hostnameConfirm,
+	}
 
-			if message != "" {
-				return updateValidateMessage(message)
-			}
-			return next()
-		},
+	askDhclientSetHostnameV.PreShow = func() error {
+		c.Cursor = true
+		if c.config.DhclientSetHostname {
+			return askDhclientSetHostnameV.SetData("yes")
+		}
+		return askDhclientSetHostnameV.SetData("no")
+	}
+	askDhclientSetHostnameV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEsc: prev,
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			return showNext(c, hostnamePanel)
+		},
+		gocui.KeyArrowDown: next,
+		gocui.KeyEnter:     next,
 	}
 
 	c.AddElement(hostnamePanel, hostnameV)
+	c.AddElement(askDhclientSetHostnamePanel, askDhclientSetHostnameV)
 	c.AddElement(hostnameValidatorPanel, validatorV)
 	return nil
 }
@@ -1364,6 +1413,7 @@ func addNetworkPanel(c *Console) error {
 		return applyNetworks(
 			mgmtNetwork,
 			c.config.Hostname,
+			c.config.DhclientSetHostname,
 		)
 	}
 
@@ -1909,7 +1959,11 @@ func addConfirmInstallPanel(c *Console) error {
 		if !installModeOnly {
 			options += fmt.Sprintf("install role: %v\n", c.config.Install.Role)
 		}
-		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
+		willBeSetViaDHCP := ""
+		if c.config.OS.DhclientSetHostname {
+			willBeSetViaDHCP = " (will be set via DHCP)"
+		}
+		options += fmt.Sprintf("hostname: %v%s\n", c.config.OS.Hostname, willBeSetViaDHCP)
 		if userInputData.DNSServers != "" {
 			options += fmt.Sprintf("dns servers: %v\n", userInputData.DNSServers)
 		}
@@ -2034,7 +2088,7 @@ func addInstallPanel(c *Console) error {
 
 				if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
 					printToPanel(c.Gui, "Configuring network...", installPanel)
-					if _, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
+					if _, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname, c.config.DhclientSetHostname); err != nil {
 						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
 						return
 					}
@@ -2536,6 +2590,7 @@ func configureInstallModeDHCP(c *Console) {
 	_, err := applyNetworks(
 		mgmtNetwork,
 		c.config.Hostname,
+		c.config.DhclientSetHostname,
 	)
 	if err != nil {
 		logrus.Error(err)

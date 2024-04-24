@@ -185,6 +185,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		if len(cfg.OS.DNSNameservers) > 0 {
 			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
 		}
+		initramfs.Commands = append(initramfs.Commands, getDhclientSetHostnameCmd(cfg.OS.DhclientSetHostname))
 
 		if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
 			return nil, err
@@ -711,6 +712,14 @@ func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
 
 func getAddStaticDNSServersCmd(servers []string) string {
 	return fmt.Sprintf(`sed -i 's/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS="%s"/' /etc/sysconfig/network/config`, strings.Join(servers, " "))
+}
+
+func getDhclientSetHostnameCmd(dhclientSetHostname bool) string {
+	yesOrNo := "no"
+	if dhclientSetHostname {
+		yesOrNo = "yes"
+	}
+	return fmt.Sprintf(`sed -i 's/^DHCLIENT_SET_HOSTNAME=.*/DHCLIENT_SET_HOSTNAME="%s"/' /etc/sysconfig/network/dhcp`, yesOrNo)
 }
 
 func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {

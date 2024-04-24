@@ -16,11 +16,23 @@ import (
 	"github.com/harvester/harvester-installer/pkg/config"
 )
 
-func applyNetworks(network config.Network, hostname string) ([]byte, error) {
+func applyNetworks(network config.Network, hostname string, dhclientSetHostname bool) ([]byte, error) {
 	if err := config.RestoreOriginalNetworkConfig(); err != nil {
 		return nil, err
 	}
 	if err := config.SaveOriginalNetworkConfig(); err != nil {
+		return nil, err
+	}
+
+	yesOrNo := "no"
+	if dhclientSetHostname {
+		yesOrNo = "yes"
+	}
+	output, err := exec.Command("sed", "-i",
+		fmt.Sprintf(`s/^DHCLIENT_SET_HOSTNAME=.*/DHCLIENT_SET_HOSTNAME="%s"/`, yesOrNo),
+		"/etc/sysconfig/network/dhcp").CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(output))
 		return nil, err
 	}
 
@@ -33,7 +45,7 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 			},
 		},
 	}
-	_, err := config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true)
+	_, err = config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true)
 	if err != nil {
 		return nil, err
 	}
