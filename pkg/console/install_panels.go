@@ -1733,6 +1733,9 @@ func addConfirmInstallPanel(c *Console) error {
 		}
 		options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
 		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
+		if userInputData.DNSServers != "" {
+			options += fmt.Sprintf("dns servers: %v\n", userInputData.DNSServers)
+		}
 		if userInputData.NTPServers != "" {
 			options += fmt.Sprintf("ntp servers: %v\n", userInputData.NTPServers)
 		}
