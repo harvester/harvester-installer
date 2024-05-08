@@ -83,4 +83,6 @@ const (
 	persistentSizeNote     = "Note: persistent partition stores data like system package and container images, not the VM data. \nYou can specify a size like 200Gi or 153600Mi. \nLeave it blank to use the default value."
 
 	authorizedFile = "/home/rancher/.ssh/authorized_keys"
+
+	defaultHostname = "rancher"
 )

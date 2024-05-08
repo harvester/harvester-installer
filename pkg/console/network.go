@@ -43,6 +43,29 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 		return nil, err
 	}
 
+	// If called without a hostname set, we enable setting hostname via the
+	// DHCP server, in case the DHCP server is configured to give us a
+	// hostname we can use by default.
+	//
+	// If we move the network interface page of the installer so it's before
+	// the hostname page, this function will activate once the management
+	// NIC is configured, and if the DHCP server is configured correctly,
+	// the system hostname will be set to the one provided by the server.
+	// Later, on the hostname page, we can default the hostname field to
+	// the current system hostname.
+
+	dhclientSetHostname := "no"
+	if hostname == "" {
+		dhclientSetHostname = "yes"
+	}
+	output, err := exec.Command("sed", "-i",
+		fmt.Sprintf(`s/^DHCLIENT_SET_HOSTNAME=.*/DHCLIENT_SET_HOSTNAME="%s"/`, dhclientSetHostname),
+		"/etc/sysconfig/network/dhcp").CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(output))
+		return nil, err
+	}
+
 	conf := &yipSchema.YipConfig{
 		Name: "Network Configuration",
 		Stages: map[string][]yipSchema.Stage{
@@ -52,7 +75,7 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 			},
 		},
 	}
-	_, err := config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true)
+	_, err = config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true)
 	if err != nil {
 		return nil, err
 	}
