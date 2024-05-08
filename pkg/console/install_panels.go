@@ -506,7 +506,7 @@ func addDiskPanel(c *Console) error {
 		if installModeOnly {
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		}
-		return showHostnamePage(c)
+		return showNetworkPage(c)
 	}
 
 	diskConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
@@ -840,7 +840,7 @@ func addAskCreatePanel(c *Console) error {
 				return showRolePage(c)
 			}
 			if alreadyInstalled {
-				return showHostnamePage(c)
+				return showNetworkPage(c)
 			}
 			return showDiskPage(c)
 		},
@@ -898,7 +898,7 @@ func addAskRolePanel(c *Console) error {
 			c.config.Install.Role = selected
 			askRoleV.Close()
 			if alreadyInstalled {
-				return showHostnamePage(c)
+				return showNetworkPage(c)
 			}
 			return showDiskPage(c)
 		},
@@ -1199,20 +1199,18 @@ func addHostnamePanel(c *Console) error {
 		return c.setContentByName(hostnameValidatorPanel, message)
 	}
 
+	getNextPagePanel := func() []string {
+		return []string{dnsServersPanel}
+	}
+
 	next := func() error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
-		return showNetworkPage(c)
+		return showNext(c, getNextPagePanel()...)
 	}
 
 	prev := func(_ *gocui.Gui, _ *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
-		if alreadyInstalled {
-			if c.config.Install.Mode == config.ModeJoin {
-				return showNext(c, askRolePanel)
-			}
-			return showNext(c, askCreatePanel)
-		}
-		return showDiskPage(c)
+		return showNetworkPage(c)
 	}
 
 	validate := func() (string, error) {
@@ -1234,6 +1232,10 @@ func addHostnamePanel(c *Console) error {
 
 	hostnameV.PreShow = func() error {
 		c.Gui.Cursor = true
+		// On the first run through the interactive installer, the hostname is
+		// not yet set in the harvester config, but we might have been given
+		// a new hostname via DHCP...
+		checkDHCPHostname(c.config, false)
 		hostnameV.Value = c.config.Hostname
 		return c.setContentByName(titlePanel, hostnameTitle)
 	}
@@ -1391,10 +1393,6 @@ func addNetworkPanel(c *Console) error {
 		return "", nil
 	}
 
-	getNextPagePanel := func() []string {
-		return []string{dnsServersPanel}
-	}
-
 	gotoNextPage := func(fromPanel string) error {
 		if err := networkValidatorV.Show(); err != nil {
 			return err
@@ -1421,7 +1419,7 @@ func addNetworkPanel(c *Console) error {
 				spinner.Stop(false, "")
 				g.Update(func(_ *gocui.Gui) error {
 					closeThisPage()
-					return showNext(c, getNextPagePanel()...)
+					return showHostnamePage(c)
 				})
 			}
 		}(c.Gui)
@@ -1430,7 +1428,13 @@ func addNetworkPanel(c *Console) error {
 
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
-		return showHostnamePage(c)
+		if alreadyInstalled {
+			if c.config.Install.Mode == config.ModeJoin {
+				return showNext(c, askRolePanel)
+			}
+			return showNext(c, askCreatePanel)
+		}
+		return showDiskPage(c)
 	}
 	// askInterfaceV
 	askInterfaceV.PreShow = func() error {
@@ -2016,6 +2020,22 @@ func addInstallPanel(c *Console) error {
 			if alreadyInstalled && c.config.Automatic == true && c.config.ManagementInterface.Method == "dhcp" {
 				configureInstallModeDHCP(c)
 			}
+
+			// lookup MAC Address to populate device names where needed
+			// lookup device name to populate MAC Address
+			// This needs to happen early, before a possible call to
+			// applyNetworks() in the DHCP case.
+			tmpInterfaces := []config.NetworkInterface{}
+			for _, iface := range c.config.ManagementInterface.Interfaces {
+				if err := iface.FindNetworkInterfaceNameAndHwAddr(); err != nil {
+					logrus.Error(err)
+					printToPanel(c.Gui, err.Error(), installPanel)
+					return
+				}
+				tmpInterfaces = append(tmpInterfaces, iface)
+			}
+			c.config.ManagementInterface.Interfaces = tmpInterfaces
+
 			logrus.Info("Local config: ", c.config)
 			if c.config.Install.ConfigURL != "" {
 				printToPanel(c.Gui, fmt.Sprintf("Fetching %s...", c.config.Install.ConfigURL), installPanel)
@@ -2032,12 +2052,15 @@ func addInstallPanel(c *Console) error {
 				}
 				logrus.Info("Local config (merged): ", c.config)
 
-				if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
+				if c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
 					printToPanel(c.Gui, "Configuring network...", installPanel)
 					if _, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
 						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
 						return
 					}
+				}
+
+				if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
 					mgmtName := getManagementInterfaceName(c.config.ManagementInterface)
 					vip, err := getVipThroughDHCP(mgmtName)
 					if err != nil {
@@ -2050,9 +2073,11 @@ func addInstallPanel(c *Console) error {
 			}
 			c.config.VipMode = strings.ToLower(c.config.VipMode)
 
-			if c.config.Hostname == "" {
-				c.config.Hostname = generateHostName()
-			}
+			// If no hostname was provided in the config, this function will
+			// default the hostname to either what's supplied by the DHCP sever,
+			// or a randomly generated name.
+			checkDHCPHostname(c.config, true)
+
 			if c.config.TTY == "" {
 				c.config.TTY = getFirstConsoleTTY()
 			}
@@ -2064,19 +2089,6 @@ func addInstallPanel(c *Console) error {
 				}
 				c.config.ServerURL = formatted
 			}
-
-			// lookup MAC Address to populate device names where needed
-			// lookup device name to populate MAC Address
-			tmpInterfaces := []config.NetworkInterface{}
-			for _, iface := range c.config.ManagementInterface.Interfaces {
-				if err := iface.FindNetworkInterfaceNameAndHwAddr(); err != nil {
-					logrus.Error(err)
-					printToPanel(c.Gui, err.Error(), installPanel)
-					return
-				}
-				tmpInterfaces = append(tmpInterfaces, iface)
-			}
-			c.config.ManagementInterface.Interfaces = tmpInterfaces
 
 			if !alreadyInstalled {
 				// Have to handle preflight warnings here because we can't check
@@ -2434,7 +2446,7 @@ func addDNSServersPanel(c *Console) error {
 	}
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
-		return showNetworkPage(c)
+		return showHostnamePage(c)
 	}
 	gotoNextPage := func() error {
 		closeThisPage()
@@ -2558,6 +2570,23 @@ func configureInstallModeDHCP(c *Console) {
 		c.config.VipHwAddr = vip.hwAddr
 	}
 
+}
+
+func checkDHCPHostname(c *config.HarvesterConfig, generate bool) {
+	if c.Hostname == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			logrus.Errorf("error fetching hostname from underlying OS: %v", err)
+		}
+
+		if hostname != defaultHostname && hostname != "" {
+			c.Hostname = hostname
+		} else {
+			if generate {
+				c.Hostname = generateHostName()
+			}
+		}
+	}
 }
 
 func mergeCloudInit(c *config.HarvesterConfig) error {
