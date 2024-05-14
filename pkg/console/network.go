@@ -79,6 +79,10 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 	cmd := exec.Command("/usr/bin/yip", "-s", "live", tempFile.Name())
 	cmd.Env = os.Environ()
 	bytes, err = cmd.CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(bytes))
+		return nil, err
+	}
 	// Restore Down NIC to up
 	if err := upAllLinks(); err != nil {
 		logrus.Errorf("failed to bring all link up: %s", err.Error())
