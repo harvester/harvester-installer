@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"syscall"
 
 	yipSchema "github.com/mudler/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
@@ -15,6 +16,24 @@ import (
 
 	"github.com/harvester/harvester-installer/pkg/config"
 )
+
+func checkDefaultRoute() (bool, error) {
+	routes, err := netlink.RouteList(nil, syscall.AF_INET)
+	if err != nil {
+		logrus.Errorf("Failed to list routes: %s", err.Error())
+		return false, err
+	}
+
+	defaultRouteExists := false
+	for _, route := range routes {
+		if route.Dst == nil {
+			defaultRouteExists = true
+			break
+		}
+	}
+
+	return defaultRouteExists, nil
+}
 
 func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 	if err := config.RestoreOriginalNetworkConfig(); err != nil {
