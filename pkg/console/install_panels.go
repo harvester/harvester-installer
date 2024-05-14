@@ -42,6 +42,7 @@ const (
 	ErrMsgVLANShouldBeANumberInRange string = "VLAN ID should be a number 1 ~ 4094."
 	ErrMsgMTUShouldBeANumber         string = "MTU should be a number."
 	NtpSettingName                   string = "ntp-servers"
+        ErrMsgNoDefaultRoute		 string = "No default route found. Please check the router setting on the DHCP server."
 )
 
 var (
@@ -1388,6 +1389,15 @@ func addNetworkPanel(c *Console) error {
 			mgmtNetwork.Gateway = ""
 			mgmtNetwork.MTU = 0
 		}
+
+		isDefaultRouteExist, err := checkDefaultRoute()
+		if err != nil {
+			return fmt.Sprintf("Failed to check default route: %s.", err.Error()), nil
+		}
+		if !isDefaultRouteExist {
+			return ErrMsgNoDefaultRoute, nil
+		}
+
 		return "", nil
 	}
 
@@ -2101,6 +2111,18 @@ func addInstallPanel(c *Console) error {
 						return
 					}
 				}
+			}
+
+			isDefaultRouteExist, err := checkDefaultRoute()
+			if err != nil {
+				logrus.Error(err)
+				printToPanel(c.Gui, "Failed to check default route.", installPanel)
+				return
+			}
+			if !isDefaultRouteExist {
+				logrus.Error(ErrMsgNoDefaultRoute)
+				printToPanel(c.Gui, ErrMsgNoDefaultRoute, installPanel)
+				return
 			}
 
 			// We need ForceGPT because cOS only supports ForceGPT (--force-gpt) flag, not ForceMBR!
