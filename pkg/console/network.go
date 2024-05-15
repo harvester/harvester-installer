@@ -2,7 +2,6 @@ package console
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -156,10 +155,5 @@ func listNetworkHardware() (map[string]networkHardwareInfo, error) {
 }
 
 func getManagementInterfaceName(mgmtInterface config.Network) string {
-	mgmtName := config.MgmtInterfaceName
-	vlanID := mgmtInterface.VlanID
-	if vlanID >= 2 && vlanID <= 4094 {
-		mgmtName = fmt.Sprintf("%s.%d", mgmtName, vlanID)
-	}
-	return mgmtName
+	return config.MgmtInterfaceName
 }
