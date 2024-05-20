@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -62,51 +64,140 @@ func (c CPUCheck) Run() (msg string, err error) {
 	return
 }
 
-func (c MemoryCheck) Run() (msg string, err error) {
-	meminfo, err := os.Open(procMemInfo)
-	if err != nil {
-		return
-	}
-	defer meminfo.Close()
-	scanner := bufio.NewScanner(meminfo)
-	var memTotalKiB int
-	for scanner.Scan() {
-		if n, _ := fmt.Sscanf(scanner.Text(), "MemTotal: %d kB", &memTotalKiB); n == 1 {
-			break
+func (c MemoryCheck) Run() (string, error) {
+	// We're working in KiB because that's what the fallback /proc/meminfo uses
+	var memTotalKiB uint
+	var wiggleRoom float32 = 1.0
+
+	// dmidecode is part of sle-micro-rancher, see e.g.
+	// https://build.opensuse.org/projects/SUSE:SLE-15-SP4:Update:Products:Micro54/packages/SLE-Micro-Rancher/files/SLE-Micro-Rancher.kiwi?expand=1
+	//
+	// The output of `dmidecode -t 19` will include one or more
+	// Memory Array Mapped Address blocks, for example on a system
+	// with 512GiB RAM, we might see this:
+	//
+	//	# dmidecode 3.5
+	//	Getting SMBIOS data from sysfs.
+	//	SMBIOS 2.8 present.
+	//
+	//	Handle 0x0024, DMI type 19, 31 bytes
+	//	Memory Array Mapped Address
+	//		Starting Address: 0x00000000000
+	//		Ending Address: 0x0007FFFFFFF
+	//		Range Size: 2 GB
+	//		Physical Array Handle: 0x000A
+	//		Partition Width: 1
+	//
+	//	Handle 0x0025, DMI type 19, 31 bytes
+	//	Memory Array Mapped Address
+	//		Starting Address: 0x0000000100000000k
+	//		Ending Address: 0x000000807FFFFFFFk
+	//		Range Size: 510 GB
+	//		Physical Array Handle: 0x000B
+	//		Partition Width: 1
+	//
+	// By adding together all the "Range Size" lines we can determine
+	// the amount of physical RAM installed.  Note that it's possible
+	// for units to be specified in any of "bytes", "kB", "MB", "GB",
+	// "TB", "PB", "EB", "ZB", so we have to handle all of them...
+	// (see http://git.savannah.nongnu.org/cgit/dmidecode.git/tree/dmidecode.c#n283)
+	out, err := execCommand("/usr/sbin/dmidecode", "-t", "19").Output()
+	if err == nil {
+		rangeSizeToKiB := func(rangeSize uint, unit string) uint {
+			switch unit {
+			case "GB":
+				// We're probably usually going to see GB
+				return rangeSize << 20
+			case "MB":
+				// This seems unlikely
+				return rangeSize << 10
+			case "kB":
+				// This seems even more unlikely
+				return rangeSize
+			case "bytes":
+				// Seriously, are you kidding me?
+				return rangeSize >> 10
+			}
+			return 0
+		}
+
+		for _, line := range strings.Split(string(out), "\n") {
+			var rangeSize uint
+			var unit string
+			if n, _ := fmt.Sscanf(strings.TrimSpace(line), "Range Size: %d %s", &rangeSize, &unit); n == 2 {
+				if unit == "TB" || unit == "PB" || unit == "EB" || unit == "ZB" {
+					// If we've somehow got a Memory Array Mapped Address
+					// with one of these enormous units, let's just pretend
+					// we've got a terabyte of RAM and be done with it ;-)
+					logrus.Infof("Found Memory Array Mapped Address with Range Size %d %s, assuming 1 TiB RAM for preflight check", rangeSize, unit)
+					memTotalKiB = 1 << 30
+					break
+				}
+				memTotalKiB += rangeSizeToKiB(rangeSize, unit)
+			}
 		}
 	}
+
 	if memTotalKiB == 0 {
-		err = errors.New("unable to extract MemTotal from /proc/cpuinfo")
-		return
+		// Somehow, we didn't get anything out of dmidecode, fall back to
+		// parsing /proc/meminfo
+
+		meminfo, err := os.Open(procMemInfo)
+
+		if err != nil {
+			return "", err
+		}
+
+		defer meminfo.Close()
+		scanner := bufio.NewScanner(meminfo)
+
+		for scanner.Scan() {
+			if n, _ := fmt.Sscanf(scanner.Text(), "MemTotal: %d kB", &memTotalKiB); n == 1 {
+				break
+			}
+		}
+
+		if memTotalKiB == 0 {
+			return "", errors.New("unable to extract MemTotal from /proc/meminfo")
+		}
+
+		// MemTotal from /proc/cpuinfo is a bit less than the actual physical
+		// memory in the system, due to reserved RAM not being included, so
+		// we can't actually do a trivial check of MemTotalGiB < MinMemoryTest,
+		// because it will fail.  For example:
+		// - A host with 32GiB RAM may report MemTotal 32856636 = 31.11GiB
+		// - A host with 64GiB RAM may report MemTotal 65758888 = 62.71GiB
+		// - A host with 128GiB RAM may report MemTotal 131841120 = 125.73GiB
+		// This means we have to test against a slightly lower number.  Knocking
+		// 10% off is somewhat arbitrary but probably not unreasonable (e.g. for
+		// 32GB we're actually allowing anything over 28.8GB, and for 64GB we're
+		// allowing anything over 57.6GB).
+
+		wiggleRoom = 0.9
+
+		// Note that the above also means the warning messages below will be a
+		// bit off (e.g. something like "System reports 31GiB RAM" on a 32GiB
+		// system).
 	}
-	// MemTotal from /proc/cpuinfo is a bit less than the actual physical
-	// memory in the system, due to reserved RAM not being included, so
-	// we can't actually do a trivial check of MemTotalGiB < MinMemoryTest,
-	// because it will fail.  For example:
-	// - A host with 32GiB RAM may report MemTotal 32856636 = 31.11GiB
-	// - A host with 64GiB RAM may report MemTotal 65758888 = 62.71GiB
-	// - A host with 128GiB RAM may report MemTotal 131841120 = 125.73GiB
-	// This means we have to test against a slightly lower number.  Knocking
-	// 5% off is somewhat arbitrary but probably not unreasonable (e.g. for
-	// 32GB we're actually allowing anything over 30.4GB, and for 64GB we're
-	// allowing anything over 60.8GB).
-	// Note that the above also means the warning messages below will be a
-	// bit off (e.g. something like "System reports 31GiB RAM" on a 32GiB
-	// system).
+
+	memTotalMiB := memTotalKiB / (1 << 10)
 	memTotalGiB := memTotalKiB / (1 << 20)
 	memReported := fmt.Sprintf("%dGiB", memTotalGiB)
+
 	if memTotalGiB < 1 {
 		// Just in case someone runs it on a really tiny VM...
-		memReported = fmt.Sprintf("%dKiB", memTotalKiB)
+		memReported = fmt.Sprintf("%dMiB", memTotalMiB)
 	}
-	if float32(memTotalGiB) < (MinMemoryTest * 0.95) {
-		msg = fmt.Sprintf("Only %s RAM detected. Harvester requires at least %dGiB for testing and %dGiB for production use.",
-			memReported, MinMemoryTest, MinMemoryProd)
-	} else if float32(memTotalGiB) < (MinMemoryProd * 0.95) {
-		msg = fmt.Sprintf("%s RAM detected. Harvester requires at least %dGiB for production use.",
-			memReported, MinMemoryProd)
+
+	if float32(memTotalGiB) < (MinMemoryTest * wiggleRoom) {
+		return fmt.Sprintf("Only %s RAM detected. Harvester requires at least %dGiB for testing and %dGiB for production use.",
+			memReported, MinMemoryTest, MinMemoryProd), nil
+	} else if float32(memTotalGiB) < (MinMemoryProd * wiggleRoom) {
+		return fmt.Sprintf("%s RAM detected. Harvester requires at least %dGiB for production use.",
+			memReported, MinMemoryProd), nil
 	}
-	return
+
+	return "", nil
 }
 
 func (c VirtCheck) Run() (msg string, err error) {

@@ -82,7 +82,7 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", inline: <<-SHELL
     zypper ar --no-gpgcheck https://download.opensuse.org/repositories/home:/vcheng:/Packages/15.4/home:vcheng:Packages.repo
     zypper --gpg-auto-import-keys refresh
-    zypper --non-interactive in yip
+    zypper --non-interactive in yip dmidecode
     echo -e '#!/bin/sh\necho "fake $0"' > /usr/local/bin/fake
     chmod a+x /usr/local/bin/fake
     for f in /usr/sbin/harv-install /usr/sbin/cos-installer-shutdown ; do

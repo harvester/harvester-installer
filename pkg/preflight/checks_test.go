@@ -16,11 +16,61 @@ type fakeOutput struct {
 
 var (
 	execOutputs = map[string]fakeOutput{
-		"nproc 4":  {"4\n", 0},
-		"nproc 8":  {"8\n", 0},
-		"nproc 16": {"16\n", 0},
-		"kvm":      {"kvm\n", 0},
-		"metal":    {"none\n", 1},
+		"nproc 4":        {"4\n", 0},
+		"nproc 8":        {"8\n", 0},
+		"nproc 16":       {"16\n", 0},
+		"kvm":            {"kvm\n", 0},
+		"metal":          {"none\n", 1},
+		"dmidecode-fail": {"", 1},
+		"dmidecode-8GiB": {`# dmidecode 3.4
+			Getting SMBIOS data from sysfs.
+			SMBIOS 3.0.0 present.
+
+			Handle 0x1300, DMI type 19, 31 bytes
+			Memory Array Mapped Address
+				Starting Address: 0x00000000000
+				Ending Address: 0x0007FFFFFFF
+				Range Size: 2 GB
+				Physical Array Handle: 0x1000
+				Partition Width: 1
+
+			Handle 0x1301, DMI type 19, 31 bytes
+			Memory Array Mapped Address
+				Starting Address: 0x00100000000
+				Ending Address: 0x0027FFFFFFF
+				Range Size: 6 GB
+				Physical Array Handle: 0x1000
+				Partition Width: 1`, 0},
+		"dmidecode-32GiB": {`# dmidecode 3.4
+			Getting SMBIOS data from sysfs.
+			SMBIOS 3.0.0 present.
+
+			Handle 0x1300, DMI type 19, 31 bytes
+			Memory Array Mapped Address
+				Starting Address: 0x00000000000
+				Ending Address: 0x0007FFFFFFF
+				Range Size: 2 GB
+				Physical Array Handle: 0x1000
+				Partition Width: 1
+
+			Handle 0x1301, DMI type 19, 31 bytes
+			Memory Array Mapped Address
+				Starting Address: 0x00100000000
+				Ending Address: 0x0087FFFFFFF
+				Range Size: 30 GB
+				Physical Array Handle: 0x1000
+				Partition Width: 1`, 0},
+		"dmidecode-64GiB": {`# dmidecode 3.5
+			Getting SMBIOS data from sysfs.
+			SMBIOS 2.8 present.
+
+			Handle 0x0034, DMI type 19, 31 bytes
+			Memory Array Mapped Address
+				Starting Address: 0x00000000000
+				Ending Address: 0x00FFFFFFFFF
+				Range Size: 64 GB
+				Physical Array Handle: 0x002F
+				Partition Width: 8`, 0},
 	}
 )
 
@@ -111,12 +161,37 @@ func TestVirtCheck(t *testing.T) {
 
 }
 
-func TestMemoryCheck(t *testing.T) {
-	defaultMemInfo := procMemInfo
-	defer func() { procMemInfo = defaultMemInfo }()
+func TestMemoryCheckDmiDecode(t *testing.T) {
+	defer func() { execCommand = exec.Command }()
 
 	expectedOutputs := map[string]string{
-		"./testdata/meminfo-512MiB": "Only 458112KiB RAM detected. Harvester requires at least 32GiB for testing and 64GiB for production use.",
+		"dmidecode-8GiB":  "Only 8GiB RAM detected. Harvester requires at least 32GiB for testing and 64GiB for production use.",
+		"dmidecode-32GiB": "32GiB RAM detected. Harvester requires at least 64GiB for production use.",
+		"dmidecode-64GiB": "",
+	}
+
+	check := MemoryCheck{}
+	for key, expectedOutput := range expectedOutputs {
+		execCommand = func(_ string, _ ...string) *exec.Cmd {
+			return fakeExecCommand(key)
+		}
+		msg, err := check.Run()
+		assert.Nil(t, err)
+		assert.Equal(t, expectedOutput, msg)
+	}
+}
+
+func TestMemoryCheckProcMemInfo(t *testing.T) {
+	defaultMemInfo := procMemInfo
+	defer func() { procMemInfo = defaultMemInfo }()
+	defer func() { execCommand = exec.Command }()
+
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return fakeExecCommand("dmidecode-fail")
+	}
+
+	expectedOutputs := map[string]string{
+		"./testdata/meminfo-512MiB": "Only 447MiB RAM detected. Harvester requires at least 32GiB for testing and 64GiB for production use.",
 		"./testdata/meminfo-32GiB":  "31GiB RAM detected. Harvester requires at least 64GiB for production use.",
 		"./testdata/meminfo-64GiB":  "",
 	}
