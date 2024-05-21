@@ -63,7 +63,7 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 		"/etc/sysconfig/network/dhcp").CombinedOutput()
 	if err != nil {
 		logrus.Error(err, string(output))
-		return nil, err
+		return output, err
 	}
 
 	conf := &yipSchema.YipConfig{
@@ -100,7 +100,7 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 	bytes, err = cmd.CombinedOutput()
 	if err != nil {
 		logrus.Error(err, string(bytes))
-		return nil, err
+		return bytes, err
 	}
 	// Restore Down NIC to up
 	if err := upAllLinks(); err != nil {

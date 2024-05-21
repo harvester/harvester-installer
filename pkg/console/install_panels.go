@@ -2064,8 +2064,8 @@ func addInstallPanel(c *Console) error {
 
 				if c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
 					printToPanel(c.Gui, "Configuring network...", installPanel)
-					if _, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
-						printToPanel(c.Gui, fmt.Sprintf("can't apply networks: %s", err), installPanel)
+					if output, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
+						printToPanel(c.Gui, fmt.Sprintf("Can't apply networks: %s\n%s", err, string(output)), installPanel)
 						return
 					}
 				}
