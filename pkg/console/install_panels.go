@@ -2021,21 +2021,7 @@ func addInstallPanel(c *Console) error {
 				configureInstallModeDHCP(c)
 			}
 
-			// lookup MAC Address to populate device names where needed
-			// lookup device name to populate MAC Address
-			// This needs to happen early, before a possible call to
-			// applyNetworks() in the DHCP case.
-			tmpInterfaces := []config.NetworkInterface{}
-			for _, iface := range c.config.ManagementInterface.Interfaces {
-				if err := iface.FindNetworkInterfaceNameAndHwAddr(); err != nil {
-					logrus.Error(err)
-					printToPanel(c.Gui, err.Error(), installPanel)
-					return
-				}
-				tmpInterfaces = append(tmpInterfaces, iface)
-			}
-			c.config.ManagementInterface.Interfaces = tmpInterfaces
-
+			// Need to merge remote config first
 			logrus.Info("Local config: ", c.config)
 			if c.config.Install.ConfigURL != "" {
 				printToPanel(c.Gui, fmt.Sprintf("Fetching %s...", c.config.Install.ConfigURL), installPanel)
@@ -2051,27 +2037,44 @@ func addInstallPanel(c *Console) error {
 					return
 				}
 				logrus.Info("Local config (merged): ", c.config)
+			}
 
-				if c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
-					printToPanel(c.Gui, "Configuring network...", installPanel)
-					if output, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
-						printToPanel(c.Gui, fmt.Sprintf("Can't apply networks: %s\n%s", err, string(output)), installPanel)
-						return
-					}
-				}
+			// case insensitive for network method and vip mode
+			c.config.ManagementInterface.Method = strings.ToLower(c.config.ManagementInterface.Method)
+			c.config.VipMode = strings.ToLower(c.config.VipMode)
 
-				if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
-					mgmtName := getManagementInterfaceName(c.config.ManagementInterface)
-					vip, err := getVipThroughDHCP(mgmtName)
-					if err != nil {
-						printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
-						return
-					}
-					c.config.Vip = vip.ipv4Addr
-					c.config.VipHwAddr = vip.hwAddr
+			// lookup MAC Address to populate device names where needed
+			// lookup device name to populate MAC Address
+			// This needs to happen early, before a possible call to
+			// applyNetworks() in the DHCP case.
+			for i := range c.config.ManagementInterface.Interfaces {
+				if err := c.config.ManagementInterface.Interfaces[i].FindNetworkInterfaceNameAndHwAddr(); err != nil {
+					logrus.Error(err)
+					printToPanel(c.Gui, err.Error(), installPanel)
+					return
 				}
 			}
-			c.config.VipMode = strings.ToLower(c.config.VipMode)
+
+			if c.config.Automatic && c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
+				// Only need to do this for automatic installs, as manual installs will
+				// have already run applyNetworks()
+				printToPanel(c.Gui, "Configuring network...", installPanel)
+				if output, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
+					printToPanel(c.Gui, fmt.Sprintf("Can't apply networks: %s\n%s", err, string(output)), installPanel)
+					return
+				}
+			}
+
+			if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
+				mgmtName := getManagementInterfaceName(c.config.ManagementInterface)
+				vip, err := getVipThroughDHCP(mgmtName)
+				if err != nil {
+					printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
+					return
+				}
+				c.config.Vip = vip.ipv4Addr
+				c.config.VipHwAddr = vip.hwAddr
+			}
 
 			// If no hostname was provided in the config, this function will
 			// default the hostname to either what's supplied by the DHCP sever,
@@ -2122,9 +2125,6 @@ func addInstallPanel(c *Console) error {
 			if c.config.DataDisk == c.config.Device {
 				c.config.DataDisk = ""
 			}
-
-			// case insensitive for network method and vip mode
-			c.config.ManagementInterface.Method = strings.ToLower(c.config.ManagementInterface.Method)
 
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
 				printToPanel(c.Gui, err.Error(), installPanel)
