@@ -96,7 +96,7 @@ To remote debug the `harvester-installer` in your IDE, you need to
 install the `delve` package in your Vagrant box first.
 
 ```sh
- $ zypper addrepo https://download.opensuse.org/repositories/devel:languages:go/15.4/devel:languages:go.repo
+ $ zypper addrepo https://download.opensuse.org/repositories/devel:/languages:/go/SLE_15_SP4/devel:languages:go.repo
  $ zypper refresh
  $ zypper install delve
 ```

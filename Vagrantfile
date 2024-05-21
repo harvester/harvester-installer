@@ -47,7 +47,7 @@ Vagrant.configure("2") do |config|
 
   # Disable the default share of the current code directory. Doing this
   # provides improved isolation between the vagrant box and your host
-  # by making sure your Vagrantfile isn't accessable to the vagrant box.
+  # by making sure your Vagrantfile isn't accessible to the vagrant box.
   # If you use this you may want to enable additional shared subfolders as
   # shown above.
   # config.vm.synced_folder ".", "/vagrant", disabled: true
@@ -80,7 +80,7 @@ Vagrant.configure("2") do |config|
   #   apt-get install -y apache2
   # SHELL
   config.vm.provision "shell", inline: <<-SHELL
-    zypper ar --no-gpgcheck https://download.opensuse.org/repositories/home:/vcheng:/Packages/15.4/home:vcheng:Packages.repo
+    zypper ar --no-gpgcheck https://download.opensuse.org/repositories/isv:/Rancher:/Harvester:/ExtraPackages:/Dev/15.4/isv:Rancher:Harvester:ExtraPackages:Dev.repo
     zypper --gpg-auto-import-keys refresh
     zypper --non-interactive in yip dmidecode
     echo -e '#!/bin/sh\necho "fake $0"' > /usr/local/bin/fake
