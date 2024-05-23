@@ -49,7 +49,10 @@ pull_images() {
   local repository
 
   if [ -z "$USE_LOCAL_IMAGES" ]; then
-    xargs -n1 -t docker image pull --quiet < $image_list
+    echo "Pulling images..."
+    for image in $(cat $image_list); do
+      docker image pull --quiet $image
+    done
     return
   fi
 
