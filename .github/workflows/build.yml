@@ -31,14 +31,3 @@ jobs:
     # Build ISO
     - name: Run make ci
       run: make ci
-
-    # This gives us ZIP files of ISO images saved against the
-    # workflow run, in case they're useful for manual testing
-    # We're not publishing to releases.rancher.com here, so as
-    # not to potentially collide with ISO images published from
-    # the main harvester repository.
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: artifacts_${{ matrix.arch }}
-        path: ./dist/artifacts/*
