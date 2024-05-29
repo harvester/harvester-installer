@@ -75,7 +75,7 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 			},
 		},
 	}
-	_, err = config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true)
+	_, err = config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true, "")
 	if err != nil {
 		return nil, err
 	}
