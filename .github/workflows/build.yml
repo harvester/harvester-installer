@@ -19,7 +19,6 @@ jobs:
       matrix:
         arch:
         - amd64
-        - arm64
     # hdd=50 is somewhat arbitrary here, but seems to give a
     # 77G disk, which is sufficient for ISO builds.
     # The VM runners are named "x64", not "amd64" like other docker things.
