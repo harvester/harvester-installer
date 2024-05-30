@@ -1,6 +1,6 @@
 harvester-installer
 ========
-[![Build Status](https://drone-publish.rancher.io/api/badges/harvester/harvester-installer/status.svg)](https://drone-publish.rancher.io/harvester/harvester-installer)
+[![Build Status](https://github.com/harvester/harvester-installer/actions/workflows/build.yml/badge.svg)](https://github.com/harvester/harvester-installer/actions/workflows/build.yml)
 
 Repo for building the [harvester](https://github.com/harvester/harvester) ISO image.
 
