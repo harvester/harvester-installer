@@ -134,6 +134,46 @@ tar zxvf ${CHARTS_DIR}/nvidia-driver-runtime-${NVIDIA_DRIVER_RUNTIME_CHART_VERSI
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
+# Check the matching of addon chart version and repo chart version
+check_addon_chart_version_matching() {
+  echo "charts packed in Harvester repo"
+  ls -alht ${CHARTS_DIR}
+
+  echo "addon template files"
+  ls -alht ${addons_path}/pkg/templates
+
+  for filename in ${addons_path}/pkg/templates/*.yaml; do
+    local tmpfile=/tmp/$(basename ${filename})
+    grep -v "{{" ${filename} > ${tmpfile}
+    local cnt=$(yq '.resources | length' ${tmpfile})
+
+    local i=0
+    while [[ $i -lt $cnt ]] ; do
+      local chart=$(idx=$i yq '.resources[env(idx)].spec.chart' ${tmpfile})
+      local version=$(idx=$i yq '.resources[env(idx)].spec.version' ${tmpfile})
+      echo addon: "$chart" version: $version
+
+      local EXIT_CODE=0
+      local repover=$(chart=$chart yq '.entries[strenv(chart)][0].version' < ${CHARTS_DIR}/index.yaml) || EXIT_CODE=$?
+      if [ $EXIT_CODE != 0 ]; then
+        echo WARNING: addon $chart is defined, but the chart is not packed into repo / repo struct is changed
+        continue
+      fi
+
+      # some charts are not packed into arm64 ISO, the above yq will return `null`
+      if [[ $repover == "null" ]] && [[ ${ARCH} == "arm64" ]]; then
+        echo  WARNING: addon "$chart" is defined with version "$version" but the chart is not packed into repo in ${ARCH}
+      elif [[ $repover != $version ]]; then
+        echo  addon "$chart" has version mis-matching: in repo is "$repover" but in addon is "$version"
+        return 1
+      fi
+      (( i += 1 ))
+    done
+  done
+}
+
+check_addon_chart_version_matching
+
 # Use offline bundle cache
 if [ -n "$HARVESTER_INSTALLER_OFFLINE_BUILD" -a -e /bundle ]; then
   cp -rf /bundle/* ${BUNDLE_DIR}/
