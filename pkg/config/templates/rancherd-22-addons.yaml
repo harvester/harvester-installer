@@ -6,7 +6,7 @@ resources:
       namespace: harvester-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.1.8"
+      version: "0.3.0"
       chart: harvester-vm-import-controller
       {{- if and .Addons .Addons.harvester_vm_import_controller }}
       enabled: {{ .Addons.harvester_vm_import_controller.Enabled }}
@@ -15,7 +15,7 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.1.8
+          tag: v0.3.0
         fullnameOverride: harvester-vm-import-controller
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
@@ -203,7 +203,7 @@ resources:
       addon.harvesterhci.io/experimental: "true"
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.1.1"
+      version: "0.3.0"
       chart: harvester-seeder
       {{- if and .Addons .Addons.harvester_seeder}}
       enabled: {{ .Addons.harvester_seeder.Enabled }}
@@ -212,7 +212,7 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.1.2
+          tag: v0.3.0
         fullnameOverride: harvester-seeder
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
