@@ -91,7 +91,7 @@ resources:
           controlNamespace: cattle-logging-system
           workloadOverrides:
             containers:
-            - image: rancher/harvester-eventrouter:v0.1.2
+            - image: rancher/harvester-eventrouter:v0.2.0
               name: event-tailer
               resources:
                 limits:
