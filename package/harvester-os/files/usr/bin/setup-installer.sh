@@ -44,12 +44,17 @@ echo "Remove the serial-getty service..."
 rm -rf "/etc/systemd/system/serial-getty*"
 
 # reverse the ttys to start from the last one
-for TTY in $(cat /sys/class/tty/console/active); do
+read -r -a tty_list < /sys/class/tty/console/active
+
+for TTY in "${tty_list[@]}"; do
   tty_num=${TTY#tty}
 
  #for arm64 the terminals are named /dev/ttyAMA*
+ #skip /dev/ttyAMA* if an additional tty is present
+ #on equinix metal /dev/ttyAMA is the only terminal available
+ #so needs to be used as default option
   PLATFORM=$(uname -m)
-  if [ $PLATFORM == "aarch64" ]
+  if [[ $PLATFORM == "aarch64" && ${#tty_list[@]} > 1 ]]
   then
     if  [[ $tty_num =~ ^AMA[0-9]+$ ]]; then
       continue
