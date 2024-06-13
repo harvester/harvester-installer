@@ -4,3 +4,5 @@ kubelet-arg:
 - {{ printf "%q" $arg }}
 {{- end }}
 {{- end }}
+node-label:
+- harvesterhci.io/managed=true

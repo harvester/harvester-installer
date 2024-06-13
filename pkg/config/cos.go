@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -298,8 +299,29 @@ func setConfigDefaultValues(config *HarvesterConfig) {
 	}
 }
 
+func setConfigVIPFromServerURL(config *HarvesterConfig) error {
+	if config.Vip != "" {
+		return nil
+	}
+
+	if config.ServerURL == "" {
+		return fmt.Errorf("server url or vip is required")
+	}
+
+	parsedURL, err := url.ParseRequestURI(config.ServerURL)
+	if err != nil {
+		return fmt.Errorf("%s is invalid", config.ServerURL)
+	}
+
+	config.Vip = parsedURL.Hostname()
+	return nil
+}
+
 func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 	setConfigDefaultValues(config)
+	if err := setConfigVIPFromServerURL(config); err != nil {
+		return err
+	}
 
 	stage.Directories = append(stage.Directories,
 		yipSchema.Directory{
@@ -347,7 +369,7 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		return err
 	}
 
-	if config.ServerURL == "" {
+	if config.ServerURL == "" || config.Role == RoleMgmt || config.Role == RoleWitness {
 		stage.Files = append(stage.Files,
 			yipSchema.File{
 				Path:        "/etc/rancher/rke2/config.yaml.d/90-harvester-server.yaml",
