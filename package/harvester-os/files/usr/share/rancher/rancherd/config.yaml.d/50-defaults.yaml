@@ -3,7 +3,7 @@ rancherValues:
   rancherImage: rancher/rancher
   rancherImageTag: v2.9.2
   noDefaultAdmin: false
-  features: multi-cluster-management=false,multi-cluster-management-agent=false
+  features: multi-cluster-management=false,multi-cluster-management-agent=false,provisioningv2=false,rke2=false,embedded-cluster-api=false,istio-virtual-service-ui=false,monitoringv1=false,rke1-custom-node-cleanup=false,fleet=false,auth=true
   useBundledSystemChart: true
   bootstrapPassword: admin
   hostPort: 0
