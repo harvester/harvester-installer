@@ -1,0 +1,2 @@
+kubelet-arg+:
+- {{ printf "%q" .GetCPUManagerPolicy }}
