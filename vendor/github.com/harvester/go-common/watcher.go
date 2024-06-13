@@ -48,7 +48,32 @@ func generateDBUSConnection() (*dbus.Conn, error) {
 	return conn, nil
 }
 
-func WatchFileChange(ctx context.Context, handlerFunc func(eventType string), monitorTargets []string) {
+type FSNotifyHandler interface {
+	Notify(event fsnotify.Event)
+}
+
+// FSNotifyHandlerFunc is a callback for fsnotify Events.
+type FSNotifyHandlerFunc func(event fsnotify.Event)
+
+func (f FSNotifyHandlerFunc) Notify(event fsnotify.Event) {
+	f(event)
+}
+
+// AnyOf propagates the fsnotify Event to the next FSNotifyHandler
+// only if the event type is one of the specified fsnotify Ops.
+func AnyOf(nextHandler FSNotifyHandler, op fsnotify.Op, ops ...fsnotify.Op) FSNotifyHandler {
+	return FSNotifyHandlerFunc(func(event fsnotify.Event) {
+		want := append([]fsnotify.Op{op}, ops...)
+		for _, w := range want {
+			if event.Has(w) {
+				nextHandler.Notify(event)
+				return
+			}
+		}
+	})
+}
+
+func WatchFileChange(ctx context.Context, handler FSNotifyHandler, monitorTargets []string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		logrus.Errorf("failed to creating a fsnotify watcher: %v", err)
@@ -73,9 +98,7 @@ func WatchFileChange(ctx context.Context, handlerFunc func(eventType string), mo
 		select {
 		case event := <-watcher.Events:
 			logrus.Debugf("event: %+v", event)
-			if event.Op == fsnotify.Write {
-				handlerFunc(event.Name)
-			}
+			handler.Notify(event)
 		case <-ctx.Done():
 			return
 		}
