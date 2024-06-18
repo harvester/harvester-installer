@@ -78,7 +78,8 @@ then
 fi
 
 INITRD=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/initrd)
-docker create --cidfile=os-img-container ${HARVESTER_OS_IMAGE}
+# we need to add entrypoint or the docker create failed in newer version
+docker create --cidfile=os-img-container ${HARVESTER_OS_IMAGE} -- tail -f /dev/null
 docker cp $(<os-img-container):/boot/${KERNEL} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-${ARCH}
 docker cp $(<os-img-container):/boot/${INITRD} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
 docker cp $(<os-img-container):/usr/bin/elemental /usr/bin/elemental
