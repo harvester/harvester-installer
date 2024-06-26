@@ -46,7 +46,6 @@ clear_disk_label()
         done
         udevadm settle
     fi
-   
 }
 
 umount_target() {
@@ -251,8 +250,8 @@ preload_rke2_images()
       if [ "$install_mode" = "ISO" ]; then
         echo "Stop RKE2 and remove temporary RKE2 files..."
         pkill rke2
-        rm /rke2.log
-        rm /etc/rancher/rke2/rke2.yaml
+        rm -f /rke2.log
+        rm -f /etc/rancher/rke2/rke2.yaml
         rm -rf /var/lib/rancher/rke2/server
         rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
 
@@ -279,12 +278,12 @@ preload_rke2_images()
       if [ "$install_mode" = "ISO" ]; then
         echo "Stop containerd..."
         pkill containerd
-        rm /containerd.log
+        rm -f /containerd.log
       else
         echo "Stop RKE2..."
         pkill rke2
-        rm /rke2.log
-        rm /etc/rancher/rke2/rke2.yaml
+        rm -f /rke2.log
+        rm -f /etc/rancher/rke2/rke2.yaml
         rm -rf /var/lib/rancher/rke2/server
         rm -rf /var/lib/rancher/rke2/agent/pod-manifests/*
       fi
@@ -402,7 +401,7 @@ update_grub_settings()
         # patch kernel in bootargs.cfg to Image on arm nodes
         sed -i "s/kernel=\/boot\/vmlinuz/kernel=\/boot\/Image/g" ${TARGET}/etc/cos/bootargs.cfg
     fi
-    
+
     # calculate recommended crashkernel allocation size
     CRASH_KERNEL_PARAMS=$(get_crashkernel_params || true)
     if [ -n "$CRASH_KERNEL_PARAMS" ]; then
