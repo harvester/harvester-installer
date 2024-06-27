@@ -397,6 +397,36 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		)
 	}
 
+	systemReservedConfig, err := render("rke2-99-z00-harvester-system-reserved.yaml", config)
+	if err != nil {
+		return err
+	}
+
+	stage.Files = append(stage.Files,
+		yipSchema.File{
+			Path:        "/etc/rancher/rke2/config.yaml.d/99-z00-harvester-system-reserved.yaml",
+			Content:     systemReservedConfig,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		},
+	)
+
+	cpuManagerPolicyConfig, err := render("rke2-99-z01-harvester-cpu-manager.yaml", config)
+	if err != nil {
+		return err
+	}
+
+	stage.Files = append(stage.Files,
+		yipSchema.File{
+			Path:        "/etc/rancher/rke2/config.yaml.d/99-z01-harvester-cpu-manager.yaml",
+			Content:     cpuManagerPolicyConfig,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		},
+	)
+
 	return nil
 }
 
