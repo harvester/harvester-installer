@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"strings"
 
 	"github.com/imdario/mergo"
@@ -299,6 +300,16 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	return args, nil
 }
 
+// make system:kube cpu reservation ration 2:3
+func (c *HarvesterConfig) GetSystemReserved() string {
+	return fmt.Sprintf("system-reserved=cpu=%dm", calculateCPUReservedInMilliCPU(runtime.NumCPU(), MaxPods)*2*2/5)
+}
+
+// make system:kube cpu reservation ration 2:3
+func (c *HarvesterConfig) GetKubeReserved() string {
+	return fmt.Sprintf("kube-reserved=cpu=%dm", calculateCPUReservedInMilliCPU(runtime.NumCPU(), MaxPods)*2*3/5)
+}
+
 func (c HarvesterConfig) ShouldCreateDataPartitionOnOsDisk() bool {
 	// DataDisk is empty means only using the OS disk, and most of the time we should create data
 	// partition on OS disk, unless when ForceMBR=true then we should not create data partition.
@@ -442,4 +453,40 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 	}
 
 	return conf, nil
+}
+
+// inspired by GKE CPU reservations https://cloud.google.com/kubernetes-engine/docs/concepts/plan-node-sizes
+func calculateCPUReservedInMilliCPU(cores int, maxPods int) int64 {
+	// this shouldn't happen
+	if cores <= 0 || maxPods <= 0 {
+		return 0
+	}
+
+	var reserved float64
+
+	// 6% of the first core
+	reserved += float64(6) / 100
+
+	// 1% of the next core (up to 2 cores)
+	if cores > 1 {
+		reserved += float64(1) / 100
+	}
+
+	// 0.5% of the next 2 cores (up to 4 cores)
+	if cores > 2 {
+		reserved += float64(2) * float64(0.5) / 100
+	}
+
+	// 0.25% of any cores above 4 cores
+	if cores > 4 {
+		reserved += float64(cores-4) * float64(0.25) / 100
+	}
+
+	// if the maximum number of Pods per node beyond the default of 110,
+	// reserves an extra 400 mCPU in addition to the preceding reservations.
+	if maxPods > 110 {
+		reserved += 0.4
+	}
+
+	return int64(reserved * 1000)
 }
