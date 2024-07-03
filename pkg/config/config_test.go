@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -449,4 +452,90 @@ func TestHarvesterConfigMerge_Addons(t *testing.T) {
 	assert.Equal(t, true, conf.Addons["rancher-logging"].Enabled, "Addons Enabled true should be merged")
 	assert.Equal(t, "the value to overwrite original", conf.Addons["rancher-logging"].ValuesContent, "Addons ValuesContent should be merged")
 	assert.Equal(t, false, conf.Addons["rancher-monitoring"].Enabled, "Addons Enabled false should be merged")
+}
+
+func TestHarvesterReservedResourcesConfigRendering(t *testing.T) {
+	conf := &HarvesterConfig{}
+	content, err := render("rke2-99-z00-harvester-reserved-resources.yaml", conf)
+	assert.NoError(t, err)
+
+	loadedConf := map[string][]string{}
+
+	err = yaml.Unmarshal([]byte(content), &loadedConf)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(loadedConf["kubelet-arg+"]))
+
+	systemReserved := loadedConf["kubelet-arg+"][0]
+	assert.True(t, strings.HasPrefix(systemReserved, "system-reserved=cpu="),
+		fmt.Sprintf("%s doesn't started with system-reserved=cpu=", systemReserved))
+	systemReservedArray := strings.Split(systemReserved, "system-reserved=cpu=")
+	assert.Equal(t, 2, len(systemReservedArray))
+	systemCPUReserved, err := strconv.Atoi(strings.Replace(systemReservedArray[1], "m", "", 1))
+	assert.NoError(t, err)
+
+	kubeReserved := loadedConf["kubelet-arg+"][1]
+	assert.True(t, strings.HasPrefix(kubeReserved, "kube-reserved=cpu="),
+		fmt.Sprintf("%s doesn't started with kube-reserved=cpu=", kubeReserved))
+	kubeReservedArray := strings.Split(kubeReserved, "kube-reserved=cpu=")
+	assert.Equal(t, 2, len(kubeReservedArray))
+	kubeCPUReserved, err := strconv.Atoi(strings.Replace(kubeReservedArray[1], "m", "", 1))
+	assert.NoError(t, err)
+
+	assert.Equal(t, systemCPUReserved, kubeCPUReserved*2/3)
+}
+
+func TestCalculateCPUReservedInMilliCPU(t *testing.T) {
+	testCases := []struct {
+		name               string
+		coreNum            int
+		maxPods            int
+		reservedMilliCores int64
+	}{
+		{
+			name:               "invalid core num",
+			coreNum:            -1,
+			maxPods:            MaxPods,
+			reservedMilliCores: 0,
+		},
+		{
+			name:               "invalid max pods",
+			coreNum:            1,
+			maxPods:            -1,
+			reservedMilliCores: 0,
+		},
+		{
+			name:               "core = 1 and max pods = 110",
+			coreNum:            1,
+			maxPods:            110,
+			reservedMilliCores: 60,
+		},
+		{
+			name:               "core = 1",
+			coreNum:            1,
+			maxPods:            MaxPods,
+			reservedMilliCores: 60 + 400,
+		},
+		{
+			name:               "core = 2",
+			coreNum:            2,
+			maxPods:            MaxPods,
+			reservedMilliCores: 60 + 10 + 400,
+		},
+		{
+			name:               "core = 4",
+			coreNum:            4,
+			maxPods:            MaxPods,
+			reservedMilliCores: 60 + 10 + 5*2 + 400,
+		},
+		{
+			name:               "core = 8",
+			coreNum:            8,
+			maxPods:            MaxPods,
+			reservedMilliCores: 60 + 10 + 5*2 + 2.5*4 + 400,
+		},
+	}
+
+	for _, tc := range testCases {
+		assert.Equal(t, tc.reservedMilliCores, calculateCPUReservedInMilliCPU(tc.coreNum, tc.maxPods))
+	}
 }
