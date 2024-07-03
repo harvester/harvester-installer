@@ -397,6 +397,21 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		)
 	}
 
+	reservedResourceConfig, err := render("rke2-99-z00-harvester-reserved-resources.yaml", config)
+	if err != nil {
+		return err
+	}
+
+	stage.Files = append(stage.Files,
+		yipSchema.File{
+			Path:        "/etc/rancher/rke2/config.yaml.d/99-z00-harvester-reserved-resources.yaml",
+			Content:     reservedResourceConfig,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		},
+	)
+
 	return nil
 }
 
