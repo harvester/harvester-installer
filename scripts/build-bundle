@@ -11,7 +11,7 @@ cd ${TOP_DIR}
 
 addons_path=../addons
 if [ ! -d ${addons_path} ];then
-    echo "No existed harvester source. Pulling..."
+    echo "No existing addons source. Pulling..."
     git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
 
@@ -39,9 +39,8 @@ mkdir -p ${RANCHERD_IMAGES_DIR}
 # Prepare Harvester chart
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
-    echo "No existed harvester source. Pulling into /tmp/harvester"
-    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git /tmp/harvester
-    harvester_path=/tmp/harvester
+    echo "No existing harvester source. Pulling..."
+    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
 fi
 
 # Revert harvester chart version patch to clean dirty git status
@@ -52,10 +51,10 @@ reset_charts() {
 }
 
 # This must be placed after cloning `harvester/harvester`` in case `make build-bundle` is run directly.
-source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
+source ${SCRIPTS_DIR}/version-harvester ${harvester_path}
 
 # Replace harvester chart version
-${SCRIPTS_DIR}/patch-harvester ${TOP_DIR}/../harvester
+${SCRIPTS_DIR}/patch-harvester ${harvester_path}
 # Package harvester chart
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
