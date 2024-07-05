@@ -6,7 +6,7 @@ cd $(dirname $0)/..
 # duplicated from scripts/build, so that we can run `make test` standalone
 addons_path=../addons
 if [ ! -d ${addons_path} ];then
-    echo "No existed addons source. Pulling..."
+    echo "No existing addons source. Pulling..."
     git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
 cp ${addons_path}/pkg/templates/*.yaml ./pkg/config/templates
