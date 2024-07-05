@@ -40,12 +40,17 @@ RUN mkdir /usr/tmp && \
     curl ${HELM_URL} | tar xvzf - --strip-components=1 -C /usr/tmp/ && \
     mv /usr/tmp/helm /usr/bin/helm
 
+ARG LOCAL_HARVESTER_SRC
+ENV HARVESTER_SRC_MOUNT="${LOCAL_HARVESTER_SRC:+-v $LOCAL_HARVESTER_SRC:/go/src/github.com/harvester/harvester}"
+ARG LOCAL_ADDONS_SRC
+ENV ADDONS_SRC_MOUNT="${LOCAL_ADDONS_SRC:+-v $LOCAL_ADDONS_SRC:/go/src/github.com/harvester/addons}"
+
 # You cloud defined your own rke2 url by setup `RKE2_IMAGE_REPO`
 ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS RKE2_IMAGE_REPO USE_LOCAL_IMAGES BUILD_QCOW DRONE_BUILD_EVENT REMOTE_DEBUG
 ENV DAPPER_SOURCE /go/src/github.com/harvester/harvester-installer/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
-ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock -v harvester-installer-go:/root/go -v harvester-installer-cache:/root/.cache --privileged"
+ENV DAPPER_RUN_ARGS "-v /run/containerd/containerd.sock:/run/containerd/containerd.sock -v harvester-installer-go:/root/go -v harvester-installer-cache:/root/.cache ${HARVESTER_SRC_MOUNT} ${ADDONS_SRC_MOUNT} --privileged"
 
 ENV HOME ${DAPPER_SOURCE}
 WORKDIR ${DAPPER_SOURCE}

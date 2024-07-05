@@ -27,6 +27,19 @@ This will:
 
 The built ISO image is written to the `dist/artifacts` directory.
 
+During the build, the harvester source and addons will be pulled
+automatically from https://github.com/harvester/harvester.git and
+https://github.com/harvester/addons.git resectively.  If you would
+like to use an exiting local copy of either or both repositories
+instead, for example to pick up some development work in progress,
+you can do so as follows:
+
+```sh
+ $ export LOCAL_HARVESTER_SRC=/path/to/local/harvester/repo
+ $ export LOCAL_ADDONS_SRC=/path/to/local/addons/repo
+ $ make
+```
+
 ## Harvester Installation Process
 
 Harvester can be installed by either [booting the Harvester ISO](https://docs.harvesterhci.io/v1.2/install/index/),
