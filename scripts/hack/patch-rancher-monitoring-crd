@@ -15,24 +15,6 @@ patch_rancher_monitoring_crd_chart()
   cd ${chart_dir}
   tar zxf rancher-monitoring-crd-${monitoring_version}.tgz --warning=no-timestamp
 
-  local origfile="./rancher-monitoring-crd/templates/rbac.yaml"
-  local newfile="${pkg_monitoring_crd_path}/${monitoring_version}/rbac.yaml"
-  echo "patch original file $origfile"
-  if [ -f "$origfile" ]; then
-    ls -alth "$origfile"
-    echo "diff"
-    # when files are different, `diff` will return 1
-    diff "$origfile" "$newfile" || true
-    rm -f "$origfile"
-  else
-    echo "original file $origfile is not found"
-  fi
-
-  # replace with new file
-  cp -f "$newfile" "$origfile"
-  echo "patched file"
-  ls -alth "$origfile"
-
   # replace shell image version; yq can also work, but it strips all blank lines; use patch instead
   #  yq -e e '(.image | select(.repository == "rancher/shell") | .tag) = "v0.1.22"' -i ran-mon-crd-values.yaml
   local valuesfile="./rancher-monitoring-crd/values.yaml"
