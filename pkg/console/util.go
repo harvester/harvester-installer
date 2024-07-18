@@ -504,6 +504,10 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
 	}
 
+	if hvstConfig.OS.AdditionalKernelArguments != "" {
+		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", hvstConfig.OS.AdditionalKernelArguments))
+	}
+
 	elementalConfigDir, elementalConfigFile, err := saveElementalConfig(elementalConfig)
 	if err != nil {
 		return nil

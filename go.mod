@@ -10,6 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
 	github.com/rancher/wharfie v0.6.5
+<<<<<<< HEAD
 	github.com/rancher/yip v1.9.2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
@@ -19,6 +20,16 @@ require (
 	golang.org/x/net v0.27.0
 	golang.org/x/sys v0.22.0
 	gopkg.in/ini.v1 v1.67.0
+=======
+	github.com/sirupsen/logrus v1.9.2
+	github.com/stretchr/testify v1.9.0
+	github.com/tredoe/osutil v1.3.6
+	github.com/vishvananda/netlink v1.1.0
+	golang.org/x/crypto v0.14.0
+	golang.org/x/net v0.17.0
+	golang.org/x/sys v0.13.0
+	gopkg.in/ini.v1 v1.63.2
+>>>>>>> a412288 (allow installation to external disks, configure multipathd and extra kernel arguments)
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.25.4
 )
