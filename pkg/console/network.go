@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"syscall"
@@ -13,6 +14,8 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
+
+	"github.com/dell/goiscsi"
 
 	"github.com/harvester/harvester-installer/pkg/config"
 )
@@ -137,7 +140,7 @@ func getNICs() ([]netlink.Link, error) {
 		}
 	}
 
-	return nics, nil
+	return filterISCSIInterfaces(nics)
 }
 
 func getNICState(name string) int {
@@ -189,4 +192,48 @@ func getManagementInterfaceName(mgmtInterface config.Network) string {
 		mgmtName = fmt.Sprintf("%s.%d", mgmtName, vlanID)
 	}
 	return mgmtName
+}
+
+// filterISCSIInterfaces will query the host to identify iscsi sessions, and skip interfaces
+// used by the existing iscsi session.
+func filterISCSIInterfaces(links []netlink.Link) ([]netlink.Link, error) {
+	iscsi := goiscsi.NewLinuxISCSI(nil)
+	sessions, err := iscsi.GetSessions()
+	if err != nil {
+		return nil, fmt.Errorf("error querying iscsi sessions: %v", err)
+	}
+
+	var returnLinks []netlink.Link
+	for _, link := range links {
+		var inuse bool
+		if getNICState(link.Attrs().Name) == NICStateUP {
+			iface, err := net.InterfaceByName(link.Attrs().Name)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching interface details: %v", err)
+			}
+
+			addresses, err := iface.Addrs()
+			if err != nil {
+				return nil, fmt.Errorf("error fetching addresses from interface: %v", err)
+			}
+
+			for _, address := range addresses {
+				// interface addresses are in cidr format, and need to be converted before comparison
+				// since iscsi session contains just the ip address
+				ipAddress, _, err := net.ParseCIDR(address.String())
+				if err != nil {
+					return nil, fmt.Errorf("error parsing ip address: %v", err)
+				}
+				for _, session := range sessions {
+					if session.IfaceIPaddress == ipAddress.String() {
+						inuse = true
+					}
+				}
+			}
+		}
+		if !inuse {
+			returnLinks = append(returnLinks, link)
+		}
+	}
+	return returnLinks, nil
 }

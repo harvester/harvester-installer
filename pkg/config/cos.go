@@ -175,6 +175,11 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 		})
 	}
 
+	// enable multipathd for external storage support
+	if err := setupExternalStorage(config, &initramfs); err != nil {
+		return nil, err
+	}
+
 	// TOP
 	if cfg.Mode != ModeInstall {
 		if err := initRancherdStage(config, &initramfs); err != nil {
@@ -839,4 +844,25 @@ func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, hvstConfig *
 	}
 
 	return elementalConfig, nil
+}
+
+// setupExternalStorage is needed to support boot of external disks
+// this involves enable multipath service and configuring it to blacklist
+// all devices except the ones listed in the config.OS.ExternalStorage.MultiPathConfig
+
+func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error {
+	if !config.OS.ExternalStorage.Enabled {
+		return nil
+	}
+	stage.Systemctl.Enable = append(stage.Systemctl.Enable, "multipathd")
+	content, err := render("multipath.conf.tmpl", config)
+	if err != nil {
+		return fmt.Errorf("error rending multipath.conf template: %v", err)
+	}
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/multipath.conf",
+		Content:     content,
+		Permissions: 0755,
+	})
+	return nil
 }
