@@ -435,6 +435,14 @@ update_grub_settings()
     if ! [ -f ${TARGET_FILE} ]; then
         touch ${TARGET_FILE}
     fi
+    # /etc/cos/bootargs.cfg appends a new variable $third_party_kernel_args
+    # if harvester config has os.externalStorageConfig.additionalKernelArguments specified
+    # then these will be mapped to HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS
+    # and will be added to /oem/grubenv file
+    TARGET_FILE="${oem_dir}/grubenv"
+    if [ -n "${HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS}" ]; then
+        grub2-editenv ${TARGET_FILE} set third_party_kernel_args="${HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS}"
+    fi
 
     add_debug_grub_entry
 }
