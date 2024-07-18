@@ -504,6 +504,10 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
 	}
 
+	if hvstConfig.OS.AdditionalKernelArguments != "" {
+		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", hvstConfig.OS.AdditionalKernelArguments))
+	}
+
 	elementalConfigDir, elementalConfigFile, err := saveElementalConfig(elementalConfig)
 	if err != nil {
 		return nil
@@ -981,4 +985,79 @@ func generateEnvAndConfig(g *gocui.Gui, hvstConfig *config.HarvesterConfig) ([]s
 	env = append(env, fmt.Sprintf("HARVESTER_INSTALLATION_LOG=%s", defaultLogFilePath))
 	env = append(env, fmt.Sprintf("HARVESTER_STREAMDISK_CLOUDINIT_URL=%s", userDataURL))
 	return env, elementalConfig, nil
+}
+
+// internal objects to parse lsblk output
+type BlockDevices struct {
+	Disks []Device `json:"blockdevices"`
+}
+
+type Device struct {
+	Name     string   `json:"name"`
+	Size     string   `json:"size"`
+	DiskType string   `json:"type"`
+	WWN      string   `json:"wwn,omitempty"`
+	Serial   string   `json:"serial,omitempty"`
+	Children []Device `json:"children,omitempty"`
+}
+
+func generateDiskEntry(d Device) string {
+	return fmt.Sprintf("%s %s", d.Name, d.Size)
+}
+
+const (
+	diskType = "disk"
+)
+
+// identifyUniqueDisks parses the json output of lsblk and identifies
+// unique disks by comparing their serial number info and wwn details
+func identifyUniqueDisks(output []byte) ([]string, error) {
+	var returnDisks []string
+	disks := &BlockDevices{}
+	err := json.Unmarshal(output, disks)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling lsblk json output: %v", err)
+	}
+
+	// identify devices which may be unique
+	dedupMap := make(map[string]Device)
+	for _, disk := range disks.Disks {
+		if disk.DiskType == diskType {
+			// no serial or wwn info present
+			// add to list of disks
+			if disk.WWN == "" && disk.Serial == "" {
+				returnDisks = append(returnDisks, generateDiskEntry(disk))
+				continue
+			}
+
+			if disk.Serial != "" {
+				_, ok := dedupMap[disk.Serial]
+				if !ok {
+					dedupMap[disk.Serial] = disk
+				}
+				continue
+			}
+
+			if disk.WWN != "" {
+				_, ok := dedupMap[disk.WWN]
+				if !ok {
+					dedupMap[disk.WWN] = disk
+				}
+				continue
+			}
+		}
+	}
+	// devices may appear twice in the map when both serial number and wwn info is present
+	// we need to ensure only unique names are shown in the console
+	resultMap := make(map[string]Device)
+	for _, v := range dedupMap {
+		resultMap[v.Name] = v
+	}
+
+	// generate list of disks
+	for _, v := range resultMap {
+		returnDisks = append(returnDisks, generateDiskEntry(v))
+	}
+
+	return returnDisks, nil
 }

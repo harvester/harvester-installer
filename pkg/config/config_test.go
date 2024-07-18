@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -538,4 +539,49 @@ func TestCalculateCPUReservedInMilliCPU(t *testing.T) {
 	for _, tc := range testCases {
 		assert.Equal(t, tc.reservedMilliCores, calculateCPUReservedInMilliCPU(tc.coreNum, tc.maxPods))
 	}
+}
+func Test_MultipathConfig(t *testing.T) {
+	assert := require.New(t)
+	config := NewHarvesterConfig()
+	config.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: []DiskConfig{
+			{
+				Vendor:  "DELL",
+				Product: "DISK1",
+			},
+			{
+				Vendor:  "HPE",
+				Product: "DISK2",
+			},
+		},
+	}
+
+	content, err := render("multipath.conf.tmpl", config)
+	assert.NoError(err, "expected no error while rending multipath config")
+	t.Log("rendered multipath config:")
+	t.Log(content)
+}
+
+func Test_ToCosInstallEnv(t *testing.T) {
+	hvConfig := NewHarvesterConfig()
+	hvConfig.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: []DiskConfig{
+			{
+				Vendor:  "DELL",
+				Product: "DISK1",
+			},
+			{
+				Vendor:  "HPE",
+				Product: "DISK2",
+			},
+		},
+	}
+	hvConfig.OS.AdditionalKernelArguments = "rd.iscsi.firmware rd.iscsi.ibft"
+	assert := require.New(t)
+	env, err := hvConfig.ToCosInstallEnv()
+	assert.NoError(err)
+	t.Log(env)
+
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/harvester/harvester-installer/pkg/util"
 )
@@ -230,4 +231,381 @@ func startMockNTPServers(quit chan interface{}) ([]string, error) {
 		}(listener)
 	}
 	return ntpServers, nil
+}
+
+const (
+	sampleSerialDiskOutput = `
+{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "size": "768.1M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null
+      },{
+         "name": "sda",
+         "size": "250G",
+         "type": "disk",
+         "wwn": null,
+         "serial": "serial-1",
+         "children": [
+            {
+               "name": "0QEMU_QEMU_HARDDISK_serial-1",
+               "size": "250G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null
+            }
+         ]
+      },{
+         "name": "sdb",
+         "size": "250G",
+         "type": "disk",
+         "wwn": null,
+         "serial": "serial-1",
+         "children": [
+            {
+               "name": "0QEMU_QEMU_HARDDISK_serial-1",
+               "size": "250G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null
+            }
+         ]
+      },{
+         "name": "sr0",
+         "size": "5.8G",
+         "type": "rom",
+         "wwn": null,
+         "serial": "QM00001"
+      }
+   ]
+}
+`
+
+	reinstallDisks = `
+{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "size": "3G",
+         "type": "loop",
+         "wwn": null,
+         "serial": null
+      },{
+         "name": "loop1",
+         "size": "10G",
+         "type": "loop",
+         "wwn": null,
+         "serial": null
+      },{
+         "name": "sda",
+         "size": "10G",
+         "type": "disk",
+         "wwn": "0x60000000000000000e00000000010001",
+         "serial": "beaf11",
+         "children": [
+            {
+               "name": "sda1",
+               "size": "2.5G",
+               "type": "part",
+               "wwn": "0x60000000000000000e00000000010001",
+               "serial": null
+            },{
+               "name": "sda14",
+               "size": "4M",
+               "type": "part",
+               "wwn": "0x60000000000000000e00000000010001",
+               "serial": null
+            },{
+               "name": "sda15",
+               "size": "106M",
+               "type": "part",
+               "wwn": "0x60000000000000000e00000000010001",
+               "serial": null
+            },{
+               "name": "sda16",
+               "size": "913M",
+               "type": "part",
+               "wwn": "0x60000000000000000e00000000010001",
+               "serial": null
+            }
+         ]
+      },{
+         "name": "sr0",
+         "size": "364K",
+         "type": "rom",
+         "wwn": null,
+         "serial": "QM00001"
+      },{
+         "name": "vda",
+         "size": "250G",
+         "type": "disk",
+         "wwn": null,
+         "serial": null,
+         "children": [
+            {
+               "name": "vda1",
+               "size": "1M",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "vda2",
+               "size": "50M",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "vda3",
+               "size": "8G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "vda4",
+               "size": "15G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "vda5",
+               "size": "150G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "vda6",
+               "size": "76.9G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            }
+         ]
+      }
+   ]
+}
+`
+
+	preInstalledMultiPath = `
+{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "size": "768.4M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null
+      },{
+         "name": "sda",
+         "size": "250G",
+         "type": "disk",
+         "wwn": null,
+         "serial": "disk1",
+         "children": [
+            {
+               "name": "sda1",
+               "size": "1M",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sda2",
+               "size": "50M",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sda3",
+               "size": "8G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sda4",
+               "size": "15G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sda5",
+               "size": "150G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sda6",
+               "size": "76.9G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "0QEMU_QEMU_HARDDISK_disk1",
+               "size": "250G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null,
+               "children": [
+                  {
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part1",
+                     "size": "1M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part2",
+                     "size": "50M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part3",
+                     "size": "8G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part4",
+                     "size": "15G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part5",
+                     "size": "150G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part6",
+                     "size": "76.9G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "sdb",
+         "size": "250G",
+         "type": "disk",
+         "wwn": null,
+         "serial": "disk1",
+         "children": [
+            {
+               "name": "sdb1",
+               "size": "1M",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sdb2",
+               "size": "50M",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sdb3",
+               "size": "8G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sdb4",
+               "size": "15G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sdb5",
+               "size": "150G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "sdb6",
+               "size": "76.9G",
+               "type": "part",
+               "wwn": null,
+               "serial": null
+            },{
+               "name": "0QEMU_QEMU_HARDDISK_disk1",
+               "size": "250G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null,
+               "children": [
+                  {
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part1",
+                     "size": "1M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part2",
+                     "size": "50M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part3",
+                     "size": "8G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part4",
+                     "size": "15G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part5",
+                     "size": "150G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "0QEMU_QEMU_HARDDISK_disk1-part6",
+                     "size": "76.9G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "sr0",
+         "size": "5.8G",
+         "type": "rom",
+         "wwn": null,
+         "serial": "QM00001"
+      }
+   ]
+}
+`
+)
+
+func Test_identifyUniqueDisksWithSerialNumber(t *testing.T) {
+	assert := require.New(t)
+	result, err := identifyUniqueDisks([]byte(sampleSerialDiskOutput))
+	assert.NoError(err, "expected no error while parsing disk data")
+	assert.Len(result, 1, "expected to find 1 disk only")
+}
+
+func Test_identifyUniqueDisksWithExistingData(t *testing.T) {
+	assert := require.New(t)
+	result, err := identifyUniqueDisks([]byte(reinstallDisks))
+	assert.NoError(err, "expected no error while parsing disk data")
+	assert.Len(result, 2, "expected to find 2 disks only")
+}
+
+func Test_identifyUniqueDisksOnExistingInstalls(t *testing.T) {
+	assert := require.New(t)
+	result, err := identifyUniqueDisks([]byte(preInstalledMultiPath))
+	assert.NoError(err, "expected no error while parsing disk data")
+	assert.Len(result, 1, "expected to find 1 disk only")
 }
