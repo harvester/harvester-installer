@@ -289,11 +289,13 @@ func getDataDiskOptions(hvstConfig *config.HarvesterConfig) ([]widgets.Option, e
 }
 
 func getDiskOptions() ([]widgets.Option, error) {
-	output, err := exec.Command("/bin/sh", "-c", `lsblk -r -o NAME,SIZE,TYPE | grep -w disk | cut -d ' ' -f 1,2`).CombinedOutput()
+	output, err := exec.Command("/bin/sh", "-c", `lsblk -J -o NAME,SIZE,TYPE,WWN,SERIAL`).CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
-	lines := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
+
+	lines, err := identifyUniqueDisks(output)
+
 	var options []widgets.Option
 	for _, line := range lines {
 		splits := strings.SplitN(line, " ", 2)

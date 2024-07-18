@@ -3,6 +3,7 @@ module github.com/harvester/harvester-installer
 go 1.22.5
 
 require (
+	github.com/dell/goiscsi v1.9.0
 	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
 	github.com/imdario/mergo v0.3.16
 	github.com/insomniacslk/dhcp v0.0.0-20240710054256-ddd8a41251c9
@@ -73,4 +74,5 @@ replace (
 	k8s.io/api => k8s.io/api v0.24.10
 	k8s.io/apimachinery => k8s.io/apimachinery v0.24.10
 	k8s.io/client-go => k8s.io/client-go v0.24.10
+	k8s.io/kubelet => k8s.io/kubelet v0.24.10
 )

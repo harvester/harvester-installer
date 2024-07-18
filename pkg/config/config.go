@@ -204,7 +204,19 @@ type OS struct {
 	Labels         map[string]string `json:"labels,omitempty"`
 	SSHD           SSHDConfig        `json:"sshd,omitempty"`
 
-	PersistentStatePaths []string `json:"persistentStatePaths,omitempty"`
+	PersistentStatePaths      []string              `json:"persistentStatePaths,omitempty"`
+	ExternalStorage           ExternalStorageConfig `json:"externalStorageConfig,omitempty"`
+	AdditionalKernelArguments string                `json:"additionalKernelArguments,omitempty"`
+}
+
+type ExternalStorageConfig struct {
+	Enabled         bool         `json:"enabled,omitempty"`
+	MultiPathConfig []DiskConfig `json:"multiPathConfig,omitempty"`
+}
+
+type DiskConfig struct {
+	Vendor  string `json:"vendor"`
+	Product string `json:"product"`
 }
 
 // SSHDConfig is the SSHD configuration for the node
