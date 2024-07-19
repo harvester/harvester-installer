@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	yipSchema "github.com/mudler/yip/pkg/schema"
+	yipSchema "github.com/rancher/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
