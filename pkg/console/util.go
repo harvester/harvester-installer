@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/jroimartin/gocui"
-	yipSchema "github.com/mudler/yip/pkg/schema"
 	"github.com/pkg/errors"
+	yipSchema "github.com/rancher/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/http/httpproxy"
