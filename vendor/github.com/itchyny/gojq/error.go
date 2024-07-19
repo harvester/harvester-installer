@@ -1,23 +1,18 @@
 package gojq
 
-import (
-	"math/big"
-	"reflect"
-	"strconv"
-	"strings"
-)
+import "strconv"
 
 // ValueError is an interface for errors with a value for internal function.
 // Return an error implementing this interface when you want to catch error
-// values (not error messages) by try-catch, just like builtin error function.
-// Refer to WithFunction to add a custom internal function.
+// values (not error messages) by try-catch, just like built-in error function.
+// Refer to [WithFunction] to add a custom internal function.
 type ValueError interface {
 	error
-	Value() interface{}
+	Value() any
 }
 
 type expectedObjectError struct {
-	v interface{}
+	v any
 }
 
 func (err *expectedObjectError) Error() string {
@@ -25,7 +20,7 @@ func (err *expectedObjectError) Error() string {
 }
 
 type expectedArrayError struct {
-	v interface{}
+	v any
 }
 
 func (err *expectedArrayError) Error() string {
@@ -33,23 +28,31 @@ func (err *expectedArrayError) Error() string {
 }
 
 type iteratorError struct {
-	v interface{}
+	v any
 }
 
 func (err *iteratorError) Error() string {
 	return "cannot iterate over: " + typeErrorPreview(err.v)
 }
 
+type arrayIndexNegativeError struct {
+	v int
+}
+
+func (err *arrayIndexNegativeError) Error() string {
+	return "array index should not be negative: " + Preview(err.v)
+}
+
 type arrayIndexTooLargeError struct {
-	v interface{}
+	v any
 }
 
 func (err *arrayIndexTooLargeError) Error() string {
-	return "array index too large: " + previewValue(err.v)
+	return "array index too large: " + Preview(err.v)
 }
 
 type objectKeyNotStringError struct {
-	v interface{}
+	v any
 }
 
 func (err *objectKeyNotStringError) Error() string {
@@ -57,23 +60,36 @@ func (err *objectKeyNotStringError) Error() string {
 }
 
 type arrayIndexNotNumberError struct {
-	v interface{}
+	v any
 }
 
 func (err *arrayIndexNotNumberError) Error() string {
 	return "expected a number for indexing an array but got: " + typeErrorPreview(err.v)
 }
 
+type stringIndexNotNumberError struct {
+	v any
+}
+
+func (err *stringIndexNotNumberError) Error() string {
+	return "expected a number for indexing a string but got: " + typeErrorPreview(err.v)
+}
+
 type expectedStartEndError struct {
-	v interface{}
+	v any
 }
 
 func (err *expectedStartEndError) Error() string {
 	return `expected "start" and "end" for slicing but got: ` + typeErrorPreview(err.v)
 }
 
-type inputNotAllowedError struct {
+type lengthMismatchError struct{}
+
+func (*lengthMismatchError) Error() string {
+	return "length mismatch"
 }
+
+type inputNotAllowedError struct{}
 
 func (*inputNotAllowedError) Error() string {
 	return "input(s)/0 is not allowed"
@@ -87,19 +103,66 @@ func (err *funcNotFoundError) Error() string {
 	return "function not defined: " + err.f.Name + "/" + strconv.Itoa(len(err.f.Args))
 }
 
-type funcTypeError struct {
+type func0TypeError struct {
 	name string
-	v    interface{}
+	v    any
 }
 
-func (err *funcTypeError) Error() string {
+func (err *func0TypeError) Error() string {
 	return err.name + " cannot be applied to: " + typeErrorPreview(err.v)
 }
 
+type func1TypeError struct {
+	name string
+	v, w any
+}
+
+func (err *func1TypeError) Error() string {
+	return err.name + "(" + Preview(err.w) + ") cannot be applied to: " + typeErrorPreview(err.v)
+}
+
+type func2TypeError struct {
+	name    string
+	v, w, x any
+}
+
+func (err *func2TypeError) Error() string {
+	return err.name + "(" + Preview(err.w) + "; " + Preview(err.x) + ") cannot be applied to: " + typeErrorPreview(err.v)
+}
+
+type func0WrapError struct {
+	name string
+	v    any
+	err  error
+}
+
+func (err *func0WrapError) Error() string {
+	return err.name + " cannot be applied to " + Preview(err.v) + ": " + err.err.Error()
+}
+
+type func1WrapError struct {
+	name string
+	v, w any
+	err  error
+}
+
+func (err *func1WrapError) Error() string {
+	return err.name + "(" + Preview(err.w) + ") cannot be applied to " + Preview(err.v) + ": " + err.err.Error()
+}
+
+type func2WrapError struct {
+	name    string
+	v, w, x any
+	err     error
+}
+
+func (err *func2WrapError) Error() string {
+	return err.name + "(" + Preview(err.w) + "; " + Preview(err.x) + ") cannot be applied to " + Preview(err.v) + ": " + err.err.Error()
+}
+
 type exitCodeError struct {
-	value interface{}
+	value any
 	code  int
-	halt  bool
 }
 
 func (err *exitCodeError) Error() string {
@@ -109,37 +172,63 @@ func (err *exitCodeError) Error() string {
 	return "error: " + jsonMarshal(err.value)
 }
 
-func (err *exitCodeError) IsEmptyError() bool {
-	return err.value == nil
+func (err *exitCodeError) Value() any {
+	return err.value
 }
 
 func (err *exitCodeError) ExitCode() int {
 	return err.code
 }
 
-func (err *exitCodeError) Value() interface{} {
-	return err.value
+// HaltError is an error emitted by halt and halt_error functions.
+// It implements [ValueError], and if the value is nil, discard the error
+// and stop the iteration. Consider a query like "1, halt, 2";
+// the first value is 1, and the second value is a HaltError with nil value.
+// You might think the iterator should not emit an error this case, but it
+// should so that we can recognize the halt error to stop the outer loop
+// of iterating input values; echo 1 2 3 | gojq "., halt".
+type HaltError exitCodeError
+
+func (err *HaltError) Error() string {
+	return "halt " + (*exitCodeError)(err).Error()
 }
 
-type funcContainsError struct {
-	l, r interface{}
+// Value returns the value of the error. This implements [ValueError],
+// but halt error is not catchable by try-catch.
+func (err *HaltError) Value() any {
+	return (*exitCodeError)(err).Value()
 }
 
-func (err *funcContainsError) Error() string {
-	return "cannot check contains(" + previewValue(err.r) + "): " + typeErrorPreview(err.l)
+// ExitCode returns the exit code of the error.
+func (err *HaltError) ExitCode() int {
+	return (*exitCodeError)(err).ExitCode()
 }
 
-type hasKeyTypeError struct {
-	l, r interface{}
+type flattenDepthError struct {
+	v float64
 }
 
-func (err *hasKeyTypeError) Error() string {
-	return "cannot check whether " + typeErrorPreview(err.l) + " has a key: " + typeErrorPreview(err.r)
+func (err *flattenDepthError) Error() string {
+	return "flatten depth should not be negative: " + Preview(err.v)
+}
+
+type joinTypeError struct {
+	v any
+}
+
+func (err *joinTypeError) Error() string {
+	return "join cannot be applied to an array including: " + typeErrorPreview(err.v)
+}
+
+type timeArrayError struct{}
+
+func (*timeArrayError) Error() string {
+	return "expected an array of 8 numbers"
 }
 
 type unaryTypeError struct {
 	name string
-	v    interface{}
+	v    any
 }
 
 func (err *unaryTypeError) Error() string {
@@ -148,7 +237,7 @@ func (err *unaryTypeError) Error() string {
 
 type binopTypeError struct {
 	name string
-	l, r interface{}
+	l, r any
 }
 
 func (err *binopTypeError) Error() string {
@@ -156,7 +245,7 @@ func (err *binopTypeError) Error() string {
 }
 
 type zeroDivisionError struct {
-	l, r interface{}
+	l, r any
 }
 
 func (err *zeroDivisionError) Error() string {
@@ -164,11 +253,11 @@ func (err *zeroDivisionError) Error() string {
 }
 
 type zeroModuloError struct {
-	l, r interface{}
+	l, r any
 }
 
 func (err *zeroModuloError) Error() string {
-	return "cannot modulo " + typeErrorPreview(err.l) + " by: " + typeErrorPreview(err.r) + ""
+	return "cannot modulo " + typeErrorPreview(err.l) + " by: " + typeErrorPreview(err.r)
 }
 
 type formatNotFoundError struct {
@@ -179,26 +268,18 @@ func (err *formatNotFoundError) Error() string {
 	return "format not defined: " + err.n
 }
 
-type formatCsvTsvRowError struct {
+type formatRowError struct {
 	typ string
-	v   interface{}
+	v   any
 }
 
-func (err *formatCsvTsvRowError) Error() string {
-	return "invalid " + err.typ + " row: " + typeErrorPreview(err.v)
-}
-
-type formatShError struct {
-	v interface{}
-}
-
-func (err *formatShError) Error() string {
-	return "cannot escape for shell: " + typeErrorPreview(err.v)
+func (err *formatRowError) Error() string {
+	return "@" + err.typ + " cannot format an array including: " + typeErrorPreview(err.v)
 }
 
 type tooManyVariableValuesError struct{}
 
-func (err *tooManyVariableValuesError) Error() string {
+func (*tooManyVariableValuesError) Error() string {
 	return "too many variable values provided"
 }
 
@@ -228,13 +309,14 @@ func (err *variableNameError) Error() string {
 
 type breakError struct {
 	n string
+	v any
 }
 
 func (err *breakError) Error() string {
 	return "label not defined: " + err.n
 }
 
-func (err *breakError) ExitCode() int {
+func (*breakError) ExitCode() int {
 	return 3
 }
 
@@ -247,7 +329,7 @@ func (err *tryEndError) Error() string {
 }
 
 type invalidPathError struct {
-	v interface{}
+	v any
 }
 
 func (err *invalidPathError) Error() string {
@@ -255,32 +337,24 @@ func (err *invalidPathError) Error() string {
 }
 
 type invalidPathIterError struct {
-	v interface{}
+	v any
 }
 
 func (err *invalidPathIterError) Error() string {
 	return "invalid path on iterating against: " + typeErrorPreview(err.v)
 }
 
-type getpathError struct {
-	v, path interface{}
-}
-
-func (err *getpathError) Error() string {
-	return "cannot getpath with " + previewValue(err.path) + " against: " + typeErrorPreview(err.v) + ""
-}
-
 type queryParseError struct {
-	typ, fname, contents string
-	err                  error
+	fname, contents string
+	err             error
 }
 
-func (err *queryParseError) QueryParseError() (string, string, string, error) {
-	return err.typ, err.fname, err.contents, err.err
+func (err *queryParseError) QueryParseError() (string, string, error) {
+	return err.fname, err.contents, err.err
 }
 
 func (err *queryParseError) Error() string {
-	return "invalid " + err.typ + ": " + err.fname + ": " + err.err.Error()
+	return "invalid query: " + err.fname + ": " + err.err.Error()
 }
 
 type jsonParseError struct {
@@ -296,74 +370,13 @@ func (err *jsonParseError) Error() string {
 	return "invalid json: " + err.fname + ": " + err.err.Error()
 }
 
-func typeErrorPreview(v interface{}) string {
-	p := preview(v)
-	if p != "" {
-		p = " (" + p + ")"
-	}
-	return typeof(v) + p
-}
-
-func typeof(v interface{}) (s string) {
-	if v == nil {
+func typeErrorPreview(v any) string {
+	switch v.(type) {
+	case nil:
 		return "null"
-	}
-	k := reflect.TypeOf(v).Kind()
-	switch k {
-	case reflect.Array, reflect.Slice:
-		return "array"
-	case reflect.Map:
-		return "object"
-	case reflect.Bool:
-		return "boolean"
-	case reflect.Int, reflect.Uint, reflect.Float64:
-		return "number"
-	case reflect.String:
-		return "string"
-	case reflect.Ptr:
-		if _, ok := v.(*big.Int); ok {
-			return "number"
-		}
-		return "ptr"
+	case Iter:
+		return "gojq.Iter"
 	default:
-		return k.String()
+		return TypeOf(v) + " (" + Preview(v) + ")"
 	}
-}
-
-func preview(v interface{}) string {
-	if v == nil {
-		return ""
-	}
-	s := jsonMarshal(v)
-	if l := 30; len(s) > l {
-		var trailing string
-		switch v.(type) {
-		case string:
-			trailing = ` ..."`
-		case []interface{}:
-			trailing = " ...]"
-		case map[string]interface{}:
-			trailing = " ...}"
-		default:
-			trailing = " ..."
-		}
-		var sb strings.Builder
-		sb.Grow(l + 5)
-		for _, c := range s {
-			sb.WriteRune(c)
-			if sb.Len() >= l-len(trailing) {
-				sb.WriteString(trailing)
-				break
-			}
-		}
-		s = sb.String()
-	}
-	return s
-}
-
-func previewValue(v interface{}) string {
-	if v == nil {
-		return "null"
-	}
-	return preview(v)
 }

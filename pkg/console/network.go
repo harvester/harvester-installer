@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	yipSchema "github.com/mudler/yip/pkg/schema"
+	yipSchema "github.com/rancher/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
