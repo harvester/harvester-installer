@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/imdario/mergo"
-	yipSchema "github.com/mudler/yip/pkg/schema"
+	yipSchema "github.com/rancher/yip/pkg/schema"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
