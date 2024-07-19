@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	yipSchema "github.com/mudler/yip/pkg/schema"
+	yipSchema "github.com/rancher/yip/pkg/schema"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/harvester/harvester-installer/pkg/util"
