@@ -2100,6 +2100,7 @@ func addInstallPanel(c *Console) error {
 						for _, warning := range preflightWarnings {
 							logrus.Warning(warning)
 						}
+						logrus.Info("Installation will proceed (harvester.install.skipchecks = true)")
 					} else {
 						// Checks were not explicitly skipped, fail the install
 						// (this will happen when PXE booted if checks fail and
@@ -2137,13 +2138,17 @@ func addInstallPanel(c *Console) error {
 			c.config.ManagementInterface.Method = strings.ToLower(c.config.ManagementInterface.Method)
 
 			if err := validateConfig(ConfigValidator{}, c.config); err != nil {
-				printToPanel(c.Gui, err.Error(), installPanel)
+				msg := fmt.Sprintf("Invalid configuration: %s", err)
+				logrus.Error(msg)
+				printToPanel(c.Gui, msg, installPanel)
 				return
 			}
 
 			webhooks, err := PrepareWebhooks(c.config.Webhooks, getWebhookContext(c.config))
 			if err != nil {
-				printToPanel(c.Gui, fmt.Sprintf("invalid webhook: %s", err), installPanel)
+				msg := fmt.Sprintf("Invalid webhook: %s", err)
+				logrus.Error(msg)
+				printToPanel(c.Gui, msg, installPanel)
 			}
 
 			if alreadyInstalled {
@@ -2152,7 +2157,9 @@ func addInstallPanel(c *Console) error {
 				err = doInstall(c.Gui, c.config, webhooks)
 			}
 			if err != nil {
-				printToPanel(c.Gui, fmt.Sprintf("install failed: %s", err), installPanel)
+				msg := fmt.Sprintf("Install failed: %s", err)
+				logrus.Error(msg)
+				printToPanel(c.Gui, msg, installPanel)
 			}
 		}()
 		return c.setContentByName(footerPanel, "")
