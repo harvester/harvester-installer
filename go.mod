@@ -5,7 +5,7 @@ go 1.22.5
 require (
 	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
 	github.com/imdario/mergo v0.3.16
-	github.com/insomniacslk/dhcp v0.0.0-20210827173440-b95caade3eac
+	github.com/insomniacslk/dhcp v0.0.0-20240710054256-ddd8a41251c9
 	github.com/jroimartin/gocui v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
@@ -40,22 +40,24 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/itchyny/gojq v0.12.16 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
+	github.com/josharian/native v1.1.0 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-shellwords v1.0.10 // indirect
-	github.com/mdlayher/ethernet v0.0.0-20190606142754-0394541c37b7 // indirect
-	github.com/mdlayher/raw v0.0.0-20191009151244-50f2db8cc065 // indirect
+	github.com/mdlayher/packet v1.1.2 // indirect
+	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rancher/wrangler v0.0.0-20190426050201-5946f0eaed19 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/twpayne/go-vfs/v4 v4.3.0 // indirect
-	github.com/u-root/uio v0.0.0-20210528114334-82958018845c // indirect
+	github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
