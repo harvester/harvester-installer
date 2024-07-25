@@ -19,6 +19,7 @@ docker.io/rancher/rancher-webhook:v0.4.3
 docker.io/rancher/rancher:v2.8.3
 docker.io/rancher/shell:v0.1.22
 docker.io/rancher/shell:v0.1.23
+docker.io/rancher/shell:v0.1.26
 docker.io/rancher/system-agent:v0.3.6-suc
 docker.io/rancher/system-upgrade-controller:v0.13.1
 docker.io/rancher/mirrored-banzaicloud-fluentd:v1.14.6-alpine-5
