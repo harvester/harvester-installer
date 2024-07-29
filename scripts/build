@@ -69,7 +69,10 @@ if [ "$(uname)" = "Linux" ]; then
 fi
 
 # render template files
-cp ${addons_path}/pkg/templates/*.yaml ./pkg/config/templates
+cd ${addons_path}
+go run . -generateTemplates -path ${TOP_DIR}/pkg/config/templates
+
+cd ${TOP_DIR}
 
 CGO_ENABLED=0 go build -gcflags "${OTHER_COMPILERFLAGS}" -ldflags "$LINKFLAGS $OTHER_LINKFLAGS" -o bin/harvester-installer .
 

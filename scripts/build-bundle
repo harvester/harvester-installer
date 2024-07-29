@@ -15,6 +15,11 @@ if [ ! -d ${addons_path} ];then
     git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
 
+# will generate template file in ${addons_path}, and this is used for subsequent checks
+cd ${addons_path}
+go run . -generateTemplates 
+cd ${TOP_DIR}
+
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
@@ -140,9 +145,9 @@ check_addon_chart_version_matching() {
   ls -alht ${CHARTS_DIR}
 
   echo "addon template files"
-  ls -alht ${addons_path}/pkg/templates
+  ls -alht ${addons_path}
 
-  for filename in ${addons_path}/pkg/templates/*.yaml; do
+  for filename in ${addons_path}/*.yaml; do
     local tmpfile=/tmp/$(basename ${filename})
     grep -v "{{" ${filename} > ${tmpfile}
     local cnt=$(yq '.resources | length' ${tmpfile})
