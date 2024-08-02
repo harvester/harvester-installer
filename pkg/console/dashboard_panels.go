@@ -515,6 +515,16 @@ func nodeIsPresent() bool {
 	return true
 }
 
+func removeTempEtcdPorts() {
+	command := fmt.Sprint(`iptables -D INPUT -p tcp -m multiport --dports 2399:2402 -j ACCEPT`)
+	cmd := exec.Command("/bin/sh", "-c", command)
+	cmd.Env = os.Environ()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logrus.Error(err, string(output))
+	}
+}
+
 func getHarvesterStatus() string {
 	if current.firstHost && !current.installed {
 		if !k8sIsReady() || !chartIsInstalled() {
@@ -532,6 +542,7 @@ func getHarvesterStatus() string {
 	rancherReady := isPodReady("cattle-system", "app=rancher")
 	harvesterAPIReady := isAPIReady(current.managementURL, "/version")
 	if harvesterReady && harvesterWebhookReady && rancherReady && harvesterAPIReady {
+		removeTempEtcdPorts()
 		return wrapColor(statusReady, colorGreen)
 	}
 	return wrapColor(statusNotReady, colorYellow)
