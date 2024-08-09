@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -449,4 +450,50 @@ func TestHarvesterConfigMerge_Addons(t *testing.T) {
 	assert.Equal(t, true, conf.Addons["rancher-logging"].Enabled, "Addons Enabled true should be merged")
 	assert.Equal(t, "the value to overwrite original", conf.Addons["rancher-logging"].ValuesContent, "Addons ValuesContent should be merged")
 	assert.Equal(t, false, conf.Addons["rancher-monitoring"].Enabled, "Addons Enabled false should be merged")
+}
+
+func Test_MultipathConfig(t *testing.T) {
+	assert := require.New(t)
+	config := NewHarvesterConfig()
+	config.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: []DiskConfig{
+			{
+				Vendor:  "DELL",
+				Product: "DISK1",
+			},
+			{
+				Vendor:  "HPE",
+				Product: "DISK2",
+			},
+		},
+	}
+
+	content, err := render("multipath.conf.tmpl", config)
+	assert.NoError(err, "expected no error while rending multipath config")
+	t.Log("rendered multipath config:")
+	t.Log(content)
+}
+
+func Test_ToCosInstallEnv(t *testing.T) {
+	hvConfig := NewHarvesterConfig()
+	hvConfig.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: []DiskConfig{
+			{
+				Vendor:  "DELL",
+				Product: "DISK1",
+			},
+			{
+				Vendor:  "HPE",
+				Product: "DISK2",
+			},
+		},
+	}
+	hvConfig.OS.AdditionalKernelArguments = "rd.iscsi.firmware rd.iscsi.ibft"
+	assert := require.New(t)
+	env, err := hvConfig.ToCosInstallEnv()
+	assert.NoError(err)
+	t.Log(env)
+
 }
