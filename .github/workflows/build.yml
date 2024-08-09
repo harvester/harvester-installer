@@ -24,6 +24,9 @@ jobs:
     # 77G disk, which is sufficient for ISO builds.
     # The VM runners are named "x64", not "amd64" like other docker things.
     runs-on: runs-on,runner=4cpu-linux-${{ matrix.arch == 'amd64' && 'x64' || matrix.arch }},hdd=50,run-id=${{ github.run_id }}
+    permissions:
+      contents: read
+      id-token: write # for reading credential https://github.com/rancher-eio/read-vault-secrets
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
