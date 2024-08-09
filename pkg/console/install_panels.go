@@ -2615,7 +2615,6 @@ func configureInstallModeDHCP(c *Console) {
 		c.config.Vip = vip.ipv4Addr
 		c.config.VipHwAddr = vip.hwAddr
 	}
-
 }
 
 func checkDHCPHostname(c *config.HarvesterConfig, generate bool) {
