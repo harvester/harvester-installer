@@ -2152,7 +2152,7 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, "Failed to check default route.", installPanel)
 				return
 			}
-			if !isDefaultRouteExist {
+			if !installModeOnly && !isDefaultRouteExist {
 				logrus.Error(ErrMsgNoDefaultRoute)
 				printToPanel(c.Gui, ErrMsgNoDefaultRoute, installPanel)
 				return
