@@ -11,13 +11,63 @@ cd ${TOP_DIR}
 
 addons_path=../addons
 if [ ! -d ${addons_path} ];then
-    echo "No existing addons source. Pulling..."
-    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
+  echo "No existing addons source. Pulling..."
+  git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
+
+source ${SCRIPTS_DIR}/version-monitoring
+source ${SCRIPTS_DIR}/version-logging
+
+update_monitoring_logging_version() {
+  # due to legacy code, monitoring and logging versions are first updated on installer
+  # then on addon
+  local target=$1
+  local lnew="RANCHER_LOGGING_CHART_VERSION=\"${LOGGING_VERSION}\""
+  local lcur=$(grep $lnew $target) || echo "logging chart version is not found from $target"
+  # if the file has no new line at end, append new ENV will be added to last line accidently
+  echo "" >> $target
+  if [ -z "${lcur}" ]; then
+    # remove possible existing values
+    sed -i '/RANCHER_LOGGING_CHART_VERSION/d' $target
+    echo "$lnew" >> $target
+    echo ""logging chart version is updated to ${LOGGING_VERSION}""
+  else
+    echo "logging chart version is already set to ${LOGGING_VERSION}"
+  fi
+
+  local mnew="RANCHER_MONITORING_CHART_VERSION=\"${MONITORING_VERSION}\""
+  local mcur=$(grep $mnew $target) || echo "monitoring chart version is not found from $target"
+  if [ -z "${mcur}" ]; then
+    # remove possible existing values
+    sed -i '/RANCHER_MONITORING_CHART_VERSION/d' $target
+    echo "$mnew" >> $target
+    echo "monitoring chart version is updated to ${MONITORING_VERSION}"
+  else
+    echo "monitoring chart version is already set to ${MONITORING_VERSION}"
+  fi
+
+  # the harvester-eventrouter image tag is first bumped on installer, then on addon, to decouple the PRs
+  # if ENV includes keyword `IMAGE` then `addon generateTemplates` will strip the image and only keep version
+  local HARVESTER_EVENTROUTER_FULL_TAG="rancher/harvester-eventrouter:v0.3.1"
+  local henew="HARVESTER_EVENTROUTER_FULL_TAG=\"${HARVESTER_EVENTROUTER_FULL_TAG}\""
+  local hecur=$(grep $henew $target) || echo "harvester-eventrouter image tag is not found from $target"
+  if [ -z "${hecur}" ]; then
+    # remove possible existing values
+    sed -i '/HARVESTER_EVENTROUTER_FULL_TAG/d' $target
+    echo "$henew" >> $target
+    echo "harvester-eventrouter image tag is updated to ${HARVESTER_EVENTROUTER_FULL_TAG}"
+  else
+    echo "harvester-eventrouter image tag is already set to ${HARVESTER_EVENTROUTER_FULL_TAG}"
+  fi
+  cat $target
+}
 
 # will generate template file in ${addons_path}, and this is used for subsequent checks
 cd ${addons_path}
-go run . -generateTemplates 
+update_monitoring_logging_version version_info
+go run . -generateTemplates
+echo "the rendered addon template"
+grep "version:" rancherd-22-addons.yaml -1 || echo "did not find any chart info from the addon file"
 cd ${TOP_DIR}
 
 source ${SCRIPTS_DIR}/version
@@ -44,8 +94,8 @@ mkdir -p ${RANCHERD_IMAGES_DIR}
 # Prepare Harvester chart
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
-    echo "No existing harvester source. Pulling..."
-    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
+  echo "No existing harvester source. Pulling..."
+  git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
 fi
 
 # Revert harvester chart version patch to clean dirty git status
@@ -76,7 +126,6 @@ helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
 
 # Prepare monitoring chart
-source ${SCRIPTS_DIR}/version-monitoring
 helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 
@@ -93,7 +142,6 @@ tar zxvf ${CHARTS_DIR}/rancher-monitoring-crd-${MONITORING_VERSION}.tgz >/dev/nu
 tar zxvf ${CHARTS_DIR}/rancher-monitoring-${MONITORING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # Prepare logging chart
-source ${SCRIPTS_DIR}/version-logging
 helm pull https://charts.rancher.io/assets/rancher-logging-crd/rancher-logging-crd-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
 helm pull https://charts.rancher.io/assets/rancher-logging/rancher-logging-${LOGGING_VERSION}.tgz -d ${CHARTS_DIR}
 
@@ -225,14 +273,32 @@ for i in "${!repositories[@]}"; do
   echo "${repositories[$i]}:${tags[$i]}">>${image_list_file}
 done
 
+add_addon_image() {
+  # $1  ENV name  $2 ENV
+  if [ -z $2 ]; then
+     echo "expected version environment $1 is not set"
+     exit 1
+  else
+    echo $2 >>  ${image_list_file}
+  fi
+}
 
-# vm-import-controller: get images from values.yaml
-echo ${VM_IMPORT_CONTROLLER_IMAGE} >>  ${image_list_file}
-# pcidevices-controller images
-echo ${PCIDEVICES_CONTROLLER_IMAGE} >> ${image_list_file}
+add_addon_images_to_list() {
+  # those images are defined and imported from: source ${addons_path}/version_info
+  # vm-import-controller image
+  add_addon_image "VM_IMPORT_CONTROLLER_IMAGE" ${VM_IMPORT_CONTROLLER_IMAGE}
 
-# seeder images
-echo ${HARVESTER_SEEDER_IMAGE} >> ${image_list_file}
+  # pcidevices-controller image
+  add_addon_image "PCIDEVICES_CONTROLLER_IMAGE" ${PCIDEVICES_CONTROLLER_IMAGE}
+
+  # seeder image
+  add_addon_image "HARVESTER_SEEDER_IMAGE" ${HARVESTER_SEEDER_IMAGE}
+
+  # harvester eventrouter image
+  add_addon_image "HARVESTER_EVENTROUTER_FULL_TAG" ${HARVESTER_EVENTROUTER_FULL_TAG}
+}
+
+add_addon_images_to_list
 
 # harvester additional images, which is not in rancher images, not in harvester images or any others
 # do not add any comment line into this file, each line should be an valid image name
