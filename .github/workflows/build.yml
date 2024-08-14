@@ -41,11 +41,6 @@ jobs:
     - name: Declare branch
       run: |
         echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_ENV"
-        if [ "${{ matrix.arch }}" == "x64" ]; then
-          echo "arch=amd64" >> "$GITHUB_ENV"
-        else
-          echo "arch=arm64" >> "$GITHUB_ENV"
-        fi
 
     - name: Read Secrets
       if: ${{ startsWith(github.ref, 'refs/heads/') }}
@@ -70,8 +65,8 @@ jobs:
       with:
         context: dist/harvester-cluster-repo
         push: true
-        platforms: linux/${{ env.arch }}
-        tags: rancher/harvester-cluster-repo:${{ env.branch }}-head-${{ env.arch }}
+        platforms: linux/${{ matrix.arch }}
+        tags: rancher/harvester-cluster-repo:${{ env.branch }}-head-${{ matrix.arch }}
         file: dist/harvester-cluster-repo/Dockerfile
 
     - name: Login to Google Cloud
