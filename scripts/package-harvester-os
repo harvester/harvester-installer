@@ -180,7 +180,7 @@ if [ "${BUILD_QCOW}" == "true" ]; then
   -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=rootfs.squashfs \
   console=ttyS1 rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda \
   harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=rancher \
-  harvester.scheme_version=1 harvester.install.persistentPartitionSize=150Gi" \
+  harvester.scheme_version=1 harvester.install.persistentPartitionSize=150Gi harvester.install.skipchecks=true" \
   -initrd ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-amd64 -boot once=d
   tail -100 harvester-installer.log
   echo "compressing raw image"
