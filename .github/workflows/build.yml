@@ -125,7 +125,5 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/heads/') }}
       run: |
         docker pull --platform linux/amd64 rancher/harvester-cluster-repo:${{ env.branch }}-head-amd64
-        docker pull --platform linux/arm64 rancher/harvester-cluster-repo:${{ env.branch }}-head-arm64
         docker buildx imagetools create -t rancher/harvester-cluster-repo:${{ env.branch }}-head \
-          rancher/harvester-cluster-repo:${{ env.branch }}-head-amd64 \
-          rancher/harvester-cluster-repo:${{ env.branch }}-head-arm64
+          rancher/harvester-cluster-repo:${{ env.branch }}-head-amd64
