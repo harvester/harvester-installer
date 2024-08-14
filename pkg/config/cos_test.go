@@ -126,6 +126,16 @@ func TestConvertToCos_VerifyNetworkInstallMode(t *testing.T) {
 	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens3"))
 }
 
+func TestConvertToCos_Remove_CPUManagerState(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	assert.NoError(t, err)
+
+	yipConfig, err := ConvertToCOS(conf)
+	assert.NoError(t, err)
+
+	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /var/lib/kubelet/cpu_manager_state")
+}
+
 func containsFile(files []yipSchema.File, fileName string) bool {
 	for _, v := range files {
 		if v.Path == fileName {
