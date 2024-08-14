@@ -11,4 +11,7 @@ rancherValues:
     cattle:
       psp:
         enabled: false
+  extraEnv:
+    - name: CATTLE_SHELL_IMAGE
+      value: "rancher/shell:v0.1.26"
 rancherInstallerImage: rancher/system-agent-installer-rancher:v2.8.5
