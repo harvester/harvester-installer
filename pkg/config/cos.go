@@ -149,6 +149,12 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	for _, module := range cfg.OS.Modules {
 		initramfs.Commands = append(initramfs.Commands, "modprobe "+module)
 	}
+	// Delete the cpu_manager_state file during the initramfs stage. During a reboot, this state file is always reverted
+	// because it was originally created during the system installation, becoming part of the root filesystem.
+	// As a result, the policy in cpu_manager_state file is "none" (default policy) after reboot. If we've already set
+	// the cpu-manager-policy to "static" before reboot, this mismatch can prevent kubelet from starting,
+	// and make the entire node unavailable.
+	initramfs.Commands = append(initramfs.Commands, "rm -f /var/lib/kubelet/cpu_manager_state")
 
 	initramfs.Sysctl = cfg.OS.Sysctls
 	initramfs.Environment = cfg.OS.Environment
