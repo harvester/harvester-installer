@@ -13,8 +13,8 @@ docker.io/rancher/mirrored-prometheus-adapter-prometheus-adapter:v0.10.0
 docker.io/rancher/mirrored-prometheus-node-exporter:v1.3.1
 docker.io/rancher/mirrored-prometheus-operator-prometheus-config-reloader:v0.65.1
 docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.65.1
-docker.io/rancher/mirrored-prometheus-prometheus:v2.45.0
-docker.io/rancher/mirrored-prometheus-alertmanager:v0.26.0
+docker.io/rancher/mirrored-prometheus-prometheus:v2.42.0
+docker.io/rancher/mirrored-prometheus-alertmanager:v0.25.0
 docker.io/rancher/rancher-webhook:v0.4.7
 docker.io/rancher/rancher:v2.8.5
 docker.io/rancher/shell:v0.1.26
