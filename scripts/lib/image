@@ -56,11 +56,23 @@ pull_images() {
     return
   fi
 
+  # If a tag is specified via the ENV USE_LOCAL_IMAGES, then directly check this image and continue.
+  # For example: export USE_LOCAL_IMAGES=fix6486-head
+  # This will let `make build-iso` from Harvester local development much easier.
+
   # If an image is in the exlcude list or its tag ends with "-head", we always pull it.
   # Otherwise, we check if the image exists on the system. If yes, we do nothing.
   for image in $(cat $image_list); do
     repository=$(echo $image | awk -F ':' '{print $1}')
     tag=$(echo $image | awk -F ':' '{print $2}')
+
+    if [[ $USE_LOCAL_IMAGES == $tag ]]; then
+      echo "[ImageCache] $image meets the specified tag from USE_LOCAL_IMAGES."
+      if docker image inspect $image &>/dev/null; then
+        echo "[ImageCache] $image exists."
+        continue
+      fi
+    fi
 
     if yq -e e ".exclude.repos[] | select(. == \"${repository}\")" $image_cache_db &>/dev/null; then
       echo "[ImageCache] $image is in the exclude.repos list."
