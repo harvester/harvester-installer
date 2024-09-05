@@ -50,6 +50,7 @@ You can see the full installation log by:
 
 	ElementalConfigDir  = "/tmp/elemental"
 	ElementalConfigFile = "config.yaml"
+	multipathOff        = "multipath=off"
 )
 
 func newProxyClient() http.Client {
@@ -504,6 +505,9 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
 	}
 
+	if !hvstConfig.OS.ExternalStorage.Enabled {
+		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", multipathOff))
+	}
 	if hvstConfig.OS.AdditionalKernelArguments != "" {
 		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", hvstConfig.OS.AdditionalKernelArguments))
 	}
