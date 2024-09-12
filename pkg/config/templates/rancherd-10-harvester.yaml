@@ -9,6 +9,10 @@ resources:
   metadata:
     name: cattle-logging-system
 - apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: cattle-fleet-system
+- apiVersion: v1
   kind: ServiceAccount
   metadata:
     annotations:
@@ -66,6 +70,28 @@ resources:
               name: rancher
               port:
                 number: 80
+- apiVersion: helm.cattle.io/v1
+  kind: HelmChart
+  metadata:
+    name: fleet-crd
+    namespace: cattle-fleet-system
+  spec:
+    chart: fleet-crd
+    version: {{ .FleetChartVersion }}
+    createNamespace: true
+    targetNamespace: cattle-fleet-system
+    repo: http://harvester-cluster-repo.cattle-system.svc/charts
+- apiVersion: helm.cattle.io/v1
+  kind: HelmChart
+  metadata:
+    name: fleet
+    namespace: cattle-fleet-system
+  spec:
+    chart: fleet
+    version: {{ .FleetChartVersion }}
+    createNamespace: true
+    targetNamespace: cattle-fleet-system
+    repo: http://harvester-cluster-repo.cattle-system.svc/charts
 - apiVersion: helm.cattle.io/v1
   kind: HelmChart
   metadata:

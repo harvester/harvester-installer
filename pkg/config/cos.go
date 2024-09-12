@@ -47,6 +47,8 @@ var (
 	MonitoringChartVersion              = ""
 	LoggingChartVersion                 = ""
 	SystemUpgradeControllerChartVersion = ""
+	FleetVersion                        = ""
+	FleetChartVersion                   = ""
 
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
@@ -279,6 +281,12 @@ func setConfigDefaultValues(config *HarvesterConfig) {
 	}
 	if config.SystemUpgradeControllerChartVersion == "" {
 		config.SystemUpgradeControllerChartVersion = SystemUpgradeControllerChartVersion
+	}
+	if config.FleetVersion == "" {
+		config.FleetVersion = FleetVersion
+	}
+	if config.FleetChartVersion == "" {
+		config.FleetChartVersion = FleetChartVersion
 	}
 
 	if config.LoggingChartVersion == "" {
