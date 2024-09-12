@@ -156,6 +156,12 @@ patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING
 # make chart sanity check again after patch
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
+# Prepare system-upgrade-controller chart
+source ${SCRIPTS_DIR}/version-system-upgrade-controller
+helm pull https://charts.rancher.io/assets/system-upgrade-controller/system-upgrade-controller-${SYSTEM_UPGRADE_CONTROLLER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
+
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/system-upgrade-controller-${SYSTEM_UPGRADE_CONTROLLER_CHART_VERSION}.tgz >/dev/null  --warning=no-timestamp
 
 # Prepare vm-import-controller-chart
 echo "pull harvester-vm-import-controller: $VM_IMPORT_CONTROLLER_CHART_VERSION"

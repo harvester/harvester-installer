@@ -41,11 +41,12 @@ const (
 
 var (
 	// Following variables are replaced by ldflags
-	RKE2Version            = ""
-	RancherVersion         = ""
-	HarvesterChartVersion  = ""
-	MonitoringChartVersion = ""
-	LoggingChartVersion    = ""
+	RKE2Version                         = ""
+	RancherVersion                      = ""
+	HarvesterChartVersion               = ""
+	MonitoringChartVersion              = ""
+	LoggingChartVersion                 = ""
+	SystemUpgradeControllerChartVersion = ""
 
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
@@ -275,6 +276,9 @@ func setConfigDefaultValues(config *HarvesterConfig) {
 	}
 	if config.MonitoringChartVersion == "" {
 		config.MonitoringChartVersion = MonitoringChartVersion
+	}
+	if config.SystemUpgradeControllerChartVersion == "" {
+		config.SystemUpgradeControllerChartVersion = SystemUpgradeControllerChartVersion
 	}
 
 	if config.LoggingChartVersion == "" {

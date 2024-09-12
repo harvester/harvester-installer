@@ -39,6 +39,7 @@ source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-logging
+source ${SCRIPTS_DIR}/version-system-upgrade-controller
 
 echo "Installer version: ${VERSION}"
 echo "Harvester version: ${HARVESTER_VERSION}"
@@ -46,6 +47,7 @@ echo "Harvester chart version: ${HARVESTER_CHART_VERSION}"
 echo "Rancher version: ${RANCHER_VERSION}"
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 echo "Rancher logging version: ${LOGGING_VERSION}"
+echo "System upgrade controller version: ${SYSTEM_UPGRADE_CONTROLLER_CHART_VERSION}"
 echo "The ARCH is: ${ARCH}"
 
 mkdir -p bin
@@ -57,6 +59,7 @@ LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$R
            -X github.com/harvester/harvester-installer/pkg/config.HarvesterChartVersion=$HARVESTER_CHART_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.MonitoringChartVersion=$MONITORING_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.LoggingChartVersion=$LOGGING_VERSION
+           -X github.com/harvester/harvester-installer/pkg/config.SystemUpgradeControllerChartVersion=$SYSTEM_UPGRADE_CONTROLLER_CHART_VERSION
            $LINKFLAGS"
 
 if [ "$(uname)" = "Linux" ]; then
