@@ -92,104 +92,267 @@ resources:
     createNamespace: true
     targetNamespace: cattle-fleet-system
     repo: http://harvester-cluster-repo.cattle-system.svc/charts
-- apiVersion: helm.cattle.io/v1
-  kind: HelmChart
+- apiVersion: v1
+  kind: ConfigMap
   metadata:
-    name: system-upgrade-controller
-    namespace: kube-system
-  spec:
-    chart: system-upgrade-controller
-    version: {{ .SystemUpgradeControllerChartVersion }}
-    createNamespace: true
-    targetNamespace: cattle-system
-    repo: http://harvester-cluster-repo.cattle-system.svc/charts
-    valuesContent: |-
-      global:
-        cattle:
-          psp:
-            enabled: false
-- apiVersion: helm.cattle.io/v1
-  kind: HelmChart
-  metadata:
-    name: harvester
-    namespace: kube-system
-  spec:
-    chart: harvester
-    version: {{ .HarvesterChartVersion }}
-    createNamespace: true
-    targetNamespace: harvester-system
-    repo: http://harvester-cluster-repo.cattle-system.svc/charts
-    valuesContent: |-
-      {{- if .Vip }}
-      service:
-        vip:
-          enabled: true
-          mode: "{{ .VipMode }}"
-          ip: "{{ .Vip }}"
-          hwAddress: "{{ .VipHwAddr }}"
-      {{- end }}
-      {{- if .Harvester.StorageClass.ReplicaCount }}
-      storageClass:
-        replicaCount: {{ .Harvester.StorageClass.ReplicaCount }}
-      {{- end }}
-      {{- if .Harvester.EnableGoCoverDir }}
-      enableGoCoverDir: true
-      {{- end }}
-      kubevirt:
-        spec:
-          monitorAccount: rancher-monitoring-operator
-          monitorNamespace: cattle-monitoring-system
-      containers:
-        apiserver:
-          image:
-            imagePullPolicy: "IfNotPresent"
-          hciMode: true
-      multus:
-        enabled: false
-      longhorn:
-        enabled: true
-        defaultSettings:
-          taintToleration: "kubevirt.io/drain:NoSchedule"
-          defaultDataPath: "/var/lib/harvester/defaultdisk"
-          {{- if .Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU }}
-          guaranteedInstanceManagerCPU: {{ .Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU }}
+    namespace: cattle-fleet-system
+    name: harvester-fleet-config
+  data:
+    system-upgrade-controller-fleet.yaml: |
+      defaultNamespace: cattle-system
+      helm:
+        repo: http://harvester-cluster-repo.cattle-system.svc/charts
+        version: {{ .SystemUpgradeControllerChartVersion }}
+        chart: system-upgrade-controller
+        releaseName: system-upgrade-controller
+        takeOwnership: true
+        values:
+          global:
+            cattle:
+              psp:
+                enabled: false
+      targets:
+      - clusterName: local
+    harvester-crd-fleet.yaml: |
+      defaultNamespace: harvester-system
+      helm:
+        repo: http://harvester-cluster-repo.cattle-system.svc/charts
+        version: {{ .HarvesterChartVersion }}
+        chart: harvester-crd
+        releaseName: harvester-crd
+        takeOwnership: true
+      targets:
+      - clusterName: local
+    harvester-fleet.yaml: |
+      defaultNamespace: harvester-system
+      helm:
+        repo: http://harvester-cluster-repo.cattle-system.svc/charts
+        version: {{ .HarvesterChartVersion }}
+        chart: harvester
+        releaseName: harvester
+        takeOwnership: true
+        values:
+          {{- if .Vip }}
+          service:
+            vip:
+              enabled: true
+              mode: "{{ .VipMode }}"
+              ip: "{{ .Vip }}"
+              hwAddress: "{{ .VipHwAddr }}"
           {{- end }}
-          detachManuallyAttachedVolumesWhenCordoned: true
-          nodeDrainPolicy: "allow-if-replica-is-stopped"
-      harvester-network-controller:
-        enabled: true
-        vipEnabled: true
-        image:
-          pullPolicy: "IfNotPresent"
-      harvester-networkfs-manager:
-        enabled: true
-        image:
-          pullPolicy: "IfNotPresent"
-      harvester-node-disk-manager:
-        enabled: true
-        image:
-          pullPolicy: "IfNotPresent"
-        labelFilter:
-          - "COS_*"
-          - "HARV_*"
-      rancherEmbedded: true
-      webhook:
-        image:
-          imagePullPolicy: "IfNotPresent"
-      harvester-load-balancer:
-        enabled: true
-      kube-vip:
-        enabled: true
-      kube-vip-cloud-provider:
-        enabled: true
-- apiVersion: helm.cattle.io/v1
-  kind: HelmChart
+          {{- if .Harvester.StorageClass.ReplicaCount }}
+          storageClass:
+            replicaCount: {{ .Harvester.StorageClass.ReplicaCount }}
+          {{- end }}
+          {{- if .Harvester.EnableGoCoverDir }}
+          enableGoCoverDir: true
+          {{- end }}
+          kubevirt:
+            spec:
+              monitorAccount: rancher-monitoring-operator
+              monitorNamespace: cattle-monitoring-system
+          containers:
+            apiserver:
+              image:
+                imagePullPolicy: "IfNotPresent"
+              hciMode: true
+          multus:
+            enabled: false
+          longhorn:
+            enabled: true
+            defaultSettings:
+              taintToleration: "kubevirt.io/drain:NoSchedule"
+              defaultDataPath: "/var/lib/harvester/defaultdisk"
+              {{- if .Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU }}
+              guaranteedInstanceManagerCPU: {{ .Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU }}
+              {{- end }}
+              detachManuallyAttachedVolumesWhenCordoned: true
+              nodeDrainPolicy: "allow-if-replica-is-stopped"
+          harvester-network-controller:
+            enabled: true
+            vipEnabled: true
+            image:
+              pullPolicy: "IfNotPresent"
+          harvester-networkfs-manager:
+            enabled: true
+            image:
+              pullPolicy: "IfNotPresent"
+          harvester-node-disk-manager:
+            enabled: true
+            image:
+              pullPolicy: "IfNotPresent"
+            labelFilter:
+              - "COS_*"
+              - "HARV_*"
+          rancherEmbedded: true
+          webhook:
+            image:
+              imagePullPolicy: "IfNotPresent"
+          harvester-load-balancer:
+            enabled: true
+          kube-vip:
+            enabled: true
+          kube-vip-cloud-provider:
+            enabled: true
+      diff:
+        comparePatches:
+        - apiVersion: storage.k8s.io/v1
+          jsonPointers:
+          - /metadata/annotations
+          kind: StorageClass
+          name: harvester-longhorn
+        - apiVersion: apiextensions.k8s.io/v1
+          jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+          kind: CustomResourceDefinition
+          name: engineimages.longhorn.io
+        - apiVersion: apiextensions.k8s.io/v1
+          jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+          kind: CustomResourceDefinition
+          name: nodes.longhorn.io
+        - apiVersion: apiextensions.k8s.io/v1
+          jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+          kind: CustomResourceDefinition
+          name: volumes.longhorn.io
+        - apiVersion: apiextensions.k8s.io/v1
+          jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+          kind: CustomResourceDefinition
+          name: settings.longhorn.io
+        - apiVersion: apiextensions.k8s.io/v1
+          jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+          kind: CustomResourceDefinition
+          name: replicas.longhorn.io
+        - apiVersion: apiextensions.k8s.io/v1
+          jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+          kind: CustomResourceDefinition
+          name: instancemanagers.longhorn.io
+        - apiVersion: apiextensions.k8s.io/v1
+          jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+          kind: CustomResourceDefinition
+          name: engines.longhorn.io
+      targets:
+      - clusterName: local
+    rancher-monitoring-crd-fleet.yaml: |
+      defaultNamespace: cattle-monitoring-system
+      helm:
+        repo: http://harvester-cluster-repo.cattle-system.svc/charts
+        version: {{ .MonitoringChartVersion }}
+        chart: rancher-monitoring-crd
+        releaseName: rancher-monitoring-crd
+        takeOwnership: true
+      targets:
+      - clusterName: local
+    rancher-logging-crd-fleet.yaml: |
+      defaultNamespace: cattle-logging-system
+      helm:
+        repo: http://harvester-cluster-repo.cattle-system.svc/charts
+        version: {{ .LoggingChartVersion }}
+        chart: rancher-logging-crd
+        releaseName: rancher-logging-crd
+        takeOwnership: true
+      targets:
+      - clusterName: local
+- apiVersion: batch/v1
+  kind: Job
   metadata:
-    name: harvester-crd
-    namespace: kube-system
+    name: system-upgrade-controller-fleet
+    namespace: cattle-fleet-system
   spec:
-    chart: harvester-crd
-    version: {{ .HarvesterChartVersion }}
-    createNamespace: true
-    targetNamespace: harvester-system
-    repo: http://harvester-cluster-repo.cattle-system.svc/charts
+    template:
+      spec:
+        containers:
+        - name: system-upgrade-controller-fleet
+          image: rancher/fleet:v{{ .FleetVersion }}
+          command:
+          - /bin/sh
+          - -c
+          - |
+            fleet apply system-upgrade-controller /app
+          volumeMounts:
+          - name: config-volume
+            mountPath: "/app/fleet.yaml"
+            subPath: system-upgrade-controller-fleet.yaml
+            readOnly: false
+        restartPolicy: Never
+        volumes:
+        - name: config-volume
+          configMap:
+            name: harvester-fleet-config
+        serviceAccount: fleet-controller
+        serviceAccountName: fleet-controller
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: harvester-crd-fleet
+    namespace: cattle-fleet-system
+  spec:
+    template:
+      spec:
+        containers:
+        - name: harvester-crd-fleet
+          image: rancher/fleet:v{{ .FleetVersion }}
+          command:
+          - /bin/sh
+          - -c
+          - |
+            fleet apply harvester-crd /app
+          volumeMounts:
+          - name: config-volume
+            mountPath: "/app/fleet.yaml"
+            subPath: harvester-crd-fleet.yaml
+            readOnly: false
+        restartPolicy: Never
+        volumes:
+        - name: config-volume
+          configMap:
+            name: harvester-fleet-config
+        serviceAccount: fleet-controller
+        serviceAccountName: fleet-controller
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: harvester-fleet
+    namespace: cattle-fleet-system
+  spec:
+    template:
+      spec:
+        containers:
+        - name: harvester-fleet
+          image: rancher/fleet:v{{ .FleetVersion }}
+          command:
+          - /bin/sh
+          - -c
+          - |
+            fleet apply harvester /app
+          volumeMounts:
+          - name: config-volume
+            mountPath: "/app/fleet.yaml"
+            subPath: harvester-fleet.yaml
+            readOnly: false
+        restartPolicy: Never
+        volumes:
+        - name: config-volume
+          configMap:
+            name: harvester-fleet-config
+        serviceAccount: fleet-controller
+        serviceAccountName: fleet-controller

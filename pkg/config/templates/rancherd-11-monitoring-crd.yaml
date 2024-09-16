@@ -1,11 +1,29 @@
 resources:
-- apiVersion: helm.cattle.io/v1
-  kind: HelmChart
+- apiVersion: batch/v1
+  kind: Job
   metadata:
-    name: rancher-monitoring-crd
-    namespace: fleet-local
+    name: rancher-monitoring-crd-fleet
+    namespace: cattle-fleet-system
   spec:
-    chart: rancher-monitoring-crd
-    version: {{ .MonitoringChartVersion }}
-    targetNamespace: cattle-monitoring-system
-    repo: http://harvester-cluster-repo.cattle-system.svc/charts
+    template:
+      spec:
+        containers:
+        - name: rancher-monitoring-crd-fleet
+          image: rancher/fleet:v{{ .FleetVersion }}
+          command:
+          - /bin/sh
+          - -c
+          - |
+            fleet apply rancher-monitoring-crd /app
+          volumeMounts:
+          - name: config-volume
+            mountPath: "/app/fleet.yaml"
+            subPath: rancher-monitoring-crd-fleet.yaml
+            readOnly: false
+        restartPolicy: Never
+        volumes:
+        - name: config-volume
+          configMap:
+            name: harvester-fleet-config
+        serviceAccount: fleet-controller
+        serviceAccountName: fleet-controller
