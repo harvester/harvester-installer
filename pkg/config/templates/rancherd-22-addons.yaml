@@ -221,7 +221,7 @@ resources:
       namespace: harvester-system
     spec:
       repo: http://harvester-cluster-repo.cattle-system.svc/charts
-      version: "0.1.1"
+      version: "0.3.0"
       chart: nvidia-driver-runtime
       {{- if and .Addons .Addons.nvidia_driver_toolkit}}
       enabled: {{ .Addons.nvidia_driver_toolkit.Enabled }}
