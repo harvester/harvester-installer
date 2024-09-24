@@ -1,2 +1,2 @@
 registry.suse.com/suse/vmdp/vmdp:2.5.4.2
-rancher/harvester-eventrouter:v0.2.0
+rancher/harvester-eventrouter:v0.3.2
