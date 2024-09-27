@@ -8,6 +8,12 @@ RUN zypper -n rm container-suseconnect && \
 
 COPY charts /srv/www/htdocs/charts
 
+RUN touch /run/nginx.pid && \
+    chown nginx:nginx /run/nginx.pid && \
+    chown -R nginx:nginx /srv/www/htdocs/charts
+
+USER nginx
+
 EXPOSE 80
 
 STOPSIGNAL SIGQUIT
