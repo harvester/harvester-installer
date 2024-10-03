@@ -446,7 +446,7 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		return nil, err
 	}
 
-	if _, err := UpdateManagementInterfaceConfig(&runtimeConfig, config.ManagementInterface, true); err != nil {
+	if _, err := UpdateManagementInterfaceConfig(&runtimeConfig, config.ManagementInterface, true, config.Role); err != nil {
 		return nil, err
 	}
 
