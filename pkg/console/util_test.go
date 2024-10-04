@@ -587,6 +587,128 @@ const (
    ]
 }
 `
+	raidDisks = `{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "size": "780.5M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null
+      },{
+         "name": "sda",
+         "size": "447.1G",
+         "type": "disk",
+         "wwn": "0x600508b1001cec28a12a38168f7bb195",
+         "serial": "PDNMF0ARH1614W",
+         "children": [
+            {
+               "name": "3600508b1001cec28a12a38168f7bb195",
+               "size": "447.1G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null
+            }
+         ]
+      },{
+         "name": "sdb",
+         "size": "447.1G",
+         "type": "disk",
+         "wwn": "0x600508b1001c3e956986e526698cd830",
+         "serial": "PDNMF0ARH1614W",
+         "children": [
+            {
+               "name": "sdb1",
+               "size": "1M",
+               "type": "part",
+               "wwn": "0x600508b1001c3e956986e526698cd830",
+               "serial": null
+            },{
+               "name": "sdb2",
+               "size": "50M",
+               "type": "part",
+               "wwn": "0x600508b1001c3e956986e526698cd830",
+               "serial": null
+            },{
+               "name": "sdb3",
+               "size": "8G",
+               "type": "part",
+               "wwn": "0x600508b1001c3e956986e526698cd830",
+               "serial": null
+            },{
+               "name": "sdb4",
+               "size": "15G",
+               "type": "part",
+               "wwn": "0x600508b1001c3e956986e526698cd830",
+               "serial": null
+            },{
+               "name": "sdb5",
+               "size": "170G",
+               "type": "part",
+               "wwn": "0x600508b1001c3e956986e526698cd830",
+               "serial": null
+            },{
+               "name": "sdb6",
+               "size": "254G",
+               "type": "part",
+               "wwn": "0x600508b1001c3e956986e526698cd830",
+               "serial": null
+            },{
+               "name": "3600508b1001c3e956986e526698cd830",
+               "size": "447.1G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null,
+               "children": [
+                  {
+                     "name": "3600508b1001c3e956986e526698cd830-part1",
+                     "size": "1M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "3600508b1001c3e956986e526698cd830-part2",
+                     "size": "50M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "3600508b1001c3e956986e526698cd830-part3",
+                     "size": "8G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "3600508b1001c3e956986e526698cd830-part4",
+                     "size": "15G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "3600508b1001c3e956986e526698cd830-part5",
+                     "size": "170G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  },{
+                     "name": "3600508b1001c3e956986e526698cd830-part6",
+                     "size": "254G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "sr0",
+         "size": "1024M",
+         "type": "rom",
+         "wwn": null,
+         "serial": "475652914613"
+      }
+   ]
+}`
 )
 
 func Test_identifyUniqueDisksWithSerialNumber(t *testing.T) {
@@ -608,4 +730,11 @@ func Test_identifyUniqueDisksOnExistingInstalls(t *testing.T) {
 	result, err := identifyUniqueDisks([]byte(preInstalledMultiPath))
 	assert.NoError(err, "expected no error while parsing disk data")
 	assert.Len(result, 1, "expected to find 1 disk only")
+}
+
+func Test_identifyUniqueDisks(t *testing.T) {
+	assert := require.New(t)
+	out, err := identifyUniqueDisks([]byte(raidDisks))
+	assert.NoError(err, "expected no error while parsing disk data")
+	t.Log(out)
 }

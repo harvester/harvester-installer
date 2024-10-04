@@ -1039,9 +1039,11 @@ func identifyUniqueDisks(output []byte) ([]string, error) {
 				if !ok {
 					dedupMap[disk.Serial] = disk
 				}
-				continue
 			}
 
+			// disks may have same serial number but different wwn when used with a raid array
+			// as evident in test data from a host with a raid array
+			// in this case if serial number is same, we still check for unique wwn
 			if disk.WWN != "" {
 				_, ok := dedupMap[disk.WWN]
 				if !ok {
