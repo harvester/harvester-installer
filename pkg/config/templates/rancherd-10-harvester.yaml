@@ -181,6 +181,10 @@ resources:
         vipEnabled: true
         image:
           pullPolicy: "IfNotPresent"
+      harvester-networkfs-manager:
+        enabled: true
+        image:
+          pullPolicy: "IfNotPresent"
       harvester-node-disk-manager:
         enabled: true
         image:
