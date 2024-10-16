@@ -12,6 +12,9 @@ env:
   # something like "697/merge", which doesn't work as a version,
   # so wet just set it to master in this case.
   DRONE_BRANCH: ${{ endsWith(github.ref_name, '/merge') && 'master' || github.ref_name }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !contains(fromJson('["master", "v1.2", "v1.3", "v1.4", "v1.5"]'), github.ref) }}
 jobs:
   build-iso:
     name: Build ISO Images
