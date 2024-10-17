@@ -1,13 +1,6 @@
 name: "Network configuration"
 stages:
   initramfs:
-    - name: Bring up interfaces
-      commands:
-      - |
-        for i in /sys/class/net/{eth*,en*,ib*}; do
-          [ -e $i ] || continue
-          ip link set $(basename $i) up;
-        done
     # We will manually update the /etc/resolv.conf so stop netconfig from modifying it
     - name: Disable NETCONFIG_DNS_POLICY for PXE installation
       if: cat /proc/cmdline | grep -q "harvester.install.automatic=true"
@@ -51,3 +44,11 @@ stages:
           done | sort -u > /etc/resolv.conf
           echo "/etc/resolv.conf is generated from each interface's resolv.conf"
         fi
+  network:
+    - name: Bring up interfaces
+      commands:
+      - |
+        for i in /sys/class/net/{eth*,en*,ib*}; do
+          [ -e $i ] || continue
+          ip link set $(basename $i) up;
+        done
