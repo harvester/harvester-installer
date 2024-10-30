@@ -35,9 +35,3 @@ resources:
       - protocol: TCP
         port: 80
         targetPort: 80
-- apiVersion: catalog.cattle.io/v1
-  kind: ClusterRepo
-  metadata:
-    name: harvester-charts
-  spec:
-    url: http://harvester-cluster-repo.cattle-system/charts
