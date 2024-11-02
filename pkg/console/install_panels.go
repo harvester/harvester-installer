@@ -2154,7 +2154,7 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, "Failed to check default route.", installPanel)
 				return
 			}
-			if !installModeOnly && !isDefaultRouteExist {
+			if !installModeOnly && !isDefaultRouteExist && c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
 				logrus.Error(ErrMsgNoDefaultRoute)
 				printToPanel(c.Gui, ErrMsgNoDefaultRoute, installPanel)
 				return
