@@ -80,6 +80,7 @@ func getVipThroughDHCP(iface string) (*vipAddr, error) {
 }
 
 func getIPThroughDHCP(iface string) (net.IP, error) {
+	logrus.Infof("Get IP through DHCP via interface %s", iface)
 	broadcast, err := nclient4.New(iface)
 	if err != nil {
 		return nil, err
