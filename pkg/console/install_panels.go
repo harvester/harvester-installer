@@ -2063,6 +2063,7 @@ func addInstallPanel(c *Console) error {
 			if c.config.Hostname == "" {
 				c.config.Hostname = generateHostName()
 			}
+
 			if c.config.TTY == "" {
 				c.config.TTY = getFirstConsoleTTY()
 			}
@@ -2234,8 +2235,7 @@ func addVIPPanel(c *Console) error {
 			spinner := NewSpinner(c.Gui, vipTextPanel, "Requesting IP through DHCP...")
 			spinner.Start()
 			go func(g *gocui.Gui) {
-				mgmtName := getManagementInterfaceName(c.config.ManagementInterface)
-				vip, err := getVipThroughDHCP(mgmtName)
+				vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface))
 				if err != nil {
 					spinner.Stop(true, err.Error())
 					g.Update(func(_ *gocui.Gui) error {
@@ -2561,6 +2561,7 @@ func configureInstallModeDHCP(c *Console) {
 		mgmtNetwork.BondOptions = netDef.BondOptions
 	}
 	mgmtNetwork.Method = netDef.Method
+	mgmtNetwork.VlanID = netDef.VlanID
 
 	_, err := applyNetworks(
 		mgmtNetwork,
