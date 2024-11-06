@@ -1378,7 +1378,7 @@ func addNetworkPanel(c *Console) error {
 		c.config.ManagementInterface = mgmtNetwork
 
 		if mgmtNetwork.Method == config.NetworkMethodDHCP {
-			addr, err := getIPThroughDHCP(config.MgmtInterfaceName)
+			addr, err := getIPThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface))
 			if err != nil {
 				return fmt.Sprintf("Requesting IP through DHCP failed: %s", err.Error()), nil
 			}
@@ -2571,14 +2571,14 @@ func configureInstallModeDHCP(c *Console) {
 		printToPanel(c.Gui, fmt.Sprintf("error applying network configuration: %s", err.Error()), installPanel)
 	}
 
-	_, err = getIPThroughDHCP(config.MgmtInterfaceName)
+	_, err = getIPThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface))
 	if err != nil {
 		printToPanel(c.Gui, fmt.Sprintf("error getting DHCP address: %s", err.Error()), installPanel)
 	}
 
 	// if need vip via dhcp
 	if c.config.Install.VipMode == config.NetworkMethodDHCP {
-		vip, err := getVipThroughDHCP(config.MgmtInterfaceName)
+		vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface))
 		if err != nil {
 			printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
 			return
