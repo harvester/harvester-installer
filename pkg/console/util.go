@@ -2,6 +2,7 @@ package console
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/binary"
@@ -396,12 +397,59 @@ func execute(ctx context.Context, g *gocui.Gui, env []string, cmdName string) er
 	return cmd.Wait()
 }
 
+func dropCR(data []byte) []byte {
+	if len(data) > 0 && data[len(data)-1] == '\r' {
+		return data[0 : len(data)-1]
+	}
+	return data
+}
+
+func ScanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	if i := bytes.IndexByte(data, '\n'); i >= 0 {
+		// We have a full newline-terminated line.
+		return i + 1, dropCR(data[0:i]), nil
+	}
+
+	if i := bytes.IndexByte(data, '\r'); i >= 0 {
+		// We have a full newline-terminated line.
+		return i + 1, dropCR(data[0:i]), nil
+	}
+
+	// If we're at EOF, we have a final, non-terminated line. Return it.
+	if atEOF {
+		return len(data), dropCR(data), nil
+	}
+	// Request more data.
+	return 0, nil, nil
+}
+
 func printToPanelAndLog(g *gocui.Gui, panel string, logPrefix string, reader io.Reader, lock *sync.Mutex) {
 	scanner := bufio.NewScanner(reader)
+	scanner.Split(ScanLines)
+	currentPrinter := printToPanel
+
 	for scanner.Scan() {
 		logrus.Infof("%s: %s", logPrefix, scanner.Text())
 		lock.Lock()
-		printToPanel(g, scanner.Text(), panel)
+		text := scanner.Text()
+
+		if strings.Contains(text, "startcurl") {
+			currentPrinter = printCurlProgressBarToPanel
+			lock.Unlock()
+			continue
+		}
+		if strings.Contains(text, "endcurl") {
+			currentPrinter = printToPanel
+			printToPanel(g, " ", panel)
+			lock.Unlock()
+			continue
+		}
+
+		currentPrinter(g, text, panel)
 		lock.Unlock()
 	}
 }
@@ -581,12 +629,10 @@ func doUpgrade(g *gocui.Gui) error {
 	}
 
 	scanner := bufio.NewScanner(stdout)
-	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		printToPanel(g, scanner.Text(), upgradePanel)
 	}
 	scanner = bufio.NewScanner(stderr)
-	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		printToPanel(g, scanner.Text(), upgradePanel)
 	}
@@ -609,6 +655,28 @@ func printToPanel(g *gocui.Gui, message string, panelName string) {
 			return err
 		}
 		fmt.Fprintln(v, message)
+		return nil
+	})
+
+	<-ch
+}
+
+func printCurlProgressBarToPanel(g *gocui.Gui, message string, panelName string) {
+	// block printToPanel call in the same goroutine.
+	// This ensures messages are printed out in the calling order.
+	ch := make(chan struct{})
+
+	g.Update(func(g *gocui.Gui) error {
+
+		defer func() {
+			ch <- struct{}{}
+		}()
+
+		v, err := g.View(panelName)
+		if err != nil {
+			return err
+		}
+		v.Write(append([]byte{'\r'}, []byte(message)...))
 		return nil
 	})
 
