@@ -430,26 +430,11 @@ func ScanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 func printToPanelAndLog(g *gocui.Gui, panel string, logPrefix string, reader io.Reader, lock *sync.Mutex) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Split(ScanLines)
-	currentPrinter := printToPanel
 
 	for scanner.Scan() {
 		logrus.Infof("%s: %s", logPrefix, scanner.Text())
 		lock.Lock()
-		text := scanner.Text()
-
-		if strings.Contains(text, "startcurl") {
-			currentPrinter = printCurlProgressBarToPanel
-			lock.Unlock()
-			continue
-		}
-		if strings.Contains(text, "endcurl") {
-			currentPrinter = printToPanel
-			printToPanel(g, " ", panel)
-			lock.Unlock()
-			continue
-		}
-
-		currentPrinter(g, text, panel)
+		printToPanel(g, scanner.Text(), panel)
 		lock.Unlock()
 	}
 }
@@ -655,28 +640,6 @@ func printToPanel(g *gocui.Gui, message string, panelName string) {
 			return err
 		}
 		fmt.Fprintln(v, message)
-		return nil
-	})
-
-	<-ch
-}
-
-func printCurlProgressBarToPanel(g *gocui.Gui, message string, panelName string) {
-	// block printToPanel call in the same goroutine.
-	// This ensures messages are printed out in the calling order.
-	ch := make(chan struct{})
-
-	g.Update(func(g *gocui.Gui) error {
-
-		defer func() {
-			ch <- struct{}{}
-		}()
-
-		v, err := g.View(panelName)
-		if err != nil {
-			return err
-		}
-		v.Write(append([]byte{'\r'}, []byte(message)...))
 		return nil
 	})
 
