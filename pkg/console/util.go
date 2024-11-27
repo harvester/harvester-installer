@@ -52,6 +52,9 @@ You can see the full installation log by:
 	ElementalConfigDir  = "/tmp/elemental"
 	ElementalConfigFile = "config.yaml"
 	multipathOff        = "multipath=off"
+	PartitionType       = "part"
+	MpathType           = "mpath"
+	CosDiskLabelPrefix  = "COS_OEM"
 )
 
 func newProxyClient() http.Client {
@@ -545,6 +548,25 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", hvstConfig.OS.AdditionalKernelArguments))
 	}
 
+	// when WipeAllDisks is enabled then find all non installation disks with COS_ prefixed labels
+	// and add them to a list for wiping
+	if hvstConfig.Install.WipeAllDisks {
+		diskOpts, err := getWipeDisksOptions(hvstConfig)
+		if err != nil {
+			return err
+		}
+		for _, opt := range diskOpts {
+			hvstConfig.Install.WipeDisksList = append(hvstConfig.Install.WipeDisksList, opt.Value)
+		}
+	}
+
+	// prepare to wipe disks
+	for _, disk := range hvstConfig.Install.WipeDisksList {
+		if err := executeWipeDisks(ctx, disk); err != nil {
+			return fmt.Errorf("error wiping disk %s: %w", disk, err)
+		}
+	}
+
 	elementalConfigDir, elementalConfigFile, err := saveElementalConfig(elementalConfig)
 	if err != nil {
 		return nil
@@ -1033,6 +1055,7 @@ type Device struct {
 	DiskType string   `json:"type"`
 	WWN      string   `json:"wwn,omitempty"`
 	Serial   string   `json:"serial,omitempty"`
+	Label    string   `json:"label,omitempty"`
 	Children []Device `json:"children,omitempty"`
 }
 
@@ -1047,13 +1070,28 @@ const (
 // identifyUniqueDisks parses the json output of lsblk and identifies
 // unique disks by comparing their serial number info and wwn details
 func identifyUniqueDisks(output []byte) ([]string, error) {
-	returnDisks := []string{}
+
+	resultMap, err := filterUniqueDisks(output)
+	if err != nil {
+		return nil, err
+	}
+
+	returnDisks := make([]string, 0, len(resultMap))
+	// generate list of disks
+	for _, v := range resultMap {
+		returnDisks = append(returnDisks, generateDiskEntry(v))
+	}
+
+	return returnDisks, nil
+}
+
+// filterUniqueDisks will dedup results of disk output to generate a map[disName]Device of unique devices
+func filterUniqueDisks(output []byte) (map[string]Device, error) {
 	disks := &BlockDevices{}
 	err := json.Unmarshal(output, disks)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling lsblk json output: %v", err)
 	}
-
 	// identify devices which may be unique
 	dedupMap := make(map[string]Device)
 	for _, disk := range disks.Disks {
@@ -1061,7 +1099,7 @@ func identifyUniqueDisks(output []byte) ([]string, error) {
 			// no serial or wwn info present
 			// add to list of disks
 			if disk.WWN == "" && disk.Serial == "" {
-				returnDisks = append(returnDisks, generateDiskEntry(disk))
+				dedupMap[disk.Name] = disk
 				continue
 			}
 
@@ -1090,11 +1128,107 @@ func identifyUniqueDisks(output []byte) ([]string, error) {
 	for _, v := range dedupMap {
 		resultMap[v.Name] = v
 	}
+	return resultMap, nil
+}
 
-	// generate list of disks
-	for _, v := range resultMap {
-		returnDisks = append(returnDisks, generateDiskEntry(v))
+// getDiskOptions identifies disks that can be used for installation
+func getDiskOptions() ([]widgets.Option, error) {
+	output, err := exec.Command("/bin/sh", "-c", `lsblk -J -o NAME,SIZE,TYPE,WWN,SERIAL,LABEL`).CombinedOutput()
+	if err != nil {
+		return nil, err
 	}
 
-	return returnDisks, nil
+	disks, err := identifyUniqueDisks(output)
+
+	return generateDiskWidgetOptions(disks), nil
+}
+
+// getWipeDiskOptions iterates over all disks and filters out disks which are being used for install device
+// or dataDisk as they will already be wiped as part of the installation process
+func getWipeDisksOptions(hvstConfig *config.HarvesterConfig) ([]widgets.Option, error) {
+	disks, err := identifyUniqueDisksWithHarvesterInstall()
+	if err != nil {
+		return nil, err
+	}
+
+	options := generateDiskWidgetOptions(disks)
+	// filter disks to ignore disks which may be used as base install device
+	// or an additional data disk, and rest can be used for generation of option
+	var filterDisks []widgets.Option
+	for _, v := range options {
+		if v.Value != hvstConfig.Device && v.Value != hvstConfig.DataDisk {
+			filterDisks = append(filterDisks, v)
+		}
+	}
+	return filterDisks, nil
+}
+
+// identifyUniqueDisksWithHarvesterInstall will identify disks which may already be in use with old Harvester
+// installs. This is done by check if a label with prefix COS exists on any of the partitions
+// and only those disks are returned for getWipeDiskOptions
+
+func identifyUniqueDisksWithHarvesterInstall() ([]string, error) {
+	output, err := exec.Command("/bin/sh", "-c", `lsblk -J -o NAME,SIZE,TYPE,WWN,SERIAL,LABEL`).CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	return filterHarvesterInstallDisks(output)
+}
+
+func filterHarvesterInstallDisks(output []byte) ([]string, error) {
+	var returnedDisks []string
+
+	resultMap, err := filterUniqueDisks(output)
+	if err != nil {
+		return nil, fmt.Errorf("error filtering unique harvester install disks: %w", err)
+	}
+	for _, device := range resultMap {
+		if deviceContainsCOSPartition(device) {
+			returnedDisks = append(returnedDisks, generateDiskEntry(device))
+		}
+	}
+	return returnedDisks, nil
+}
+
+func deviceContainsCOSPartition(disk Device) bool {
+	for _, partition := range disk.Children {
+		if partition.DiskType == MpathType {
+			return deviceContainsCOSPartition(partition)
+		}
+		if partition.DiskType == PartitionType && partition.Label == CosDiskLabelPrefix {
+			return true
+		}
+	}
+	return false
+}
+
+func generateDiskWidgetOptions(lines []string) []widgets.Option {
+	var options []widgets.Option
+	for _, line := range lines {
+		splits := strings.SplitN(line, " ", 2)
+		if len(splits) == 2 {
+			options = append(options, widgets.Option{
+				Value: "/dev/" + splits[0],
+				Text:  line,
+			})
+		}
+	}
+	return options
+}
+
+func executeWipeDisks(ctx context.Context, name string) error {
+	cmd := exec.CommandContext(ctx, "/usr/sbin/sgdisk", "-Z", name)
+	if err := runCommand(cmd); err != nil {
+		return err
+	}
+	cmd = exec.CommandContext(ctx, "/usr/sbin/partprobe", "-s", name)
+	return runCommand(cmd)
+}
+
+func runCommand(cmd *exec.Cmd) error {
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Wait()
 }
