@@ -104,21 +104,7 @@ get_url()
             attempts=5
             until [ "$n" -ge "$attempts" ]
             do
-                # Because `curl` command uses `\r` to overwrite the progress bar,
-                # so we should also consider `\r` when splitting the output.
-                # Hence, we use `startcurl` and `endcurl` to trigger replacing the progress bar.
-                # But, when we use `\r` to display, the header will be overwritten, so we need to print the header manually.
-                echo "% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current"
-                echo "                               Dload  Upload   Total   Spent    Left  Speed"
-                echo "startcurl"
-                curl -o $TO -fL ${FROM} 2>&1
-                curl_result=$?
-                echo "endcurl"
-
-                if [ "$curl_result" -eq 0  ]; then
-                    break
-                fi
-
+                curl -o $TO -fL ${FROM} && break
                 n=$((n+1))
                 echo "Failed to download, retry attempt ${n} out of ${attempts}"
                 sleep 2
