@@ -201,3 +201,8 @@ func (d *DropDown) SetData(data string) error {
 	}
 	return nil
 }
+
+func (d *DropDown) Reset() {
+	d.Select.selectedIndexes = []bool{}
+	d.Value = ""
+}

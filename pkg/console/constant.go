@@ -49,6 +49,8 @@ const (
 	vipTextPanel                = "vipTextPanel"
 	ntpServersPanel             = "ntpServersPanel"
 	askRolePanel                = "askRolePanel"
+	wipeDisksPanel              = "wipeDisksPanel"
+	wipeDisksTitlePanel         = "wipeDisksTitlePanel"
 
 	hostnameTitle         = "Configure hostname for this instance"
 	networkTitle          = "Configure network"
@@ -65,6 +67,7 @@ const (
 	mtuLabel              = "MTU (optional)"
 	dnsServersLabel       = "DNS Servers"
 	ntpServersLabel       = "NTP Servers"
+	wipeDisksLabel        = "Wipe Disks"
 
 	networkMethodDHCPText   = "Automatic (DHCP)"
 	networkMethodStaticText = "Static"
