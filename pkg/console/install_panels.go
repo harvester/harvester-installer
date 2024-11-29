@@ -3,6 +3,7 @@ package console
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"strconv"
@@ -157,6 +158,7 @@ func setPanels(c *Console) error {
 		addDiskPanel,
 		addHostnamePanel,
 		addNetworkPanel,
+		addClusterNetworkPanel,
 		addVIPPanel,
 		addDNSServersPanel,
 		addNTPServersPanel,
@@ -1230,6 +1232,9 @@ func addHostnamePanel(c *Console) error {
 
 	prev := func(_ *gocui.Gui, _ *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
+		if c.config.Install.Mode == config.ModeCreate {
+			return showClusterNetworkPage(c)
+		}
 		return showNetworkPage(c)
 	}
 
@@ -1448,6 +1453,9 @@ func addNetworkPanel(c *Console) error {
 				spinner.Stop(false, "")
 				g.Update(func(_ *gocui.Gui) error {
 					closeThisPage()
+					if c.config.Install.Mode == config.ModeCreate {
+						return showClusterNetworkPage(c)
+					}
 					return showHostnamePage(c)
 				})
 			}
@@ -1740,6 +1748,261 @@ func addNetworkPanel(c *Console) error {
 	networkValidatorV.Wrap = true
 	setLocation(networkValidatorV, 0)
 	c.AddElement(networkValidatorPanel, networkValidatorV)
+
+	return nil
+}
+
+func showClusterNetworkPage(c *Console) error {
+	return showNext(
+		c,
+		clusterServiceCIDRPanel,
+		clusterDNSPanel,
+		clusterNetworkNotePanel,
+		clusterNetworkDNSNotePanel,
+		clusterNetworkValidatorPanel,
+		clusterPodCIDRPanel)
+}
+
+func addClusterNetworkPanel(c *Console) error {
+	// define page navigation
+	closePage := func() {
+		c.CloseElements(
+			clusterPodCIDRPanel,
+			clusterServiceCIDRPanel,
+			clusterDNSPanel,
+			clusterNetworkNotePanel,
+			clusterNetworkDNSNotePanel,
+			clusterNetworkValidatorPanel)
+	}
+
+	prevPage := func(_ *gocui.Gui, _ *gocui.View) error {
+		closePage()
+		return showNetworkPage(c)
+	}
+
+	nextPage := func() error {
+		closePage()
+		return showHostnamePage(c)
+	}
+
+	setLocation := createVerticalLocator(c)
+
+	// set up the pod CIDR input panel
+	podCIDRInput, err := widgets.NewInput(
+		c.Gui,
+		clusterPodCIDRPanel,
+		clusterPodCIDRLabel,
+		false)
+	if err != nil {
+		return err
+	}
+	podCIDRInput.PreShow = func() error {
+		c.Cursor = true
+		podCIDRInput.Value = c.config.ClusterPodCIDR
+
+		if err := c.setContentByName(
+			titlePanel,
+			clusterNetworkTitle); err != nil {
+			return err
+		}
+
+		if err := c.setContentByName(
+			clusterNetworkNotePanel,
+			clusterNetworkNote); err != nil {
+			return err
+		}
+
+		if err := c.setContentByName(
+			clusterNetworkDNSNotePanel,
+			clusterNetworkDNSNote); err != nil {
+			return err
+		}
+
+		// reset any previous error in the validator panel before
+		// showing the rest of the page
+		return c.setContentByName(clusterNetworkValidatorPanel, "")
+	}
+
+	// set up the service CIDR input panel
+	serviceCIDRInput, err := widgets.NewInput(
+		c.Gui,
+		clusterServiceCIDRPanel,
+		clusterServiceCIDRLabel,
+		false)
+	if err != nil {
+		return err
+	}
+
+	serviceCIDRInput.PreShow = func() error {
+		c.Cursor = true
+		serviceCIDRInput.Value = c.config.ClusterServiceCIDR
+		return nil
+	}
+
+	// set up the cluster DNS input panel
+	dnsInput, err := widgets.NewInput(
+		c.Gui,
+		clusterDNSPanel,
+		clusterDNSLabel,
+		false)
+	if err != nil {
+		return err
+	}
+
+	dnsInput.PreShow = func() error {
+		c.Cursor = true
+		dnsInput.Value = c.config.ClusterDNS
+		return nil
+	}
+
+	// define inputs validators
+	validateCIDR := func(cidr string) error {
+		cidr = strings.TrimSpace(cidr)
+		if cidr == "" {
+			return nil
+		}
+
+		_, err := netip.ParsePrefix(cidr)
+		return err
+	}
+
+	validateDNSIP := func(ip string) error {
+		ip = strings.TrimSpace(ip)
+		serviceCIDR, err := serviceCIDRInput.GetData()
+		if err != nil {
+			return err
+		}
+		if ip == "" && serviceCIDR == "" {
+			return nil
+		}
+
+		// the DNS IP address must be well-formed and within the
+		// service CIDR
+		ipAddr, err := netip.ParseAddr(ip)
+		if err != nil {
+			return fmt.Errorf("Invalid cluster DNS IP: %w", err)
+		}
+
+		svcNet, err := netip.ParsePrefix(serviceCIDR)
+		if err != nil {
+			return fmt.Errorf("To override the cluster DNS IP, the service CIDR must be valid: %w", err)
+		}
+
+		if !svcNet.Contains(ipAddr) {
+			return fmt.Errorf("Invalid cluster DNS IP: %s is not in the service CIDR %s", ip, serviceCIDR)
+		}
+
+		return nil
+	}
+
+	// define input confirm actions
+	podCIDRConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
+		podCIDR, err := podCIDRInput.GetData()
+		if err != nil {
+			return err
+		}
+
+		if err := validateCIDR(podCIDR); err != nil {
+			c.setContentByName(
+				clusterNetworkValidatorPanel,
+				fmt.Sprintf("Invalid pod CIDR: %s", err))
+			return nil
+		}
+		c.config.ClusterPodCIDR = podCIDR
+
+		// reset any previous error in the validator panel before
+		// moving to the next panel
+		c.setContentByName(clusterNetworkValidatorPanel, "")
+		return showNext(c, clusterServiceCIDRPanel)
+	}
+
+	serviceCIDRConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
+		serviceCIDR, err := serviceCIDRInput.GetData()
+		if err != nil {
+			return err
+		}
+
+		if err := validateCIDR(serviceCIDR); err != nil {
+			c.setContentByName(
+				clusterNetworkValidatorPanel,
+				fmt.Sprintf("Invalid service CIDR: %s", err))
+			return nil
+		}
+		c.config.ClusterServiceCIDR = serviceCIDR
+
+		// reset any previous error in the validator panel before
+		// moving to the next panel
+		c.setContentByName(clusterNetworkValidatorPanel, "")
+		return showNext(c, clusterDNSPanel)
+	}
+
+	dnsConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
+		dns, err := dnsInput.GetData()
+		if err != nil {
+			return err
+		}
+		if err := validateDNSIP(dns); err != nil {
+			c.setContentByName(clusterNetworkValidatorPanel, err.Error())
+			return nil
+		}
+		c.config.ClusterDNS = dns
+
+		// reset the validator panel before moving to the next page
+		c.setContentByName(clusterNetworkValidatorPanel, "")
+		return nextPage()
+	}
+
+	// configure key bindings and element locations
+	podCIDRInput.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEsc:       prevPage,
+		gocui.KeyArrowUp:   prevPage,
+		gocui.KeyArrowDown: podCIDRConfirm,
+		gocui.KeyEnter:     podCIDRConfirm,
+	}
+	setLocation(podCIDRInput, 3)
+	c.AddElement(clusterPodCIDRPanel, podCIDRInput)
+
+	serviceCIDRInput.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEsc: prevPage,
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			return showNext(c, clusterPodCIDRPanel)
+		},
+		gocui.KeyArrowDown: serviceCIDRConfirm,
+		gocui.KeyEnter:     serviceCIDRConfirm,
+	}
+	setLocation(serviceCIDRInput, 3)
+	c.AddElement(clusterServiceCIDRPanel, serviceCIDRInput)
+
+	dnsInput.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEsc: prevPage,
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			return showNext(c, clusterServiceCIDRPanel)
+		},
+		gocui.KeyArrowDown: dnsConfirm,
+		gocui.KeyEnter:     dnsConfirm,
+	}
+	setLocation(dnsInput, 3)
+	c.AddElement(clusterDNSPanel, dnsInput)
+
+	// set up notes panels
+	notePanel := widgets.NewPanel(c.Gui, clusterNetworkNotePanel)
+	notePanel.Focus = false
+	setLocation(notePanel, 3)
+	c.AddElement(clusterNetworkNotePanel, notePanel)
+
+	dnsNotePanel := widgets.NewPanel(c.Gui, clusterNetworkDNSNotePanel)
+	dnsNotePanel.Focus = false
+	setLocation(dnsNotePanel, 3)
+	c.AddElement(clusterNetworkDNSNotePanel, dnsNotePanel)
+
+	// set up validator panel for warning and error messages
+	validatorPanel := widgets.NewPanel(c.Gui, clusterNetworkValidatorPanel)
+	validatorPanel.FgColor = gocui.ColorRed
+	validatorPanel.Focus = false
+	maxX, _ := c.Gui.Size()
+	validatorPanel.X1 = maxX / 8 * 6
+	setLocation(validatorPanel, 3)
+	c.AddElement(clusterNetworkValidatorPanel, validatorPanel)
 
 	return nil
 }
