@@ -1227,8 +1227,9 @@ func executeWipeDisks(ctx context.Context, name string) error {
 }
 
 func runCommand(cmd *exec.Cmd) error {
-	if err := cmd.Start(); err != nil {
-		return err
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logrus.Error(string(output))
 	}
-	return cmd.Wait()
+	return err
 }
