@@ -127,7 +127,7 @@ func upAllLinks() error {
 }
 
 func getNICs() ([]netlink.Link, error) {
-	var nics []netlink.Link
+	var nics, vlanNics []netlink.Link
 
 	links, err := netlink.LinkList()
 	if err != nil {
@@ -138,9 +138,24 @@ func getNICs() ([]netlink.Link, error) {
 		if l.Type() == "device" && l.Attrs().EncapType != "loopback" {
 			nics = append(nics, l)
 		}
+		if l.Type() == "vlan" {
+			vlanNics = append(vlanNics, l)
+		}
 	}
 
-	return filterISCSIInterfaces(nics)
+	iscsi := goiscsi.NewLinuxISCSI(nil)
+	sessions, err := iscsi.GetSessions()
+	if err != nil {
+		return nil, fmt.Errorf("error querying iscsi sessions: %v", err)
+	}
+
+	// no iscsi sessions detected so no additional filtering based on usage for iscsi device
+	// access is needed and we can break here
+	if len(sessions) == 0 {
+		return nics, nil
+	}
+
+	return filterISCSIInterfaces(nics, vlanNics, sessions)
 }
 
 func getNICState(name string) int {
@@ -196,25 +211,47 @@ func getManagementInterfaceName(mgmtInterface config.Network) string {
 
 // filterISCSIInterfaces will query the host to identify iscsi sessions, and skip interfaces
 // used by the existing iscsi session.
-func filterISCSIInterfaces(links []netlink.Link) ([]netlink.Link, error) {
-	iscsi := goiscsi.NewLinuxISCSI(nil)
-	sessions, err := iscsi.GetSessions()
-	if err != nil {
-		return nil, fmt.Errorf("error querying iscsi sessions: %v", err)
+func filterISCSIInterfaces(nics, vlanNics []netlink.Link, sessions []goiscsi.ISCSISession) ([]netlink.Link, error) {
+	hwDeviceMap := make(map[string]netlink.Link)
+	for _, v := range nics {
+		hwDeviceMap[v.Attrs().HardwareAddr.String()] = v
 	}
 
-	var returnLinks []netlink.Link
+	// temporary sessionMap to make it easy to correlate interface addressses with session ip address
+	// should speed up identification of interfaces in use with iscsi sessions
+	sessionMap := make(map[string]string)
+	for _, session := range sessions {
+		sessionMap[session.IfaceIPaddress] = ""
+	}
+
+	if err := filterNICSBySession(hwDeviceMap, nics, sessionMap); err != nil {
+		return nil, err
+	}
+
+	if err := filterNICSBySession(hwDeviceMap, vlanNics, sessionMap); err != nil {
+		return nil, err
+	}
+	logrus.Debugf("identified following iscsi sessions: %v", sessionMap)
+	// we need to filter the filteredNics to also isolate parent nics if a vlan if is in use
+	returnedNics := make([]netlink.Link, 0, len(hwDeviceMap))
+	for _, v := range hwDeviceMap {
+		returnedNics = append(returnedNics, v)
+	}
+	return returnedNics, nil
+}
+
+func filterNICSBySession(hwDeviceMap map[string]netlink.Link, links []netlink.Link, sessionMap map[string]string) error {
 	for _, link := range links {
-		var inuse bool
+		logrus.Debugf("checking if link %s is in use", link.Attrs().Name)
 		if getNICState(link.Attrs().Name) == NICStateUP {
 			iface, err := net.InterfaceByName(link.Attrs().Name)
 			if err != nil {
-				return nil, fmt.Errorf("error fetching interface details: %v", err)
+				return fmt.Errorf("error fetching interface details: %v", err)
 			}
 
 			addresses, err := iface.Addrs()
 			if err != nil {
-				return nil, fmt.Errorf("error fetching addresses from interface: %v", err)
+				return fmt.Errorf("error fetching addresses from interface: %v", err)
 			}
 
 			for _, address := range addresses {
@@ -222,18 +259,15 @@ func filterISCSIInterfaces(links []netlink.Link) ([]netlink.Link, error) {
 				// since iscsi session contains just the ip address
 				ipAddress, _, err := net.ParseCIDR(address.String())
 				if err != nil {
-					return nil, fmt.Errorf("error parsing ip address: %v", err)
+					return fmt.Errorf("error parsing ip address: %v", err)
 				}
-				for _, session := range sessions {
-					if session.IfaceIPaddress == ipAddress.String() {
-						inuse = true
-					}
+				if _, ok := sessionMap[ipAddress.String()]; ok {
+					logrus.Debugf("filtering interface %s", link.Attrs().Name)
+					delete(hwDeviceMap, link.Attrs().HardwareAddr.String())
+					break //device is already removed, no point checking for other addresses
 				}
 			}
 		}
-		if !inuse {
-			returnLinks = append(returnLinks, link)
-		}
 	}
-	return returnLinks, nil
+	return nil
 }
