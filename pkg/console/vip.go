@@ -19,7 +19,7 @@ type vipAddr struct {
 	ipv4Addr string
 }
 
-func createMacvlan(name string) (netlink.Link, error) {
+func createMacvlan(name, hwAddr string) (netlink.Link, error) {
 	l, err := netlink.LinkByName(name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch %s", name)
@@ -34,6 +34,13 @@ func createMacvlan(name string) (netlink.Link, error) {
 			Name:        macvlanName,
 			ParentIndex: l.Attrs().Index,
 		},
+	}
+	if hwAddr != "" {
+		parsed, err := net.ParseMAC(hwAddr)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse %s", hwAddr)
+		}
+		macvlan.HardwareAddr = parsed
 	}
 
 	if err = netlink.LinkAdd(macvlan); err != nil {
@@ -58,8 +65,8 @@ func deleteMacvlan(l netlink.Link) error {
 	return nil
 }
 
-func getVipThroughDHCP(iface string) (*vipAddr, error) {
-	l, err := createMacvlan(iface)
+func getVipThroughDHCP(iface, hwAddr string) (*vipAddr, error) {
+	l, err := createMacvlan(iface, hwAddr)
 	if err != nil {
 		return nil, err
 	}
