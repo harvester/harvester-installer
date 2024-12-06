@@ -2563,22 +2563,6 @@ func addVIPPanel(c *Console) error {
 				vipTextV.SetContent("Forbid to modify the VIP obtained through DHCP")
 				return nil
 			}
-
-			// if hardware address is overridden, update the install config with
-			// the new value.
-			hwAddr, err := hwAddrV.GetData()
-			if err != nil {
-				return err
-			}
-			if hwAddr != c.config.VipHwAddr {
-				logrus.Infof("Overriding VIP hardware address. Original: %q, New: %q", c.config.VipHwAddr, hwAddr)
-				if _, err := net.ParseMAC(hwAddr); err != nil {
-					msg := fmt.Sprintf("Invalid hardware address: %s", err)
-					vipTextV.SetContent(msg)
-					return nil
-				}
-				c.config.VipHwAddr = hwAddr
-			}
 			return gotoNextPage(g, v)
 		}
 
