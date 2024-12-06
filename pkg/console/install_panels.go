@@ -1173,7 +1173,7 @@ func addTokenPanel(c *Console) error {
 			closeThisPage()
 			if c.config.Install.Mode == config.ModeCreate {
 				g.Cursor = false
-				return showNext(c, vipTextPanel, vipHwAddrPanel, vipPanel, askVipMethodPanel)
+				return showNext(c, vipTextPanel, askVipMethodPanel)
 			}
 			return showNext(c, serverURLPanel)
 		},
@@ -2241,12 +2241,14 @@ func addVIPPanel(c *Console) error {
 	if err != nil {
 		return err
 	}
+	hwAddrNoteV := widgets.NewPanel(c.Gui, vipHwAddrNotePanel)
 	vipTextV := widgets.NewPanel(c.Gui, vipTextPanel)
 
 	closeThisPage := func() {
 		c.CloseElements(
 			askVipMethodPanel,
 			vipHwAddrPanel,
+			vipHwAddrNotePanel,
 			vipPanel,
 			vipTextPanel)
 	}
@@ -2333,31 +2335,36 @@ func addVIPPanel(c *Console) error {
 	gotoAskVipMethodPanel := func(_ *gocui.Gui, _ *gocui.View) error {
 		return showNext(c, askVipMethodPanel)
 	}
-	gotoNextPanel := func(_ *gocui.Gui, _ *gocui.View) error {
+	confirmAskVipMethod := func(_ *gocui.Gui, _ *gocui.View) error {
 		method, err := askVipMethodV.GetData()
 		if err != nil {
 			return err
 		}
 		if method == config.NetworkMethodDHCP {
-			return showNext(c, vipHwAddrPanel)
+			hwAddrNoteV.SetContent("Note: If DHCP MAC/IP address binding is configured on the DHCP server, enter the MAC address to fetch the static VIP. Otherwise, leave it blank.")
+			return showNext(c, vipPanel, vipHwAddrNotePanel, vipHwAddrPanel)
 		}
 
 		hwAddrV.Close()
+		hwAddrNoteV.Close()
 		return showNext(c, vipPanel)
 	}
-	gotoPrevPanel := func(_ *gocui.Gui, _ *gocui.View) error {
+	gotoVipParentPanel := func(_ *gocui.Gui, _ *gocui.View) error {
 		method, err := askVipMethodV.GetData()
 		if err != nil {
 			return err
 		}
 		if method == config.NetworkMethodDHCP {
-			return showNext(c, vipHwAddrPanel)
+			if err := showNext(c, vipHwAddrPanel); err != nil {
+				return err
+			}
+			return hwAddrV.SetData(c.config.VipHwAddr)
 		}
 		return showNext(c, askVipMethodPanel)
 	}
 	askVipMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowDown: gotoNextPanel,
-		gocui.KeyEnter:     gotoNextPanel,
+		gocui.KeyArrowDown: confirmAskVipMethod,
+		gocui.KeyEnter:     confirmAskVipMethod,
 		gocui.KeyEsc:       gotoPrevPage,
 	}
 	hwAddrV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -2367,7 +2374,7 @@ func addVIPPanel(c *Console) error {
 		gocui.KeyEsc:       gotoPrevPage,
 	}
 	vipV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoPrevPanel,
+		gocui.KeyArrowUp:   gotoVipParentPanel,
 		gocui.KeyArrowDown: gotoVerifyIP,
 		gocui.KeyEnter:     gotoVerifyIP,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -2387,6 +2394,11 @@ func addVIPPanel(c *Console) error {
 
 	setLocation(vipV, 3)
 	c.AddElement(vipPanel, vipV)
+
+	hwAddrNoteV.Focus = false
+	hwAddrNoteV.Wrap = true
+	setLocation(hwAddrNoteV, 3)
+	c.AddElement(vipHwAddrNotePanel, hwAddrNoteV)
 
 	vipTextV.FgColor = gocui.ColorRed
 	vipTextV.Focus = false
@@ -2538,7 +2550,7 @@ func addDNSServersPanel(c *Console) error {
 	gotoNextPage := func() error {
 		closeThisPage()
 		if c.config.Install.Mode == config.ModeCreate {
-			return showNext(c, vipTextPanel, vipHwAddrPanel, vipPanel, askVipMethodPanel)
+			return showNext(c, vipTextPanel, askVipMethodPanel)
 		}
 		return showNext(c, serverURLPanel)
 	}
