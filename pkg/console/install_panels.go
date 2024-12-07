@@ -1173,7 +1173,7 @@ func addTokenPanel(c *Console) error {
 			closeThisPage()
 			if c.config.Install.Mode == config.ModeCreate {
 				g.Cursor = false
-				return showNext(c, vipTextPanel, vipPanel, askVipMethodPanel)
+				return showNext(c, vipTextPanel, askVipMethodPanel)
 			}
 			return showNext(c, serverURLPanel)
 		},
@@ -2095,7 +2095,7 @@ func addInstallPanel(c *Console) error {
 			}
 
 			if needToGetVIPFromDHCP(c.config.VipMode, c.config.Vip, c.config.VipHwAddr) {
-				vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface))
+				vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface), "")
 				if err != nil {
 					printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
 					return
@@ -2233,16 +2233,22 @@ func addVIPPanel(c *Console) error {
 	if err != nil {
 		return err
 	}
+	hwAddrV, err := widgets.NewInput(c.Gui, vipHwAddrPanel, vipHwAddrLabel, false)
+	if err != nil {
+		return err
+	}
 	vipV, err := widgets.NewInput(c.Gui, vipPanel, vipLabel, false)
 	if err != nil {
 		return err
 	}
-
+	hwAddrNoteV := widgets.NewPanel(c.Gui, vipHwAddrNotePanel)
 	vipTextV := widgets.NewPanel(c.Gui, vipTextPanel)
 
 	closeThisPage := func() {
 		c.CloseElements(
 			askVipMethodPanel,
+			vipHwAddrPanel,
+			vipHwAddrNotePanel,
 			vipPanel,
 			vipTextPanel)
 	}
@@ -2260,11 +2266,15 @@ func addVIPPanel(c *Console) error {
 		if err != nil {
 			return err
 		}
+		hwAddr, err := hwAddrV.GetData()
+		if err != nil {
+			return err
+		}
 		if selected == config.NetworkMethodDHCP {
 			spinner := NewSpinner(c.Gui, vipTextPanel, "Requesting IP through DHCP...")
 			spinner.Start()
 			go func(g *gocui.Gui) {
-				vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface))
+				vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface), hwAddr)
 				if err != nil {
 					spinner.Stop(true, err.Error())
 					g.Update(func(_ *gocui.Gui) error {
@@ -2277,6 +2287,9 @@ func addVIPPanel(c *Console) error {
 				c.config.VipMode = selected
 				c.config.VipHwAddr = vip.hwAddr
 				g.Update(func(_ *gocui.Gui) error {
+					if err := hwAddrV.SetData(vip.hwAddr); err != nil {
+						return err
+					}
 					return vipV.SetData(vip.ipv4Addr)
 				})
 			}(c.Gui)
@@ -2317,19 +2330,51 @@ func addVIPPanel(c *Console) error {
 
 		c.config.Vip = vip
 		c.config.VipHwAddr = ""
-
 		return gotoNextPage(g, v)
 	}
 	gotoAskVipMethodPanel := func(_ *gocui.Gui, _ *gocui.View) error {
 		return showNext(c, askVipMethodPanel)
 	}
+	confirmAskVipMethod := func(_ *gocui.Gui, _ *gocui.View) error {
+		method, err := askVipMethodV.GetData()
+		if err != nil {
+			return err
+		}
+		if method == config.NetworkMethodDHCP {
+			hwAddrNoteV.SetContent("Note: If DHCP MAC/IP address binding is configured on the DHCP server, enter the MAC address to fetch the static VIP. Otherwise, leave it blank.")
+			return showNext(c, vipPanel, vipHwAddrNotePanel, vipHwAddrPanel)
+		}
+
+		hwAddrV.Close()
+		hwAddrNoteV.Close()
+		return showNext(c, vipPanel)
+	}
+	gotoVipParentPanel := func(_ *gocui.Gui, _ *gocui.View) error {
+		method, err := askVipMethodV.GetData()
+		if err != nil {
+			return err
+		}
+		if method == config.NetworkMethodDHCP {
+			if err := showNext(c, vipHwAddrPanel); err != nil {
+				return err
+			}
+			return hwAddrV.SetData(c.config.VipHwAddr)
+		}
+		return showNext(c, askVipMethodPanel)
+	}
 	askVipMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowDown: confirmAskVipMethod,
+		gocui.KeyEnter:     confirmAskVipMethod,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	hwAddrV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp:   gotoAskVipMethodPanel,
 		gocui.KeyArrowDown: gotoVipPanel,
 		gocui.KeyEnter:     gotoVipPanel,
 		gocui.KeyEsc:       gotoPrevPage,
 	}
 	vipV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoAskVipMethodPanel,
+		gocui.KeyArrowUp:   gotoVipParentPanel,
 		gocui.KeyArrowDown: gotoVerifyIP,
 		gocui.KeyEnter:     gotoVerifyIP,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -2344,8 +2389,16 @@ func addVIPPanel(c *Console) error {
 	setLocation(askVipMethodV, 3)
 	c.AddElement(askVipMethodPanel, askVipMethodV)
 
+	setLocation(hwAddrV, 3)
+	c.AddElement(vipHwAddrPanel, hwAddrV)
+
 	setLocation(vipV, 3)
 	c.AddElement(vipPanel, vipV)
+
+	hwAddrNoteV.Focus = false
+	hwAddrNoteV.Wrap = true
+	setLocation(hwAddrNoteV, 3)
+	c.AddElement(vipHwAddrNotePanel, hwAddrNoteV)
 
 	vipTextV.FgColor = gocui.ColorRed
 	vipTextV.Focus = false
@@ -2497,7 +2550,7 @@ func addDNSServersPanel(c *Console) error {
 	gotoNextPage := func() error {
 		closeThisPage()
 		if c.config.Install.Mode == config.ModeCreate {
-			return showNext(c, vipTextPanel, vipPanel, askVipMethodPanel)
+			return showNext(c, vipTextPanel, askVipMethodPanel)
 		}
 		return showNext(c, serverURLPanel)
 	}
@@ -2608,7 +2661,7 @@ func configureInstallModeDHCP(c *Console) {
 
 	// if need vip via dhcp
 	if c.config.Install.VipMode == config.NetworkMethodDHCP {
-		vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface))
+		vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface), "")
 		if err != nil {
 			printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
 			return
