@@ -1758,7 +1758,6 @@ func showClusterNetworkPage(c *Console) error {
 		clusterServiceCIDRPanel,
 		clusterDNSPanel,
 		clusterNetworkNotePanel,
-		clusterNetworkDNSNotePanel,
 		clusterNetworkValidatorPanel,
 		clusterPodCIDRPanel)
 }
@@ -1771,7 +1770,6 @@ func addClusterNetworkPanel(c *Console) error {
 			clusterServiceCIDRPanel,
 			clusterDNSPanel,
 			clusterNetworkNotePanel,
-			clusterNetworkDNSNotePanel,
 			clusterNetworkValidatorPanel)
 	}
 
@@ -1809,12 +1807,6 @@ func addClusterNetworkPanel(c *Console) error {
 		if err := c.setContentByName(
 			clusterNetworkNotePanel,
 			clusterNetworkNote); err != nil {
-			return err
-		}
-
-		if err := c.setContentByName(
-			clusterNetworkDNSNotePanel,
-			clusterNetworkDNSNote); err != nil {
 			return err
 		}
 
@@ -1987,13 +1979,9 @@ func addClusterNetworkPanel(c *Console) error {
 	// set up notes panels
 	notePanel := widgets.NewPanel(c.Gui, clusterNetworkNotePanel)
 	notePanel.Focus = false
-	setLocation(notePanel, 3)
+	notePanel.Wrap = true
+	setLocation(notePanel, 4)
 	c.AddElement(clusterNetworkNotePanel, notePanel)
-
-	dnsNotePanel := widgets.NewPanel(c.Gui, clusterNetworkDNSNotePanel)
-	dnsNotePanel.Focus = false
-	setLocation(dnsNotePanel, 3)
-	c.AddElement(clusterNetworkDNSNotePanel, dnsNotePanel)
 
 	// set up validator panel for warning and error messages
 	validatorPanel := widgets.NewPanel(c.Gui, clusterNetworkValidatorPanel)
