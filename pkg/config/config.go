@@ -150,6 +150,10 @@ type Install struct {
 	VipHwAddr string `json:"vipHwAddr,omitempty"`
 	VipMode   string `json:"vipMode,omitempty"`
 
+	ClusterDNS         string `json:"clusterDns,omitempty"`
+	ClusterPodCIDR     string `json:"clusterPodCidr,omitempty"`
+	ClusterServiceCIDR string `json:"clusterServiceCidr,omitempty"`
+
 	ForceEFI      bool   `json:"forceEfi,omitempty"`
 	Device        string `json:"device,omitempty"`
 	ConfigURL     string `json:"configUrl,omitempty"`
