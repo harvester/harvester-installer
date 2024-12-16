@@ -21,7 +21,10 @@ package net
 ///////////////////////////////////////////////////////////////////////////////
 
 import (
+	"fmt"
 	stdnet "net"
+	"strings"
+	"strconv"
 )
 
 //
@@ -29,6 +32,7 @@ import (
 //
 
 type IP = stdnet.IP
+type IPMask = stdnet.IPMask
 type IPNet = stdnet.IPNet
 type ParseError = stdnet.ParseError
 
@@ -193,6 +197,70 @@ func ParseIP(s string) IP {
 		}
 	}
 	return nil
+}
+
+// ParseMask parses s as an IP mask, returning the result.
+// The string s must be in IPv4 dotted decimal form ("255.255.255.0").
+// Each octet must be a valid number between 0 and 255, and the bits must be
+// continuous (all 1s followed by all 0s when viewed as a 32-bit number).
+// If s is not a valid textual representation of an IP mask,
+// ParseMask returns an error describing why the parsing failed.
+func ParseMask(mask string) (IPMask, error) {
+    // Split the mask string by dots
+    parts := strings.Split(mask, ".")
+
+    // Validate number of parts
+    if len(parts) != 4 {
+	    return nil, &ParseError{Type: "invalid mask format: must be x.x.x.x", Text: mask}
+    }
+
+    result := make(IPMask, 4)
+
+    // Parse and validate each octet
+    for i, part := range parts {
+        // Convert string to integer
+        num, err := strconv.Atoi(part)
+        if err != nil {
+		return nil, &ParseError{Type: fmt.Sprintf("invalid number in position %d: %s", i+1, part), Text: mask}
+        }
+
+        // Validate range (0-255)
+        if num < 0 || num > 255 {
+		return nil, &ParseError{Type: fmt.Sprintf("number out of range in position %d: %d", i+1, num), Text: mask}
+        }
+
+        result[i] = byte(num)
+    }
+
+    // Validate mask format (must be continuous 1s followed by continuous 0s)
+    if !isValidMaskFormat(result) {
+	    return nil, &ParseError{Type: "invalid subnet mask: not continuous", Text: mask}
+    }
+
+    return result, nil
+}
+
+// Helper function to validate mask format
+func isValidMaskFormat(mask IPMask) bool {
+    // Convert mask to 32-bit integer
+    n := uint32(mask[0])<<24 | uint32(mask[1])<<16 | uint32(mask[2])<<8 | uint32(mask[3])
+
+    // Check if zeros start after ones
+    // Valid masks in binary should be continuous 1s followed by continuous 0s
+    // Shift right until we find first 1
+    for n&1 == 0 {
+        n = n >> 1
+    }
+
+    // Now we should only see 1s; if we see a 0, it's invalid
+    for n != 0 {
+        if n&1 == 0 {
+            return false
+        }
+        n = n >> 1
+    }
+
+    return true
 }
 
 // ParseCIDR parses s as a CIDR notation IP address and prefix length,
