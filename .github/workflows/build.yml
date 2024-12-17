@@ -72,6 +72,8 @@ jobs:
         platforms: linux/${{ matrix.arch }}
         tags: rancher/harvester-cluster-repo:${{ env.branch }}-head-${{ matrix.arch }}
         file: dist/harvester-cluster-repo/Dockerfile
+        sbom: true
+        provenance: mode=max
 
     - name: Login to Google Cloud
       if: ${{ startsWith(github.ref, 'refs/heads/') }}
