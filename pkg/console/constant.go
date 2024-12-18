@@ -44,6 +44,8 @@ const (
 	upgradePanel                = "upgrade"
 	askVipMethodPanel           = "askVipMethodPanel"
 	vipPanel                    = "vipPanel"
+	vipHwAddrPanel              = "vipHwAddrPanel"
+	vipHwAddrNotePanel          = "vipHwAddrNotePanel"
 	vipTextPanel                = "vipTextPanel"
 	ntpServersPanel             = "ntpServersPanel"
 	askRolePanel                = "askRolePanel"
@@ -69,6 +71,7 @@ const (
 
 	vipTitle          = "Configure VIP"
 	vipLabel          = "VIP"
+	vipHwAddrLabel    = "MAC Address"
 	askVipMethodLabel = "VIP Mode"
 
 	clusterNetworkTitle          = "Configure cluster network"
