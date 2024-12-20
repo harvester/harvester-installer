@@ -15,7 +15,7 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.3.2
+          tag: v0.3.4
         fullnameOverride: harvester-vm-import-controller
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
