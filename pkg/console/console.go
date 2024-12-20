@@ -136,6 +136,7 @@ func (c *Console) doRun() error {
 	defer c.Close()
 
 	dashboard := c.layoutInstall
+	preflightCheck := true
 
 	if hd, _ := os.LookupEnv("HARVESTER_DASHBOARD"); hd == "true" {
 		if err := c.getHarvesterConfig(); err != nil {
@@ -143,6 +144,9 @@ func (c *Console) doRun() error {
 		}
 		if c.config.Install.Mode == config.ModeCreate || c.config.Install.Mode == config.ModeJoin {
 			dashboard = c.layoutDashboard
+			// no need to do preflight check after the node is installed, it runs layoutDashboard directly
+			// preflightWarnings are used in layoutInstall
+			preflightCheck = false
 		}
 	}
 
@@ -151,9 +155,10 @@ func (c *Console) doRun() error {
 		logrus.Info("harvester already installed")
 		alreadyInstalled = true
 		c.config.Install.Mode = ""
+		preflightCheck = false
 	}
 
-	if !alreadyInstalled {
+	if preflightCheck {
 		checks := []preflight.Check{
 			preflight.CPUCheck{},
 			preflight.MemoryCheck{},

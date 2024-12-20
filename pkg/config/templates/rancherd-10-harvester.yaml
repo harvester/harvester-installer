@@ -202,6 +202,10 @@ resources:
         enabled: true
       kube-vip-cloud-provider:
         enabled: true
+      promote:
+        clusterPodCIDR: {{ or .ClusterPodCIDR "10.52.0.0/16" }}
+        clusterServiceCIDR: {{ or .ClusterServiceCIDR "10.53.0.0/16" }}
+        clusterDNS: {{ or .ClusterDNS "10.53.0.10" }}
 - apiVersion: management.cattle.io/v3
   kind: ManagedChart
   metadata:
