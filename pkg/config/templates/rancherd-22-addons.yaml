@@ -212,7 +212,7 @@ resources:
       {{- end }}
       valuesContent: |
         image:
-          tag: v0.3.2
+          tag: v0.3.3
         fullnameOverride: harvester-seeder
   - apiVersion: harvesterhci.io/v1beta1
     kind: Addon
@@ -232,5 +232,5 @@ resources:
         image:
           tag: v1.3-20241220
           repo: rancher/harvester-nvidia-driver-toolkit
-        driverLocation:  "HTTPENDPOINT/NVIDIA-Linux-x86_64-vgpu-kvm.run" 
+        driverLocation:  "HTTPENDPOINT/NVIDIA-Linux-x86_64-vgpu-kvm.run"
         fullnameOverride: nvidia-driver-runtime
