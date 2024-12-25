@@ -124,7 +124,7 @@ resources:
             "yaxes": [
               {
                 "$$hashKey": "object:370",
-                "format": "percentunit",
+                "format": "percent",
                 "label": null,
                 "logBase": 1,
                 "max": null,
@@ -875,7 +875,7 @@ resources:
                     }
                   ]
                 },
-                "unit": "percentunit"
+                "unit": "percent"
               },
               "overrides": []
             },
