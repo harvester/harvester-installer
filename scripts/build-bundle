@@ -48,7 +48,7 @@ update_monitoring_logging_version() {
 
   # the harvester-eventrouter image tag is first bumped on installer, then on addon, to decouple the PRs
   # if ENV includes keyword `IMAGE` then `addon generateTemplates` will strip the image and only keep version
-  local HARVESTER_EVENTROUTER_FULL_TAG="rancher/harvester-eventrouter:v0.3.2"
+  local HARVESTER_EVENTROUTER_FULL_TAG="rancher/harvester-eventrouter:v0.3.3"
   local henew="HARVESTER_EVENTROUTER_FULL_TAG=\"${HARVESTER_EVENTROUTER_FULL_TAG}\""
   local hecur=$(grep $henew $target) || echo "harvester-eventrouter image tag is not found from $target"
   if [ -z "${hecur}" ]; then
