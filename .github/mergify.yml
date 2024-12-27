@@ -1,7 +1,7 @@
 pull_request_rules:
 - name: Automatically merge Renovate PRs
   conditions:
-  - check-success="Build ISO Images (x64)"
+  - check-success="Build ISO Images (amd64)"
   - check-success="Build ISO Images (arm64)"
   - check-success="Build and deploy"
   - author = renovate[bot]
@@ -11,7 +11,7 @@ pull_request_rules:
 
 - name: Automatically approve Renovate PRs
   conditions:
-  - check-success="Build ISO Images (x64)"
+  - check-success="Build ISO Images (amd64)"
   - check-success="Build ISO Images (arm64)"
   - check-success="Build and deploy"
   - author = renovate[bot]
