@@ -30,6 +30,9 @@ clear_disk_label()
         echo "wiping all disks"
         for disk in $(lsblk -d -n -J -o NAME,TYPE | jq -r '.blockdevices[] | select(.type == "disk") | .name')
         do
+            if [ "/dev/$disk" == "$(grep '/run/initramfs/live' /proc/mounts | sed -n 's/[0-9].*//p')" ]; then
+                continue
+            fi
             sgdisk -Z /dev/$disk
             partprobe -s /dev/$disk
         done
