@@ -2,7 +2,6 @@ package console
 
 import (
 	"fmt"
-	"net"
 	"net/netip"
 	"os"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/validation"
+	netutil "k8s.io/utils/net"
 
 	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/preflight"
@@ -27,6 +27,7 @@ type UserInputData struct {
 	Password             string
 	PasswordConfirm      string
 	Address              string
+	AddrMask             string
 	DNSServers           string
 	NTPServers           string
 	HasCheckedNTPServers bool
@@ -1188,7 +1189,7 @@ func showNetworkPage(c *Console) error {
 	if mgmtNetwork.Method != config.NetworkMethodStatic {
 		return showNext(c, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, askInterfacePanel)
 	}
-	return showNext(c, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, gatewayPanel, mtuPanel, askInterfacePanel)
+	return showNext(c, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, addrMaskPanel, gatewayPanel, mtuPanel, askInterfacePanel)
 }
 
 func showHostnamePage(c *Console) error {
@@ -1313,6 +1314,11 @@ func addNetworkPanel(c *Console) error {
 		return err
 	}
 
+	addrMaskV, err := widgets.NewInput(c.Gui, addrMaskPanel, addrMaskLabel, false)
+	if err != nil {
+		return err
+	}
+
 	gatewayV, err := widgets.NewInput(c.Gui, gatewayPanel, gatewayLabel, false)
 	if err != nil {
 		return err
@@ -1380,6 +1386,7 @@ func addNetworkPanel(c *Console) error {
 			askBondModePanel,
 			askNetworkMethodPanel,
 			addressPanel,
+			addrMaskPanel,
 			gatewayPanel,
 			mtuPanel,
 			networkValidatorPanel,
@@ -1601,10 +1608,10 @@ func addNetworkPanel(c *Console) error {
 		}
 		mgmtNetwork.Method = selected
 		if selected == config.NetworkMethodStatic {
-			return showNext(c, mtuPanel, gatewayPanel, addressPanel)
+			return showNext(c, mtuPanel, gatewayPanel, addrMaskPanel, addressPanel)
 		}
 
-		c.CloseElements(mtuPanel, gatewayPanel, addressPanel)
+		c.CloseElements(mtuPanel, gatewayPanel, addrMaskPanel, addressPanel)
 		return gotoNextPage(askNetworkMethodPanel)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -1630,17 +1637,19 @@ func addNetworkPanel(c *Console) error {
 		if err = checkStaticRequiredString("address", address); err != nil {
 			return err.Error(), nil
 		}
-		ip, ipNet, err := net.ParseCIDR(address)
+		ip, ipNet, err := netutil.ParseCIDRSloppy(address)
 		if err != nil {
-			return err.Error(), nil
+			userInputData.Address = address
+			return "", nil
 		}
 		mask := ipNet.Mask
 		userInputData.Address = address
+		userInputData.AddrMask = ipNet.Mask.String()
 		mgmtNetwork.IP = ip.String()
 		mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3])
 		return "", nil
 	}
-	addressVConfirm := gotoNextPanel(c, []string{gatewayPanel}, validateAddress)
+	addressVConfirm := gotoNextPanel(c, []string{addrMaskPanel}, validateAddress)
 	addressV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: gotoNextPanel(c, []string{askNetworkMethodPanel}, func() (string, error) {
 			userInputData.Address, err = addressV.GetData()
@@ -1652,6 +1661,41 @@ func addNetworkPanel(c *Console) error {
 	}
 	setLocation(addressV.Panel, 3)
 	c.AddElement(addressPanel, addressV)
+
+	//AddressMaskV
+	addrMaskV.PreShow = func() error {
+		c.Gui.Cursor = true
+		addrMaskV.Value = mgmtNetwork.SubnetMask
+		return nil
+	}
+	validateAddrMask := func() (string, error) {
+		addrMask, err := addrMaskV.GetData()
+		if err != nil {
+			return "", err
+		}
+		if err = checkStaticRequiredString("mask", addrMask); err != nil {
+			return err.Error(), nil
+		}
+		ipMask, err := netutil.ParseIPMaskSloppy(addrMask)
+		if err != nil {
+			return err.Error(), nil
+		}
+		userInputData.AddrMask = ipMask.String()
+		mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", ipMask[0], ipMask[1], ipMask[2], ipMask[3])
+		return "", nil
+	}
+	addrMaskVConfirm := gotoNextPanel(c, []string{gatewayPanel}, validateAddrMask)
+	addrMaskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{addressPanel}, func() (string, error) {
+			userInputData.AddrMask, err = addrMaskV.GetData()
+			return "", err
+		}),
+		gocui.KeyArrowDown: addrMaskVConfirm,
+		gocui.KeyEnter:     addrMaskVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(addrMaskV.Panel, 3)
+	c.AddElement(addrMaskPanel, addrMaskV)
 
 	// gatewayV
 	gatewayV.PreShow = func() error {
@@ -1675,7 +1719,7 @@ func addNetworkPanel(c *Console) error {
 	}
 	gatewayVConfirm := gotoNextPanel(c, []string{mtuPanel}, validateGateway)
 	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp: gotoNextPanel(c, []string{addressPanel}, func() (string, error) {
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{addrMaskPanel}, func() (string, error) {
 			mgmtNetwork.Gateway, err = gatewayV.GetData()
 			return "", err
 		}),
@@ -2569,7 +2613,7 @@ func addVIPPanel(c *Console) error {
 		}
 
 		// verify static IP
-		if net.ParseIP(vip) == nil {
+		if netutil.ParseIPSloppy(vip) == nil {
 			vipTextV.SetContent(fmt.Sprintf("Invalid VIP: %s", vip))
 			return nil
 		}
