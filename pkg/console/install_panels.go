@@ -2,7 +2,6 @@ package console
 
 import (
 	"fmt"
-	"net"
 	"net/netip"
 	"os"
 	"os/exec"
