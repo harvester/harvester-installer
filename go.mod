@@ -1,6 +1,6 @@
 module github.com/harvester/harvester-installer
 
-go 1.22.5
+go 1.23
 
 require (
 	github.com/dell/goiscsi v1.9.0
