@@ -34,7 +34,7 @@ func initLogs() error {
 		logFilePath = defaultLogFilePath
 	}
 
-	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755) //0600)
+	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
