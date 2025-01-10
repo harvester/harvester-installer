@@ -451,7 +451,7 @@ func saveElementalConfig(obj interface{}) (string, string, error) {
 	}
 
 	elementalConfigFile := filepath.Join(ElementalConfigDir, ElementalConfigFile)
-	err = ioutil.WriteFile(elementalConfigFile, bytes, os.ModePerm)
+	err = ioutil.WriteFile(elementalConfigFile, bytes, 0600)
 	if err != nil {
 		return "", "", err
 	}
@@ -703,7 +703,7 @@ func validateDiskSize(devPath string, single bool) error {
 	if !single {
 		limit = config.MultipleDiskMinSizeGiB
 	}
-	if util.ByteToGi(diskSizeBytes) < uint64(limit) {
+	if util.ByteToGi(diskSizeBytes) < limit {
 		return fmt.Errorf("Installation disk size is too small. Minimum %dGi is required", limit)
 	}
 
@@ -1047,7 +1047,7 @@ const (
 // identifyUniqueDisks parses the json output of lsblk and identifies
 // unique disks by comparing their serial number info and wwn details
 func identifyUniqueDisks(output []byte) ([]string, error) {
-	var returnDisks []string
+	returnDisks := []string{}
 	disks := &BlockDevices{}
 	err := json.Unmarshal(output, disks)
 	if err != nil {

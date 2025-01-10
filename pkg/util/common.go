@@ -31,12 +31,12 @@ func DupStrings(src []string) []string {
 	return s
 }
 
-func ByteToGi(byte uint64) uint64 {
-	return byte >> 30
+func ByteToGi(b uint64) uint64 {
+	return b >> 30
 }
 
-func ByteToMi(byte uint64) uint64 {
-	return byte >> 20
+func ByteToMi(b uint64) uint64 {
+	return b >> 20
 }
 
 func GiToByte(gi uint64) uint64 {
