@@ -79,7 +79,7 @@ func (s *Spinner) Stop(err bool, message string) {
 	<-s.stopped
 }
 
-func (s *Spinner) writePanel(message string, clear bool, fgColor gocui.Attribute) {
+func (s *Spinner) writePanel(message string, clearView bool, fgColor gocui.Attribute) {
 	// g.Update spawns a goroutine to notify gocui to update.
 	// wait until cui consumes the notification to make sure any remaining
 	// writePanel calls don't go first
@@ -100,7 +100,7 @@ func (s *Spinner) writePanel(message string, clear bool, fgColor gocui.Attribute
 		if s.focus {
 			g.SetCurrentView(s.panel)
 		}
-		if clear {
+		if clearView {
 			v.Clear()
 		}
 		v.FgColor = fgColor

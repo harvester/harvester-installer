@@ -32,10 +32,10 @@ const (
 )
 
 const (
-	SingleDiskMinSizeGiB   = 250
-	MultipleDiskMinSizeGiB = 180
-	HardMinDataDiskSizeGiB = 50
-	MaxPods                = 200
+	SingleDiskMinSizeGiB   uint64 = 250
+	MultipleDiskMinSizeGiB uint64 = 180
+	HardMinDataDiskSizeGiB uint64 = 50
+	MaxPods                       = 200
 )
 
 // refer: https://github.com/harvester/harvester/blob/master/pkg/settings/settings.go
