@@ -2581,6 +2581,10 @@ func addVIPPanel(c *Console) error {
 
 		c.config.Vip = vip
 		c.config.VipHwAddr = ""
+		// gotoVipPanel is only called in DHCP mode, it is still empty in static mode
+		if c.config.VipMode == "" {
+			c.config.VipMode = config.NetworkMethodStatic
+		}
 		return gotoNextPage(g, v)
 	}
 	gotoAskVipMethodPanel := func(_ *gocui.Gui, _ *gocui.View) error {

@@ -48,6 +48,7 @@ var (
 	ErrMsgForceMBROnUEFI               = "cannot force MBR on UEFI system"
 
 	ErrMsgNetworkMethodUnknown = "unknown network method"
+	ErrMsgVipModeUnknown       = "unknown vip mode"
 
 	ErrMsgSystemSettingsUnknown = "unknown system settings: %s"
 
@@ -271,7 +272,7 @@ func checkVip(vip, vipHwAddr, vipMode string) error {
 	case config.NetworkMethodStatic, config.NetworkMethodNone:
 		return nil
 	default:
-		return prettyError(ErrMsgNetworkMethodUnknown, vipMode)
+		return prettyError(ErrMsgVipModeUnknown, vipMode)
 	}
 
 	return nil
