@@ -5,7 +5,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
-	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -290,28 +290,6 @@ func getDataDiskOptions(hvstConfig *config.HarvesterConfig) ([]widgets.Option, e
 	return nil, nil
 }
 
-func getDiskOptions() ([]widgets.Option, error) {
-	output, err := exec.Command("/bin/sh", "-c", `lsblk -J -o NAME,SIZE,TYPE,WWN,SERIAL`).CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-
-	lines, err := identifyUniqueDisks(output)
-
-	var options []widgets.Option
-	for _, line := range lines {
-		splits := strings.SplitN(line, " ", 2)
-		if len(splits) == 2 {
-			options = append(options, widgets.Option{
-				Value: "/dev/" + splits[0],
-				Text:  line,
-			})
-		}
-	}
-
-	return options, nil
-}
-
 func addDiskPanel(c *Console) error {
 	diskConfirmed = false
 
@@ -396,6 +374,29 @@ func addDiskPanel(c *Console) error {
 	setLocation(persistentSizeV, 3)
 	c.AddElement(persistentSizePanel, persistentSizeV)
 
+	// WipeDisksPanel
+	wipeDisksTitlePanelV := widgets.NewPanel(c.Gui, wipeDisksTitlePanel)
+	wipeDisksTitlePanelV.SetContent("Additional Harvester installations detected")
+	wipeDisksTitlePanelV.FgColor = gocui.ColorRed
+	setLocation(wipeDisksTitlePanelV, 3)
+	c.AddElement(wipeDisksTitlePanel, wipeDisksTitlePanelV)
+
+	wipeDisksV, err := widgets.NewDropDown(c.Gui, wipeDisksPanel, wipeDisksLabel, func() ([]widgets.Option, error) {
+		return getWipeDisksOptions(c.config)
+	})
+	if err != nil {
+		return err
+	}
+	setLocation(wipeDisksV.Panel, 3)
+	wipeDisksV.Autoscroll = true
+	wipeDisksV.FgColor = gocui.ColorRed
+	wipeDisksV.SetMulti(true) // allow multiple disks to be selected for wipe operation
+	wipeDisksV.PreShow = func() error {
+		wipeDisksV.Focus = true
+		return nil
+	}
+	c.AddElement(wipeDisksPanel, wipeDisksV)
+
 	// Asking force MBR title
 	askForceMBRTitleV := widgets.NewPanel(c.Gui, askForceMBRTitlePanel)
 	askForceMBRTitleV.SetContent("Use MBR partitioning scheme")
@@ -478,6 +479,8 @@ func addDiskPanel(c *Console) error {
 			diskNotePanel,
 			askForceMBRTitlePanel,
 			persistentSizePanel,
+			wipeDisksTitlePanel,
+			wipeDisksPanel,
 		)
 	}
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
@@ -549,6 +552,34 @@ func addDiskPanel(c *Console) error {
 		}
 		return showNext(c, persistentSizePanel)
 	}
+
+	// isWipeDisksNeeded is a helper function to render the wipeDisksPanel if needed
+	// if there are no additional disks to wipe then it checks if MBR needs to be enabled
+	// else will move on to the next apge
+	isWipeDisksNeeded := func(g *gocui.Gui, v *gocui.View) error {
+		options, err := getWipeDisksOptions(c.config)
+		if err != nil {
+			return err
+		}
+		if len(options) != 0 {
+			if slices.Contains(c.config.WipeDisksList, c.config.Device) || slices.Contains(c.config.WipeDisksList, c.config.DataDisk) {
+				c.config.WipeDisksList = []string{}
+				wipeDisksV.Reset()
+			}
+			return showNext(c, wipeDisksTitlePanel, wipeDisksPanel)
+		}
+		// no disks left to wipe, so close the wipeDisksTitlePanel and wipeDisksPanel
+		c.CloseElements(wipeDisksTitlePanel, wipeDisksPanel)
+
+		if systemIsBIOS() {
+			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
+				return err
+			}
+			return showNext(c, askForceMBRPanel)
+		}
+		return gotoNextPage(g, v)
+	}
+
 	// Keybindings
 	diskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter:     diskConfirm,
@@ -596,13 +627,7 @@ func addDiskPanel(c *Console) error {
 		// At this point the disk configuration is valid.
 		diskConfirmed = true
 
-		if systemIsBIOS() {
-			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
-				return err
-			}
-			return showNext(c, askForceMBRPanel)
-		}
-		return gotoNextPage(g, v)
+		return isWipeDisksNeeded(g, v)
 	}
 	dataDiskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter:     dataDiskConfirm,
@@ -637,15 +662,9 @@ func addDiskPanel(c *Console) error {
 
 		// At this point the disk configuration is valid.
 		diskConfirmed = true
-
-		if systemIsBIOS() {
-			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
-				return err
-			}
-			return showNext(c, askForceMBRPanel)
-		}
-		return gotoNextPage(g, v)
+		return isWipeDisksNeeded(g, v)
 	}
+
 	persistentSizeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: persistentSizeConfirm,
 		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
@@ -669,6 +688,43 @@ func addDiskPanel(c *Console) error {
 		},
 		gocui.KeyArrowDown: persistentSizeConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
+	}
+
+	wipeDisksConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		c.config.WipeDisksList = wipeDisksV.GetMultiData()
+		if systemIsBIOS() {
+			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
+				return err
+			}
+			return showNext(c, askForceMBRPanel)
+		}
+		return gotoNextPage(g, v)
+	}
+
+	wipeDisksV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter:     wipeDisksConfirm,
+		gocui.KeyArrowDown: wipeDisksConfirm,
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			diskConfirmed = false
+
+			disk, err := diskV.GetData()
+			if err != nil {
+				return err
+			}
+			dataDisk, err := dataDiskV.GetData()
+			if err != nil {
+				return err
+			}
+
+			if len(diskOpts) > 1 && disk != dataDisk {
+				return showNext(c, dataDiskPanel)
+			}
+			if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
+				return err
+			}
+			return showNext(c, persistentSizePanel)
+		},
+		gocui.KeyEsc: gotoPrevPage,
 	}
 
 	mbrConfirm := func(g *gocui.Gui, v *gocui.View) error {
