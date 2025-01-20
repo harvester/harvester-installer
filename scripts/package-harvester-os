@@ -23,7 +23,7 @@ source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-logging
 source ${SCRIPTS_DIR}/lib/iso
 
-BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
+BASE_OS_IMAGE="rancher/harvester-os:v1.5-20250120"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
