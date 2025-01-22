@@ -149,7 +149,7 @@ If you are using VS Code, create a remote debug configuration in
 ```
 
 ## License
-Copyright (c) 2025 [Rancher Labs, Inc.](http://rancher.com)
+Copyright (c) 2025 [SUSE, LLC.](https://www.suse.com/)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
