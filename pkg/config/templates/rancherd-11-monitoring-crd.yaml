@@ -10,6 +10,7 @@ resources:
     version: {{ .MonitoringChartVersion }}
     defaultNamespace: cattle-monitoring-system
     repoName: harvester-charts
+    timeoutSeconds: 600
     targets:
     - clusterName: local
       clusterSelector:
