@@ -15,6 +15,7 @@ fi
 
 mkdir -p ${ARTIFACTS_DIR}
 
+
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
@@ -22,6 +23,29 @@ source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-logging
 source ${SCRIPTS_DIR}/lib/iso
+
+# Revert harvester chart version patch to clean dirty git status
+reset_charts() {
+  pushd ${TOP_DIR}/../harvester
+  git checkout -- ./deploy/charts
+  popd
+}
+
+source ${SCRIPTS_DIR}/hack/patch-harvester-chart
+harvester_chart_path=${TOP_DIR}/../harvester/deploy/charts/harvester
+## for arm based builds we need to patch harvester chart
+## we need to temporarily copy the values.yaml for arm builds 
+## to ensure correct kubevirt version is used
+## in the function until mutli-arch image builds are available in registry.suse.com for kubevirt sles15
+if [ ${ARCH} == "arm64" ]
+then
+  patch_harvester_chart ${harvester_chart_path}
+fi
+
+# ARM builds need this version before resetting the chart
+HARVESTER_KUBEVIRT_VERSION=$(yq e '.kubevirt-operator.containers.operator.image.tag' ${harvester_chart_path}/values.yaml)
+reset_charts
+
 
 BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
