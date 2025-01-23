@@ -709,6 +709,383 @@ const (
       }
    ]
 }`
+
+	existingHarvesterInstalls = `{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "size": "4K",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop1",
+         "size": "175.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop2",
+         "size": "89.4M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop3",
+         "size": "55.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop4",
+         "size": "55.4M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop5",
+         "size": "64M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop6",
+         "size": "63.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop7",
+         "size": "74.2M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop8",
+         "size": "73.9M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop9",
+         "size": "67.8M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop10",
+         "size": "67.8M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop11",
+         "size": "374.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop12",
+         "size": "375.1M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop13",
+         "size": "349.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop14",
+         "size": "349.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop15",
+         "size": "504.2M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop16",
+         "size": "505.1M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop17",
+         "size": "273.6M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop18",
+         "size": "273M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop19",
+         "size": "91.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop20",
+         "size": "44.3M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop21",
+         "size": "87M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop22",
+         "size": "38.8M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop24",
+         "size": "6.8M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop25",
+         "size": "6.8M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "loop26",
+         "size": "172.3M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "sda",
+         "size": "838.1G",
+         "type": "disk",
+         "wwn": "0x600508b1001cc488149adefce15584da",
+         "serial": "PDNLH0BRH7T0VY",
+         "label": null,
+         "children": [
+            {
+               "name": "sda1",
+               "size": "1G",
+               "type": "part",
+               "wwn": "0x600508b1001cc488149adefce15584da",
+               "serial": null,
+               "label": null
+            },{
+               "name": "sda2",
+               "size": "2G",
+               "type": "part",
+               "wwn": "0x600508b1001cc488149adefce15584da",
+               "serial": null,
+               "label": null
+            },{
+               "name": "sda3",
+               "size": "835G",
+               "type": "part",
+               "wwn": "0x600508b1001cc488149adefce15584da",
+               "serial": null,
+               "label": null,
+               "children": [
+                  {
+                     "name": "ubuntu--vg-ubuntu--lv",
+                     "size": "835G",
+                     "type": "lvm",
+                     "wwn": null,
+                     "serial": null,
+                     "label": null
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "sdb",
+         "size": "3.8G",
+         "type": "disk",
+         "wwn": null,
+         "serial": "General_-0:0",
+         "label": null,
+         "children": [
+            {
+               "name": "sdb1",
+               "size": "3.8G",
+               "type": "part",
+               "wwn": null,
+               "serial": null,
+               "label": null
+            }
+         ]
+      },{
+         "name": "sdc",
+         "size": "250G",
+         "type": "disk",
+         "wwn": "0x60000000000000000e00000000010001",
+         "serial": "1001",
+         "label": null,
+         "children": [
+            {
+               "name": "mpatha",
+               "size": "250G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null,
+               "label": null,
+               "children": [
+                  {
+                     "name": "mpatha-part1",
+                     "size": "64M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_GRUB"
+                  },{
+                     "name": "mpatha-part2",
+                     "size": "50M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_OEM"
+                  },{
+                     "name": "mpatha-part3",
+                     "size": "8G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_RECOVERY"
+                  },{
+                     "name": "mpatha-part4",
+                     "size": "15G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_STATE"
+                  },{
+                     "name": "mpatha-part5",
+                     "size": "150G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_PERSISTENT"
+                  },{
+                     "name": "mpatha-part6",
+                     "size": "76.9G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "HARV_LH_DEFAULT"
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "sdd",
+         "size": "250G",
+         "type": "disk",
+         "wwn": "0x60000000000000000e00000000010001",
+         "serial": "1001",
+         "label": null,
+         "children": [
+            {
+               "name": "mpatha",
+               "size": "250G",
+               "type": "mpath",
+               "wwn": null,
+               "serial": null,
+               "label": null,
+               "children": [
+                  {
+                     "name": "mpatha-part1",
+                     "size": "64M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_GRUB"
+                  },{
+                     "name": "mpatha-part2",
+                     "size": "50M",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_OEM"
+                  },{
+                     "name": "mpatha-part3",
+                     "size": "8G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_RECOVERY"
+                  },{
+                     "name": "mpatha-part4",
+                     "size": "15G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_STATE"
+                  },{
+                     "name": "mpatha-part5",
+                     "size": "150G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "COS_PERSISTENT"
+                  },{
+                     "name": "mpatha-part6",
+                     "size": "76.9G",
+                     "type": "part",
+                     "wwn": null,
+                     "serial": null,
+                     "label": "HARV_LH_DEFAULT"
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "nvme0n1",
+         "size": "1.8T",
+         "type": "disk",
+         "wwn": "eui.0025385c2140432c",
+         "serial": "S6S2NS0TC11162K",
+         "label": null
+      }
+   ]
+}`
 )
 
 func Test_identifyUniqueDisksWithSerialNumber(t *testing.T) {
@@ -737,4 +1114,11 @@ func Test_identifyUniqueDisks(t *testing.T) {
 	out, err := identifyUniqueDisks([]byte(raidDisks))
 	assert.NoError(err, "expected no error while parsing disk data")
 	t.Log(out)
+}
+
+func Test_identifyUniqueDisksWithHarvesterInstall(t *testing.T) {
+	assert := require.New(t)
+	results, err := filterHarvesterInstallDisks([]byte(existingHarvesterInstalls))
+	assert.NoError(err, "expected no error while parsing disk data")
+	assert.Len(results, 1, "expected to find 1 disk from sample data")
 }
