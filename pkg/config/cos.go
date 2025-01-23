@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -179,6 +180,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	if err := setupExternalStorage(config, &initramfs); err != nil {
 		return nil, err
 	}
+
+	// disable multipath for longhorn
+	disableLonghornMultipathing(&initramfs)
 
 	// TOP
 	if cfg.Mode != ModeInstall {
@@ -891,4 +895,34 @@ func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error
 		Permissions: 0755,
 	})
 	return nil
+}
+
+// disableLonghornMultipathing tidy's up multipath configuration
+// irrespective of if multipath is needed or not, multipath module is loaded in the kernel
+// which can result in interfering with LH devices
+// to avoid this we drop in a default stage in /etc/multipath/conf.d/99-longhorn.conf
+// which contains a blacklist directive for Longhorn specific VENDOR/PRODUCT combination
+func disableLonghornMultipathing(stage *yipSchema.Stage) {
+	ignoreLonghorn := []byte(`blacklist { 
+  device { 
+    vendor "IET" 
+    product "VIRTUAL-DISK"
+  }
+}`)
+	directives := base64.StdEncoding.EncodeToString(ignoreLonghorn)
+	stage.Directories = append(stage.Directories, yipSchema.Directory{
+		Path:        "/etc/multipath/conf.d",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/multipath/conf.d/99-longhorn.conf",
+		Content:     directives,
+		Encoding:    "base64",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
 }
