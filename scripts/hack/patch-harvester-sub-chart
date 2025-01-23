@@ -19,6 +19,8 @@ patch_harvester_sub_chart()
   rm -r ${posthook}
   ls -alth ./harvester/charts/longhorn/templates/
 
+  pr7421
+
   echo "remove exiting chart ${chartfile}"
   rm -r ${chartfile}
   # helm pack new
@@ -29,3 +31,19 @@ patch_harvester_sub_chart()
   cd $cwd
 }
 
+pr7421()
+{
+  # temp adoption of PR https://github.com/harvester/harvester/pull/7421
+  cd harvester/templates
+  echo "get PR https://github.com/harvester/harvester/pull/7421 files for issue 7375"
+  echo "remove current _helpers.tpl, harvester-storageclass.yaml"
+  rm -r _helpers.tpl
+  rm -r harvester-storageclass.yaml
+  echo "wget new files"
+  wget --no-check-certificate --content-disposition https://raw.githubusercontent.com/w13915984028/harvester/refs/heads/fix7375-chart/deploy/charts/harvester/templates/harvester-storageclass.yaml
+  wget --no-check-certificate --content-disposition https://raw.githubusercontent.com/w13915984028/harvester/refs/heads/fix7375-chart/deploy/charts/harvester/templates/_helpers.tpl
+  echo "new files"
+  cat _helpers.tpl
+  cat harvester-storageclass.yaml
+  cd ../..
+}
