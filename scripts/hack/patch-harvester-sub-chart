@@ -1,0 +1,31 @@
+#!/bin/bash
+
+patch_harvester_sub_chart()
+{
+  local chart_dir=$1 #${CHARTS_DIR}
+  local harvester_version=$2 # harvester chart version
+  local cwd=$(pwd)
+
+  cd ${chart_dir}
+  local chartfile=harvester-${harvester_version}.tgz
+  ls -alth ${chartfile} || (echo "not found the chart ${chartfile}" && exit 1)
+  tar zxf ${chartfile} --warning=no-timestamp
+
+  local posthook="./harvester/charts/longhorn/templates/postupgrade-job.yaml"
+  echo "patch the sub chart longhorn"
+
+  ls -alth ${posthook} || (echo "not found the to-be-removed file ${posthook}, skip patch" && rm -rf harvester && return)
+  echo "remove ${posthook}"
+  rm -r ${posthook}
+  ls -alth ./harvester/charts/longhorn/templates/
+
+  echo "remove exiting chart ${chartfile}"
+  rm -r ${chartfile}
+  # helm pack new
+  helm package harvester
+  ls -alth ${chartfile} || (echo "not found the new chart ${chartfile}, check" && exit 1)
+  rm -rf harvester
+  echo "finish patch harvester sub chart"
+  cd $cwd
+}
+

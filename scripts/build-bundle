@@ -79,6 +79,7 @@ source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring
 source ${SCRIPTS_DIR}/hack/patch-rancher-logging
 source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring-crd
 source ${SCRIPTS_DIR}/hack/patch-harvester-chart
+source ${SCRIPTS_DIR}/hack/patch-harvester-sub-chart
 source ${addons_path}/version_info
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
@@ -125,6 +126,12 @@ fi
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
 
+# patch harvester sub chart to remove longhorn post-upgrade hook
+patch_harvester_sub_chart ${CHARTS_DIR} ${HARVESTER_CHART_VERSION}
+
+# make chart sanity check again after patch
+tar zxvf ${CHARTS_DIR}/harvester-${HARVESTER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
+
 # Prepare monitoring chart
 helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monitoring-crd-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
@@ -149,7 +156,7 @@ helm pull https://charts.rancher.io/assets/rancher-logging/rancher-logging-${LOG
 tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null  --warning=no-timestamp
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
-# patch rancher-logging chart to collect more logs"
+# patch rancher-logging chart to collect more logs
 PKG_PATCH_LOGGING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-logging"
 patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING_PATH}
 
