@@ -1,9 +1,9 @@
 rancherValues:
   rancherImagePullPolicy: IfNotPresent
   rancherImage: rancher/rancher
-  rancherImageTag: v2.9.3
+  rancherImageTag: v2.10.1
   noDefaultAdmin: false
-  features: multi-cluster-management=false,multi-cluster-management-agent=false
+  features: multi-cluster-management=false,multi-cluster-management-agent=false,managed-system-upgrade-controller=false
   useBundledSystemChart: true
   bootstrapPassword: admin
   hostPort: 0
@@ -11,4 +11,4 @@ rancherValues:
     cattle:
       psp:
         enabled: false
-rancherInstallerImage: rancher/system-agent-installer-rancher:v2.9.2
+rancherInstallerImage: rancher/system-agent-installer-rancher:v2.10.1
