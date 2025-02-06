@@ -96,7 +96,7 @@ resources:
             "steppedLine": false,
             "targets": [
               {
-                "expr": "topk(${count}, (avg(rate(kubevirt_vmi_vcpu_seconds_total[5m])) by (domain, name))) ",
+                "expr": "topk(${count}, (avg(rate(kubevirt_vmi_vcpu_seconds_total[5m])) by (domain, name)) / 1000)",
                 "instant": false,
                 "interval": "",
                 "legendFormat": "{{name}}",
@@ -124,7 +124,7 @@ resources:
             "yaxes": [
               {
                 "$$hashKey": "object:370",
-                "format": "percent",
+                "format": "percentunit",
                 "label": null,
                 "logBase": 1,
                 "max": null,
@@ -875,7 +875,7 @@ resources:
                     }
                   ]
                 },
-                "unit": "percent"
+                "unit": "percentunit"
               },
               "overrides": []
             },
@@ -903,7 +903,7 @@ resources:
             "pluginVersion": "7.5.8",
             "targets": [
               {
-                "expr": "sum(avg(rate(kubevirt_vmi_vcpu_seconds_total{namespace=\"$namespace\", name=\"$vm\"}[5m])) by (domain, name))",
+                "expr": "sum(avg(rate(kubevirt_vmi_vcpu_seconds_total{namespace=\"$namespace\", name=\"$vm\"}[5m])) by (domain, name)) / 1000",
                 "format": "time_series",
                 "instant": false,
                 "interval": "",
