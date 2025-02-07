@@ -1,0 +1,5 @@
+name: "reset container dhcp leases"
+stages:
+   initramfs:
+     - command:
+       - rm -rf /var/lib/cni/networks/k8s-pod-network
