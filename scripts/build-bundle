@@ -78,7 +78,6 @@ source ${SCRIPTS_DIR}/lib/image
 source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring
 source ${SCRIPTS_DIR}/hack/patch-rancher-logging
 source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring-crd
-source ${SCRIPTS_DIR}/hack/patch-harvester-chart
 source ${addons_path}/version_info
 
 BUNDLE_DIR="${PACKAGE_HARVESTER_OS_DIR}/iso/bundle"
@@ -113,14 +112,6 @@ ${SCRIPTS_DIR}/patch-harvester ${harvester_path}
 # Package harvester chart
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
 harvester_crd_chart_path=${harvester_path}/deploy/charts/harvester-crd
-
-## for arm based builds we need to patch harvester chart
-## we also patch the version to v1.1.1 for now and this needs to be manually updated
-## in the function until mutli-arch image builds are available in registry.suse.com for kubevirt sles15
-if [ ${ARCH} == "arm64" ]
-then
-  patch_harvester_chart ${harvester_chart_path}
-fi
 
 helm package ${harvester_chart_path} -d ${CHARTS_DIR}
 helm package ${harvester_crd_chart_path} -d ${CHARTS_DIR}
