@@ -531,10 +531,12 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	if hvstConfig.ShouldCreateDataPartitionOnOsDisk() {
 		// Use custom layout (which also creates Longhorn partition) when needed
-		elementalConfig, err = config.CreateRootPartitioningLayout(elementalConfig, hvstConfig)
+		elementalConfig, err = config.CreateRootPartitioningLayoutSharedDataDisk(elementalConfig, hvstConfig)
 		if err != nil {
 			return err
 		}
+	} else {
+		elementalConfig = config.CreateRootPartitioningLayoutSeparateDataDisk(elementalConfig)
 	}
 
 	if hvstConfig.DataDisk != "" {
