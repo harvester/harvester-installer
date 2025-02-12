@@ -796,7 +796,33 @@ func calcCosPersistentPartSize(diskSizeGiB uint64, partSize string) (uint64, err
 	return util.ByteToMi(size), nil
 }
 
-func CreateRootPartitioningLayout(elementalConfig *ElementalConfig, hvstConfig *HarvesterConfig) (*ElementalConfig, error) {
+func CreateRootPartitioningLayoutSeparateDataDisk(elementalConfig *ElementalConfig) *ElementalConfig {
+	elementalConfig.Install.Partitions = &ElementalDefaultPartition{
+		OEM: &ElementalPartition{
+			FilesystemLabel: "COS_OEM",
+			Size:            DefaultCosOemSizeMiB,
+			FS:              "ext4",
+		},
+		State: &ElementalPartition{
+			FilesystemLabel: "COS_STATE",
+			Size:            DefaultCosStateSizeMiB,
+			FS:              "ext4",
+		},
+		Recovery: &ElementalPartition{
+			FilesystemLabel: "COS_RECOVERY",
+			Size:            DefaultCosRecoverySizeMiB,
+			FS:              "ext4",
+		},
+		Persistent: &ElementalPartition{
+			FilesystemLabel: "COS_PERSISTENT",
+			Size:            0,
+			FS:              "ext4",
+		},
+	}
+	return elementalConfig
+}
+
+func CreateRootPartitioningLayoutSharedDataDisk(elementalConfig *ElementalConfig, hvstConfig *HarvesterConfig) (*ElementalConfig, error) {
 	diskSizeBytes, err := util.GetDiskSizeBytes(hvstConfig.Install.Device)
 	if err != nil {
 		return nil, err
