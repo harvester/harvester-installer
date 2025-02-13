@@ -163,6 +163,14 @@ do_mount()
     mount ${PERSISTENT} ${TARGET}/usr/local
 }
 
+sparsify_passive_img()
+{
+    # See https://github.com/harvester/harvester/issues/7518
+    echo "Ensuring passive.img is sparse..."
+    echo "  was: $(du -h ${STATEDIR}/cOS/passive.img)"
+    fallocate --dig-holes ${STATEDIR}/cOS/passive.img
+    echo "  now: $(du -h ${STATEDIR}/cOS/passive.img)"
+}
 
 preload_rke2_images()
 {
@@ -537,6 +545,7 @@ do_data_disk_format
 # Preload images
 do_detect
 do_mount
+sparsify_passive_img
 get_iso  # For PXE Boot
 save_configs
 save_wicked_state
