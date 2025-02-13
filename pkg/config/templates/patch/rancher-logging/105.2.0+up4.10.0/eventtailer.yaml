@@ -1,0 +1,44 @@
+{{- with $.Values.logging.eventTailer }}
+# patch to ./templates/logging/eventtailer.yaml
+# harvester-patch to customize the event tailer feature
+{{- if and $.Values.logging.enabled .enabled }}
+apiVersion: logging-extensions.banzaicloud.io/v1alpha1
+kind: EventTailer
+metadata:
+  name: {{ .name | default "harvester-default-event-tailer" }}
+  namespace: {{ .namespace | default "cattle-logging-system" }}
+spec:
+  controlNamespace: {{ $.Values.logging.controlNamespace | default $.Release.Namespace }}
+  {{- with .image }}
+  image:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .pvc }}
+  {{- if .enabled }}
+  positionVolume:
+    pvc:
+      spec:
+        accessModes: {{ .accessModes }}
+        resources:
+          requests:
+            storage: {{ .storage }}
+        volumeMode: {{ .volumeMode }}
+        {{- with .storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+  {{- end }}{{/* end if enabled */}}
+  {{- end }}{{/* end with pvc */}}
+  {{- with .workloadMetaOverrides }}
+  workloadMetaOverrides:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .workloadOverrides }}
+  workloadOverrides:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .containerOverrides }}
+  containerOverrides:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}{{/* end if enabled */}}
+{{- end }}{{/* end with event-tailer */}}
