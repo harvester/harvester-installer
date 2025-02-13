@@ -7,6 +7,7 @@ rancherValues:
   useBundledSystemChart: true
   bootstrapPassword: admin
   hostPort: 0
+  agentTLSMode: system-store
   global:
     cattle:
       psp:
