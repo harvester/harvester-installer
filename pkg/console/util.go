@@ -50,7 +50,14 @@ You can see the full installation log by:
 
 	ElementalConfigDir  = "/tmp/elemental"
 	ElementalConfigFile = "config.yaml"
+<<<<<<< HEAD
 	multipathOff        = "multipath=off"
+=======
+	multipathOff        = "rd.multipath=0"
+	PartitionType       = "part"
+	MpathType           = "mpath"
+	CosDiskLabelPrefix  = "COS_OEM"
+>>>>>>> d63556f (minor change to default kernel argument being passed when multipath is not needed. This allows dracut to still boot with nvme disks as it ignores multipath module packaged in dracut, while allowing multipathd to be enable subsequently)
 )
 
 func newProxyClient() http.Client {
