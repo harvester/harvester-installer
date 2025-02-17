@@ -25,6 +25,10 @@ patch_rancher_logging_chart()
   cp -f ${pkg_logging_path}/${logging_version}/eventtailer.yaml ./rancher-logging/templates/logging/eventtailer.yaml
   grep "harvester-patch" ./rancher-logging/templates/logging/eventtailer.yaml || true
 
+  echo "patch rancher logging kube-audit fluentbitagent"
+  cp -f ${pkg_logging_path}/${logging_version}/fluentbitagent.yaml ./rancher-logging/templates/loggings/kube-audit/fluentbitagent.yaml
+  grep "harvester-patch" ./rancher-logging/templates/loggings/kube-audit/fluentbitagent.yaml || true
+
   # remove existing chart
   rm ${chart_dir}/rancher-logging-${logging_version}.tgz
 
