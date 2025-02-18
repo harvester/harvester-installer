@@ -11,6 +11,7 @@ environment:
     /etc/rancher
     /etc/ssh
     /etc/iscsi
+    /etc/nvme
     /etc/cni
     /etc/pki/trust/anchors
     /home
