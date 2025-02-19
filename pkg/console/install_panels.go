@@ -1476,7 +1476,7 @@ func addNetworkPanel(c *Console) error {
 		if err != nil {
 			return fmt.Sprintf("Failed to check default route: %s.", err.Error()), nil
 		}
-		if !isDefaultRouteExist {
+		if !isDefaultRouteExist && mgmtNetwork.Method == config.NetworkMethodDHCP {
 			return ErrMsgNoDefaultRoute, nil
 		}
 
@@ -2460,7 +2460,7 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, "Failed to check default route.", installPanel)
 				return
 			}
-			if !installModeOnly && !isDefaultRouteExist {
+			if !installModeOnly && !isDefaultRouteExist && c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
 				logrus.Error(ErrMsgNoDefaultRoute)
 				printToPanel(c.Gui, ErrMsgNoDefaultRoute, installPanel)
 				return
