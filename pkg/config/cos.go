@@ -925,4 +925,41 @@ func disableLonghornMultipathing(stage *yipSchema.Stage) {
 		Owner:       0,
 		Group:       0,
 	})
+
+	// need to patch multipathd system unit to remove check for multipath=off
+	// this is needed to allow users to still manually start multipath post boot for
+	// 3rd party csi integration
+	multipathdUnitPatch := []byte(`[Unit]
+Description=Device-Mapper Multipath Device Controller
+Before=lvm2-activation-early.service
+Before=local-fs-pre.target blk-availability.service shutdown.target
+Wants=systemd-udevd-kernel.socket
+After=systemd-udevd-kernel.socket
+After=multipathd.socket systemd-remount-fs.service
+Before=initrd-cleanup.service
+DefaultDependencies=no
+Conflicts=shutdown.target
+Conflicts=initrd-cleanup.service
+ConditionKernelCommandLine=!nompath
+ConditionVirtualization=!container
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/sbin/multipathd -d -s
+ExecReload=/sbin/multipathd reconfigure
+TasksMax=infinity
+
+[Install]
+WantedBy=sysinit.target`)
+
+	multipathDirectives := base64.StdEncoding.EncodeToString(multipathdUnitPatch)
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/systemd/system/multipathd.service",
+		Content:     multipathDirectives,
+		Encoding:    "base64",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
 }
