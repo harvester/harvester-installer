@@ -68,8 +68,11 @@ if [ "$(uname)" = "Linux" ]; then
     fi
 fi
 
+source ${SCRIPTS_DIR}/patch-monitoring-logging
+
 # render template files
 cd ${addons_path}
+update_monitoring_logging_version version_info
 go run . -generateTemplates -path ${TOP_DIR}/pkg/config/templates
 
 cd ${TOP_DIR}
