@@ -22,22 +22,12 @@ patch_rancher_logging_chart()
   grep "harvester-patch" ./rancher-logging/templates/loggings/rke2/daemonset.yaml || true
 
   echo "patch rancher logging eventtailer"
-  cp -f ${pkg_logging_path}/${logging_version}/eventtailer.yaml ./rancher-logging/templates/eventtailer.yaml
-  grep "harvester-patch" ./rancher-logging/templates/eventtailer.yaml || true
+  cp -f ${pkg_logging_path}/${logging_version}/eventtailer.yaml ./rancher-logging/templates/logging/eventtailer.yaml
+  grep "harvester-patch" ./rancher-logging/templates/logging/eventtailer.yaml || true
 
-  # replace fluentbit image version; yq can also work, but it strips all blank lines; use patch instead
-  local valuesfile="./rancher-logging/values.yaml"
-  local difffile="${pkg_logging_path}/${logging_version}/patch-vaues-fluentbit-image.diff"
-  echo "patch fluentbit image version"
-  echo "the current values.yaml has following fluentbit image version"
-  grep "rancher/mirrored-fluent-fluent-bit" $valuesfile -1 || true
-  if [ -f "$difffile" ]; then
-    patch $valuesfile $difffile
-  else
-    echo "diff file $difffile is not found"
-  fi
-  echo "the patched values.yaml has following fluentbit image version"
-  grep "rancher/mirrored-fluent-fluent-bit" $valuesfile -1 || true
+  echo "patch rancher logging kube-audit fluentbitagent"
+  cp -f ${pkg_logging_path}/${logging_version}/fluentbitagent.yaml ./rancher-logging/templates/loggings/kube-audit/fluentbitagent.yaml
+  grep "harvester-patch" ./rancher-logging/templates/loggings/kube-audit/fluentbitagent.yaml || true
 
   # remove existing chart
   rm ${chart_dir}/rancher-logging-${logging_version}.tgz

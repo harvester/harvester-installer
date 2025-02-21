@@ -9,58 +9,13 @@ PACKAGE_HARVESTER_REPO_DIR="${TOP_DIR}/package/harvester-repo"
 
 cd ${TOP_DIR}
 
+source ${SCRIPTS_DIR}/patch-monitoring-logging
+
 addons_path=../addons
 if [ ! -d ${addons_path} ];then
   echo "No existing addons source. Pulling..."
   git clone --branch v1.5 --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
-
-source ${SCRIPTS_DIR}/version-monitoring
-source ${SCRIPTS_DIR}/version-logging
-
-update_monitoring_logging_version() {
-  # due to legacy code, monitoring and logging versions are first updated on installer
-  # then on addon
-  local target=$1
-  local lnew="RANCHER_LOGGING_CHART_VERSION=\"${LOGGING_VERSION}\""
-  local lcur=$(grep $lnew $target) || echo "logging chart version is not found from $target"
-  # if the file has no new line at end, append new ENV will be added to last line accidently
-  echo "" >> $target
-  if [ -z "${lcur}" ]; then
-    # remove possible existing values
-    sed -i '/RANCHER_LOGGING_CHART_VERSION/d' $target
-    echo "$lnew" >> $target
-    echo ""logging chart version is updated to ${LOGGING_VERSION}""
-  else
-    echo "logging chart version is already set to ${LOGGING_VERSION}"
-  fi
-
-  local mnew="RANCHER_MONITORING_CHART_VERSION=\"${MONITORING_VERSION}\""
-  local mcur=$(grep $mnew $target) || echo "monitoring chart version is not found from $target"
-  if [ -z "${mcur}" ]; then
-    # remove possible existing values
-    sed -i '/RANCHER_MONITORING_CHART_VERSION/d' $target
-    echo "$mnew" >> $target
-    echo "monitoring chart version is updated to ${MONITORING_VERSION}"
-  else
-    echo "monitoring chart version is already set to ${MONITORING_VERSION}"
-  fi
-
-  # the harvester-eventrouter image tag is first bumped on installer, then on addon, to decouple the PRs
-  # if ENV includes keyword `IMAGE` then `addon generateTemplates` will strip the image and only keep version
-  local HARVESTER_EVENTROUTER_FULL_TAG="rancher/harvester-eventrouter:v0.3.3"
-  local henew="HARVESTER_EVENTROUTER_FULL_TAG=\"${HARVESTER_EVENTROUTER_FULL_TAG}\""
-  local hecur=$(grep $henew $target) || echo "harvester-eventrouter image tag is not found from $target"
-  if [ -z "${hecur}" ]; then
-    # remove possible existing values
-    sed -i '/HARVESTER_EVENTROUTER_FULL_TAG/d' $target
-    echo "$henew" >> $target
-    echo "harvester-eventrouter image tag is updated to ${HARVESTER_EVENTROUTER_FULL_TAG}"
-  else
-    echo "harvester-eventrouter image tag is already set to ${HARVESTER_EVENTROUTER_FULL_TAG}"
-  fi
-  cat $target
-}
 
 # will generate template file in ${addons_path}, and this is used for subsequent checks
 cd ${addons_path}
