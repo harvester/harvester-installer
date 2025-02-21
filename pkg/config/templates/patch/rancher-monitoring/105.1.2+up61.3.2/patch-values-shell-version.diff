@@ -1,11 +1,11 @@
 --- values.yaml
 +++ values-new.yaml
-@@ -560,7 +560,7 @@
+@@ -562,7 +562,7 @@
    ## Image to use to run the scripts
    image:
      repository: rancher/shell
--    tag: v0.1.25
-+    tag: v0.1.26
+-    tag: v0.2.1
++    tag: v0.3.0
  
  ## Rancher Monitoring
  ##
