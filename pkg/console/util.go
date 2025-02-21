@@ -51,7 +51,7 @@ You can see the full installation log by:
 
 	ElementalConfigDir  = "/tmp/elemental"
 	ElementalConfigFile = "config.yaml"
-	multipathOff        = "rd.multipath=0"
+	multipathOff        = "multipath=off"
 	PartitionType       = "part"
 	MpathType           = "mpath"
 	CosDiskLabelPrefix  = "COS_OEM"
