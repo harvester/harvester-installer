@@ -892,3 +892,73 @@ func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error
 	})
 	return nil
 }
+<<<<<<< HEAD
+=======
+
+// disableLonghornMultipathing tidy's up multipath configuration
+// irrespective of if multipath is needed or not, multipath module is loaded in the kernel
+// which can result in interfering with LH devices
+// to avoid this we drop in a default stage in /etc/multipath/conf.d/99-longhorn.conf
+// which contains a blacklist directive for Longhorn specific VENDOR/PRODUCT combination
+func disableLonghornMultipathing(stage *yipSchema.Stage) {
+	ignoreLonghorn := []byte(`blacklist { 
+  device { 
+    vendor "IET" 
+    product "VIRTUAL-DISK"
+  }
+}`)
+	directives := base64.StdEncoding.EncodeToString(ignoreLonghorn)
+	stage.Directories = append(stage.Directories, yipSchema.Directory{
+		Path:        "/etc/multipath/conf.d",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/multipath/conf.d/99-longhorn.conf",
+		Content:     directives,
+		Encoding:    "base64",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+
+	// need to patch multipathd system unit to remove check for multipath=off
+	// this is needed to allow users to still manually start multipath post boot for
+	// 3rd party csi integration
+	multipathdUnitPatch := []byte(`[Unit]
+Description=Device-Mapper Multipath Device Controller
+Before=lvm2-activation-early.service
+Before=local-fs-pre.target blk-availability.service shutdown.target
+Wants=systemd-udevd-kernel.socket
+After=systemd-udevd-kernel.socket
+After=multipathd.socket systemd-remount-fs.service
+Before=initrd-cleanup.service
+DefaultDependencies=no
+Conflicts=shutdown.target
+Conflicts=initrd-cleanup.service
+ConditionKernelCommandLine=!nompath
+ConditionVirtualization=!container
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/sbin/multipathd -d -s
+ExecReload=/sbin/multipathd reconfigure
+TasksMax=infinity
+
+[Install]
+WantedBy=sysinit.target`)
+
+	multipathDirectives := base64.StdEncoding.EncodeToString(multipathdUnitPatch)
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/systemd/system/multipathd.service",
+		Content:     multipathDirectives,
+		Encoding:    "base64",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+}
+>>>>>>> bf37545 (change default kernel argument to disable multipath and overwrite multipathd system unit definition to allow multipathd to still be run after boot)
