@@ -363,6 +363,21 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		)
 	}
 
+	// RKE2 settings of device permissions (device_ownership_from_security_context)
+	rke2DeviceOwnershipConfig, err := render("rke2-91-harvester-cdi.yaml", config)
+	if err != nil {
+		return err
+	}
+	stage.Files = append(stage.Files,
+		yipSchema.File{
+			Path:        "/etc/rancher/rke2/config.yaml.d/91-harvester-cdi.yaml",
+			Content:     rke2DeviceOwnershipConfig,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		},
+	)
+
 	// RKE2 settings of kube-audit
 	rke2KubeAuditConfig, err := render("rke2-92-harvester-kube-audit-policy.yaml", config)
 	if err != nil {
