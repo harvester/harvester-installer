@@ -83,17 +83,65 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 
 	outDetails := make([]interface{}, 0, len(ifDetails))
 	for _, v := range ifDetails {
-		tmpStrings := strings.SplitN(v, ":", 2)
-		n := make(map[string]interface{})
-		err := json.Unmarshal([]byte(fmt.Sprintf("{\"%s\":\"%s\"}", tmpStrings[0], strings.ReplaceAll(tmpStrings[1], " ", ""))), &n)
+		n, err := parseIfDetails(v)
 		if err != nil {
 			return err
 		}
-		outDetails = append(outDetails, n)
+		outDetails = append(outDetails, *n)
 	}
 
 	values.PutValue(data, outDetails, "install", "management_interface", "interfaces")
 	return nil
+}
+
+// parseIfDetails accepts strings in the form of:
+// - "hwAddr: ab:cd:ef:gh:ij:kl"
+// - "name: ens3"
+// - "ab:cd:ef:gh:ij:kl"
+// - "ens3"
+// and returns a map of either
+// "hwAddr: ab:cd:ef:gh:ij:kl"
+// or
+// "name: ens3"
+func parseIfDetails(details string) (*map[string]interface{}, error) {
+	var (
+		parts []string
+		data  string
+	)
+
+	for _, s := range strings.Split(details, ":") {
+		parts = append(parts, strings.TrimSpace(s))
+	}
+
+	switch len(parts) {
+	case 7:
+		// hwAddr: ab:cd:ef:gh:ij:kl
+		if parts[0] != "hwAddr" {
+			return nil, fmt.Errorf("could not parse interface details %v", details)
+		}
+		data = fmt.Sprintf("{\"hwAddr\":\"%v\"}", strings.Join(parts[1:], ":"))
+	case 6:
+		// ab:cd:ef:gh:ij:kl
+		data = fmt.Sprintf("{\"hwAddr\":\"%v\"}", strings.Join(parts, ":"))
+	case 2:
+		// name: ens3
+		if parts[0] != "name" {
+			return nil, fmt.Errorf("could not parse interface details %v", details)
+		}
+		data = fmt.Sprintf("{\"name\":\"%v\"}", parts[1])
+	case 1:
+		// ens3
+		data = fmt.Sprintf("{\"name\":\"%v\"}", parts[0])
+	default:
+		return nil, fmt.Errorf("could not parse interface details %v", details)
+	}
+
+	n := make(map[string]interface{})
+	err := json.Unmarshal([]byte(data), &n)
+	if err != nil {
+		return nil, err
+	}
+	return &n, nil
 }
 
 func toSchemeVersion(data map[string]interface{}) error {
