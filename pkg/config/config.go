@@ -233,9 +233,10 @@ type SSHDConfig struct {
 
 type HarvesterConfig struct {
 	// Harvester will use scheme version to determine current version and migrate config to new scheme version
-	SchemeVersion          uint32 `json:"schemeVersion,omitempty"`
-	ServerURL              string `json:"serverUrl,omitempty"`
-	Token                  string `json:"token,omitempty"`
+	SchemeVersion          uint32   `json:"schemeVersion,omitempty"`
+	ServerURL              string   `json:"serverUrl,omitempty"`
+	Token                  string   `json:"token,omitempty"`
+	SANS                   []string `json:"sans,omitempty"`
 	OS                     `json:"os,omitempty"`
 	Install                `json:"install,omitempty"`
 	RuntimeVersion         string            `json:"runtimeVersion,omitempty"`

@@ -4,6 +4,11 @@ service-cidr: {{ or .ClusterServiceCIDR "10.53.0.0/16" }}
 cluster-dns: {{ or .ClusterDNS "10.53.0.10" }}
 tls-san:
   - {{ .Vip }}
+{{if .SANS -}}
+{{- range .SANS }}
+  - {{ . }}
+{{- end }}
+{{- end }}
 {{- with $args :=  .GetKubeletArgs }}
 kubelet-arg:
 {{- range $arg := $args }}
