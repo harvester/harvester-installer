@@ -1,10 +1,12 @@
 pull_request_rules:
-- name: Automatically merge Renovate PRs
+- name: Automatically merge Renovate/Backport PRs
   conditions:
   - check-success="Build ISO Images (amd64)"
   - check-success="Build ISO Images (arm64)"
   - check-success="Build and deploy"
-  - author = renovate[bot]
+  - or:
+    - author = renovate[bot]
+    - author = mergify[bot]
   actions:
     merge:
       method: rebase
@@ -18,6 +20,19 @@ pull_request_rules:
   actions:
     review:
       type: APPROVE
+
+# Mergify can't approve its own PRs, so we need to use a bot account
+- name: Automatically approve Backport PRs
+  conditions:
+  - check-success="Build ISO Images (amd64)"
+  - check-success="Build ISO Images (arm64)"
+  - check-success="Build and deploy"
+  - or:
+    - author = mergify[bot]
+  actions:
+    review:
+      type: APPROVE
+      bot_account: harvesterhci-io-github-bot
 
 - name: Ask to resolve conflict
   conditions:
