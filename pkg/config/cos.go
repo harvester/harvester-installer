@@ -522,6 +522,7 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 			Method:      NetworkMethodNone,
 			BondOptions: mgmtInterface.BondOptions,
 			MTU:         mgmtInterface.MTU,
+			VlanID:      mgmtInterface.VlanID,
 		}
 		if err := updateBond(stage, MgmtBondInterfaceName, &bondMgmt); err != nil {
 			return "", err
@@ -580,7 +581,12 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 		Group:       0,
 	})
 
-	postUpScript, err := render("wicked-setup-bond.sh", MgmtInterfaceName)
+	mgmtData := map[string]interface{}{
+		"VlanID":   network.VlanID,
+		"IntfName": MgmtBondInterfaceName,
+	}
+
+	postUpScript, err := render("wicked-setup-bond.sh", mgmtData)
 	if err != nil {
 		return err
 	}
@@ -641,7 +647,12 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 		Group:       0,
 	})
 
-	preUpScript, err := render("wicked-setup-bridge.sh", MgmtBondInterfaceName)
+	mgmtData := map[string]interface{}{
+		"VlanID":   mgmtNetwork.VlanID,
+		"IntfName": MgmtInterfaceName,
+	}
+
+	preUpScript, err := render("wicked-setup-bridge.sh", mgmtData)
 	if err != nil {
 		return err
 	}
