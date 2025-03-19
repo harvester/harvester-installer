@@ -205,7 +205,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			return nil, err
 		}
 
-		_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
+		_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false, config.Role)
 		if err != nil {
 			return nil, err
 		}
@@ -520,7 +520,7 @@ func SaveOriginalNetworkConfig() error {
 // - generates wicked interface files (`/etc/sysconfig/network/ifcfg-*` and `ifroute-*`)
 // - manipulates nameservers in `/etc/resolv.conf`.
 // - call `wicked ifreload all` if `run` flag is true.
-func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool) (string, error) {
+func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool, role string) (string, error) {
 	if len(mgmtInterface.Interfaces) == 0 {
 		return "", errors.New("no slave defined for management network bond")
 	}
@@ -543,7 +543,7 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 		}
 	}
 
-	if err := updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
+	if err := updateBridge(stage, MgmtInterfaceName, &mgmtInterface, role); err != nil {
 		return "", err
 	}
 
@@ -639,7 +639,7 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 	return nil
 }
 
-func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) error {
+func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network, role string) error {
 	// add Bridge named MgmtInterfaceName and attach Bond named MgmtBondInterfaceName to bridge
 
 	needVlanInterface := false
@@ -656,7 +656,11 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 		Group:       0,
 	})
 
-	preUpScript, err := render("wicked-setup-bridge.sh", MgmtBondInterfaceName)
+	roleData := map[string]interface{}{
+		"Role": role,
+		"Bond": MgmtBondInterfaceName,
+	}
+	preUpScript, err := render("wicked-setup-bridge.sh", roleData)
 	if err != nil {
 		return err
 	}
