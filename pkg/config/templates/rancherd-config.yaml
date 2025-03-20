@@ -4,6 +4,7 @@ role: agent
 {{- else -}}
 role: cluster-init
 {{- end }}
+nodeName: {{ .Hostname }}
 token: {{ printf "%q" .Token }}
 kubernetesVersion: {{ .RuntimeVersion }}
 rancherVersion: {{ .RancherVersion }}
