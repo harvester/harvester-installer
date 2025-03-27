@@ -11,7 +11,7 @@ case $ACTION in
 
 	post-up)
 		# accept all vlan, PVID=1 by default
-		bridge vlan add vid 2-4094 dev $INTERFACE self
-		bridge vlan add vid 2-4094 dev {{ . }}
+		bridge vlan add vid {{ .VlanID }} dev $INTERFACE self
+		bridge vlan add vid {{ .VlanID }} dev {{ .IntfName }}
 		;;
 esac
