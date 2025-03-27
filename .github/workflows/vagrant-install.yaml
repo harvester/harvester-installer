@@ -1,8 +1,9 @@
 name: Vagrant install
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
+# Deployment doesn't work yet anyway, so let's not bother trying on PRs right now
+#  pull_request:
+#    types: [opened, reopened, synchronize]
   push:
     branches:
       - master

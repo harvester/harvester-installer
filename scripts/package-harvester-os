@@ -23,7 +23,7 @@ source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-logging
 source ${SCRIPTS_DIR}/lib/iso
 
-BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
+BASE_OS_IMAGE="rancher/harvester-os:sl-micro-6-head"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
@@ -70,23 +70,23 @@ mkdir -p /boot-files/boot
 # Copy kernel, initrd out for PXE boot
 if [ ${ARCH} == "amd64" ]
 then
-  KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/vmlinuz)
+  KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink -f /boot/vmlinuz)
 fi
 # arm images have `Image` softlink for kernel
 if [ ${ARCH} == "arm64" ]
 then
-  KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/Image)
+  KERNEL=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink -f /boot/Image)
 fi
 
-INITRD=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink /boot/initrd)
+INITRD=$(docker run --rm ${HARVESTER_OS_IMAGE} readlink -f /boot/initrd)
 # we need to add entrypoint or the docker create failed in newer version
 docker create --cidfile=os-img-container ${HARVESTER_OS_IMAGE} -- tail -f /dev/null
-docker cp $(<os-img-container):/boot/${KERNEL} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-${ARCH}
-docker cp $(<os-img-container):/boot/${INITRD} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
+docker cp $(<os-img-container):${KERNEL} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-${ARCH}
+docker cp $(<os-img-container):${INITRD} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
 docker cp $(<os-img-container):/usr/bin/elemental /usr/bin/elemental
 chmod +r ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
-docker cp $(<os-img-container):/boot/${KERNEL} /boot-files/boot/kernel
-docker cp $(<os-img-container):/boot/${INITRD} /boot-files/boot/initrd
+docker cp $(<os-img-container):${KERNEL} /boot-files/boot/kernel
+docker cp $(<os-img-container):${INITRD} /boot-files/boot/initrd
 docker rm $(<os-img-container) && rm -f os-img-container
 
 # Make sure files under bundle dir can be read by nginx
@@ -97,7 +97,7 @@ ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
 cp harvester-release.yaml iso
 echo "set harvester_version=${VERSION}" > iso/boot/grub2/harvester.cfg
 
-# Elemental platform expects amd64 or aarch64
+# Elemental platform expects x86_64 or aarch64
 PLATFORM=$(uname -m)
 
 CONFIG_DIR="$(pwd)"
@@ -131,7 +131,12 @@ xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract / "${extr
 chmod -R a=r,u+w,a+X "${extract_dir}"
 
 # Copy squashfs image for PXE boot
-cp "${extract_dir}/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
+if [ ${ARCH} == "arm64" ]
+then
+  cp "${extract_dir}/boot/arm64/loader/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
+else
+  cp "${extract_dir}/boot/x86_64/loader/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
+fi
 
 # repackaging is only needed for amd64 builds.
 if [ "${ARCH}" == "amd64" ]
@@ -179,7 +184,7 @@ if [ "${BUILD_QCOW}" == "true" ]; then
   -serial file:harvester-installer.log  -nic none \
   -drive file=${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw,if=virtio,cache=writeback,discard=ignore,format=raw \
   -boot d -cdrom ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.iso -kernel ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-amd64 \
-  -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=rootfs.squashfs \
+  -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=/boot/x86_64/loader/rootfs.squashfs \
   console=ttyS1 rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda \
   harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=rancher \
   harvester.scheme_version=1 harvester.install.persistentPartitionSize=150Gi harvester.install.skipchecks=true" \
