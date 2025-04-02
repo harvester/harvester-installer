@@ -11,3 +11,5 @@ kubelet-arg:
 {{- end }}
 {{- end }}
 audit-policy-file: /etc/rancher/rke2/config.yaml.d/92-harvester-kube-audit-policy.yaml
+kube-apiserver-arg:
+- feature-gates=AuthorizeNodeWithSelectors=false
