@@ -14,11 +14,12 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/version"
 	"github.com/harvester/harvester-installer/pkg/widgets"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -527,11 +528,8 @@ func getHarvesterStatus() string {
 		return wrapColor(statusNotReady, colorYellow)
 	}
 
-	harvesterReady := isPodReady("harvester-system", "app.kubernetes.io/name=harvester", "app.kubernetes.io/component=apiserver")
-	harvesterWebhookReady := isPodReady("harvester-system", "app.kubernetes.io/name=harvester", "app.kubernetes.io/component=webhook-server")
-	rancherReady := isPodReady("cattle-system", "app=rancher")
-	harvesterAPIReady := isAPIReady(current.managementURL, "/version")
-	if harvesterReady && harvesterWebhookReady && rancherReady && harvesterAPIReady {
+	harvesterAPIReady := isAPIReady(current.managementURL, "/v1/harvester/cluster/local")
+	if harvesterAPIReady {
 		return wrapColor(statusReady, colorGreen)
 	}
 	return wrapColor(statusNotReady, colorYellow)
