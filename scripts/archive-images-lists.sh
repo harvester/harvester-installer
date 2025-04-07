@@ -31,7 +31,22 @@ find $RANCHERD_IMAGES_DIR -name "*.txt" -exec cat {} \; >> "$IMAGES_LISTS_ARCHIV
 cat "$IMAGES_LISTS_ARCHIVE_DIR"/current/image_list_all.txt | sort | uniq | tee "$IMAGES_LISTS_ARCHIVE_DIR"/current/image_list_all.txt
 
 # Add all the previous versions' images lists
-previous_versions=$(yq e ".versions[].name" "$UPGRADE_MATRIX_FILE" | xargs)
+all_previous_versions=$(yq e ".versions[].name" "$UPGRADE_MATRIX_FILE" | xargs)
+if [[ "$ARCH" == "arm64" ]]; then
+  # ARM64 is supported in v1.3.0 and later versions
+  arm_previous_versions=()
+  for version in $(echo "$all_previous_versions"); do
+      if [[ "$(version_compare "$version" "v1.3.0")" == "1" ]]; then
+          echo "ARM64 image is supported after v1.3.0, skip $version"
+          arm_previous_versions+=("$version")
+      fi
+  done
+  previous_versions=$(IFS=" "; echo "${arm_previous_versions[*]}")
+else
+  # AMD64 is supported for all versions
+  previous_versions=$all_previous_versions
+fi
+
 for prev_ver in $(echo "$previous_versions"); do
   ret=0
 
