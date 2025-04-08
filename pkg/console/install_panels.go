@@ -2947,7 +2947,7 @@ func configureInstallModeDHCP(c *Console) {
 	mgmtNetwork.Interfaces = netDef.Interfaces
 	if netDef.BondOptions == nil {
 		mgmtNetwork.BondOptions = map[string]string{
-			"mode":   config.BondModeBalanceTLB,
+			"mode":   config.BondModeActiveBackup,
 			"miimon": "100",
 		}
 	} else {
