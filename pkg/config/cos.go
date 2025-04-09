@@ -583,7 +583,7 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 	if network.BondOptions == nil {
 		logrus.Infof("Adding default NIC bonding options for \"%s\"", name)
 		network.BondOptions = map[string]string{
-			"mode":   BondModeBalanceTLB,
+			"mode":   BondModeActiveBackup,
 			"miimon": "100",
 		}
 	}
