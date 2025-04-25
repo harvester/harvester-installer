@@ -92,15 +92,15 @@ jobs:
         working-directory: ./ci/terraform
         run: |
           ./cleanup_test_files.sh
-      - name: Testing existing files
+      - name: Check files exist on provisioned hosts
         working-directory: ./ci/terraform
         run: |
           ./check_files.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
-      - name: Testing services status
+      - name: Check system services status on provisioned hosts
         working-directory: ./ci/terraform
         run: |
           ./check_services_status.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
-      - name: Testing basic operations with terraform
+      - name: Create Harvester resources for testing
         working-directory: ./ci/terraform
         run: |
           curl https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_amd64.zip -o terraform_bin.zip
@@ -108,7 +108,7 @@ jobs:
           ./get_kubeconfig.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
           ./terraform init -no-color
           ./terraform apply -auto-approve -no-color
-      - name: Test network on the VMs
+      - name: Test VM networking
         working-directory: ./ci/terraform
         run: |
           ./test_terraform_vm.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
@@ -141,7 +141,7 @@ jobs:
             exit 1
           fi
 
-      - name: Check rotate RKE2 certificates
+      - name: Test RKE2 cert rotation
         run: |
           node0_ip=$(yq e ".harvester_network_config.cluster[0].ip" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml)
           first_enddate=$(ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node0_ip "openssl x509 -in /var/lib/rancher/rke2/server/tls/serving-kube-apiserver.crt -noout -enddate")
