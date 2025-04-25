@@ -31,7 +31,7 @@ jobs:
 
       - name: Patch Rancher Version
         run: |
-          sed -i 's/^RANCHER_VERSION=".*"/RANCHER_VERSION="${{ github.event.inputs.rke2Version }}"/' ./scripts/version-rancher
+          sed -i 's/^RANCHER_VERSION=".*"/RANCHER_VERSION="${{ github.event.inputs.rancherVersion }}"/' ./scripts/version-rancher
           sed -i 's/^  rancherImageTag: .*/  rancherImageTag: ${{ github.event.inputs.rancherVersion }}/' ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
           sed -i 's|^rancherInstallerImage: .*|rancherInstallerImage: rancher/system-agent-installer-rancher:${{ github.event.inputs.rancherVersion }}|' ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
 
