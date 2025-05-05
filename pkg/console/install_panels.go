@@ -2232,7 +2232,7 @@ func addConfirmInstallPanel(c *Console) error {
 				Text:  "Yes",
 			}, {
 				Value: "no",
-				Text:  "No",
+				Text:  "No (Reboot)",
 			},
 		}, nil
 	}
