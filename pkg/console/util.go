@@ -45,7 +45,7 @@ const (
 You can see the full installation log by:
   - Press CTRL + ALT + F2 to switch to a different TTY console.
   - Login with user "rancher" (password is "rancher").
-  - Run the command: less %s.
+  - Run the command: sudo less %s.
 `
 	https = "https://"
 
