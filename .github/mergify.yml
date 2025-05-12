@@ -1,12 +1,20 @@
 pull_request_rules:
-- name: Automatically merge Renovate/Backport PRs
+- name: Automatically merge Renovate PRs
   conditions:
   - check-success="Build ISO Images (amd64)"
   - check-success="Build ISO Images (arm64)"
   - check-success="Build and deploy"
-  - or:
-    - author = renovate[bot]
-    - author = mergify[bot]
+  - author = renovate[bot]
+  actions:
+    merge:
+      method: rebase
+
+- name: Automatically merge Backport PRs
+  conditions:
+  - check-success="Build ISO Images (amd64)"
+  - check-success="Build ISO Images (arm64)"
+  - check-success="Build and deploy"
+  - author = mergify[bot]
   actions:
     merge:
       method: rebase
@@ -27,8 +35,7 @@ pull_request_rules:
   - check-success="Build ISO Images (amd64)"
   - check-success="Build ISO Images (arm64)"
   - check-success="Build and deploy"
-  - or:
-    - author = mergify[bot]
+  - author = mergify[bot]
   actions:
     review:
       type: APPROVE
