@@ -33,12 +33,20 @@ if [ ! -d ${addons_path} ];then
     git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
 
+echo "source monitoring, logging versions from addons"
+source ../addons/version_info
+if [[ -z ${RANCHER_LOGGING_CHART_VERSION} ]] || [[ -z ${RANCHER_MONITORING_CHART_VERSION} ]] || [[ -z ${HARVESTER_EVENTROUTER_FULL_TAG} ]]; then
+    echo "monitoring, logging, eventrouter are not fully defined"
+    return 1
+fi
+MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
+LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
+echo "HARVESTER_EVENTROUTER_FULL_TAG: $HARVESTER_EVENTROUTER_FULL_TAG"
+
 source ${SCRIPTS_DIR}/version-harvester $harvester_path
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version
-source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-rancher
-source ${SCRIPTS_DIR}/version-logging
 
 echo "Installer version: ${VERSION}"
 echo "Harvester version: ${HARVESTER_VERSION}"
@@ -68,11 +76,8 @@ if [ "$(uname)" = "Linux" ]; then
     fi
 fi
 
-source ${SCRIPTS_DIR}/patch-monitoring-logging
-
 # render template files
 cd ${addons_path}
-update_monitoring_logging_version version_info
 go run . -generateTemplates -path ${TOP_DIR}/pkg/config/templates
 
 cd ${TOP_DIR}

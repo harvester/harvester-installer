@@ -13,14 +13,29 @@ then
   VERSION_FILE="version-arm64.yaml"
 fi
 
+echo "source monitoring, logging versions from addons"
+addons_path=../addons
+if [ ! -d ${addons_path} ];then
+    echo "No existing addons source. Pulling..."
+    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
+fi
+source ../addons/version_info
+if [[ -z ${RANCHER_LOGGING_CHART_VERSION} ]] || [[ -z ${RANCHER_MONITORING_CHART_VERSION} ]] || [[ -z ${HARVESTER_EVENTROUTER_FULL_TAG} ]]; then
+    echo "monitoring, logging, eventrouter are not fully defined"
+    return 1
+fi
+MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
+LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
+echo "Rancher monitoring version: ${MONITORING_VERSION}"
+echo "Rancher logging version: ${LOGGING_VERSION}"
+rm -rf ../addons
+
 mkdir -p ${ARTIFACTS_DIR}
 
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
-source ${SCRIPTS_DIR}/version-monitoring
-source ${SCRIPTS_DIR}/version-logging
 source ${SCRIPTS_DIR}/lib/iso
 
 BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
@@ -42,6 +57,9 @@ loggingChart: ${LOGGING_VERSION}
 kubevirt: ${HARVESTER_KUBEVIRT_VERSION}
 minUpgradableVersion: '${HARVESTER_MIN_UPGRADABLE_VERSION}'
 EOF
+
+echo "the harvester-release info is"
+cat ./harvester-release.yaml
 
 # Collect all the previous versions' image lists
 ${SCRIPTS_DIR}/archive-images-lists.sh "${TOP_DIR}/../harvester/package/upgrade-matrix.yaml" "${IMAGES_LISTS_DIR}" "${RANCHERD_IMAGES_DIR}" "${BUNDLE_DIR}/harvester/images-lists-archive" "${ARCH}"
