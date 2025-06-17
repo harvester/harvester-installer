@@ -28,6 +28,7 @@ MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
 LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 echo "Rancher logging version: ${LOGGING_VERSION}"
+echo "Harvester eventrouter image tag: ${HARVESTER_EVENTROUTER_FULL_TAG}"
 rm -rf ../addons
 
 mkdir -p ${ARTIFACTS_DIR}
@@ -54,18 +55,19 @@ kubernetes: ${RKE2_VERSION}
 rancher: ${RANCHER_VERSION}
 monitoringChart: ${MONITORING_VERSION}
 loggingChart: ${LOGGING_VERSION}
+loggingChartHarvesterEventRouter: ${HARVESTER_EVENTROUTER_FULL_TAG}
 kubevirt: ${HARVESTER_KUBEVIRT_VERSION}
 minUpgradableVersion: '${HARVESTER_MIN_UPGRADABLE_VERSION}'
 EOF
-
-echo "the harvester-release info is"
-cat ./harvester-release.yaml
 
 # Collect all the previous versions' image lists
 ${SCRIPTS_DIR}/archive-images-lists.sh "${TOP_DIR}/../harvester/package/upgrade-matrix.yaml" "${IMAGES_LISTS_DIR}" "${RANCHERD_IMAGES_DIR}" "${BUNDLE_DIR}/harvester/images-lists-archive" "${ARCH}"
 
 # Collect dependencies' versions
 ${SCRIPTS_DIR}/collect-deps.sh harvester-release.yaml
+
+echo "the harvester-release info is"
+cat ./harvester-release.yaml
 
 docker build --pull \
 	--build-arg BASE_OS_IMAGE="${BASE_OS_IMAGE}" \
