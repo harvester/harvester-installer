@@ -102,51 +102,29 @@ jobs:
         working-directory: ./ci/terraform
         run: |
           ./cleanup_test_files.sh
-      - name: Testing existing files
+      - name: Check files exist on provisioned hosts
         working-directory: ./ci/terraform
         run: |
           ./check_files.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
-      - name: Testing services status
+      - name: Check system services status on provisioned hosts
         working-directory: ./ci/terraform
         run: |
           ./check_services_status.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
-
-      - name: Create new-version.yaml
-        run: |
-          echo "apiVersion: harvesterhci.io/v1beta1" > new-version.yaml
-          echo "kind: Version" >> new-version.yaml
-          echo "metadata:" >> new-version.yaml
-          echo "  name: master-head" >> new-version.yaml
-          echo "  namespace: harvester-system" >> new-version.yaml
-          echo "spec:" >> new-version.yaml
-          echo "  isoURL: http://localhost:8000/dist/artifacts/harvester-master-amd64.iso" >> new-version.yaml
-          echo "  minUpgradableVersion: v1.3.1" >> new-version.yaml
-          echo "  releaseDate: \"202401231\"" >> new-version.yaml
-          echo "  tags:" >> new-version.yaml
-          echo "  - dev" >> new-version.yaml
-          echo "  - test" >> new-version.yaml
-
-      - name: Create new-upgrade.yaml
-        run: |
-          echo "apiVersion: harvesterhci.io/v1beta1" > new-version.yaml
-          echo "kind: Upgrade" >> new-version.yaml
-          echo "metadata:" >> new-version.yaml
-          echo "  name: master-head" >> new-version.yaml
-          echo "  namespace: harvester-system" >> new-version.yaml
-          echo "spec:" >> new-version.yaml
-          echo "  logEnabled: true" >> new-version.yaml
-          echo "  version: master-head" >> new-version.yaml
-
-      - name: Apply new-version.yaml
-        run: |
-          kubectl apply -f new-version.yaml
 
       - name: Start file server
         run: |
           python3 -m http.server 8000 --bind 0.0.0.0 &
 
-      - name: Apply new-upgrade.yaml
+      - name: Create new-version.yaml
+        working-directory: ./ci/upgrade
         run: |
+          ./create_version_file.sh
+          kubectl apply -f new-version.yaml
+
+      - name: Create new-upgrade.yaml
+        working-directory: ./ci/upgrade
+        run: |
+          ./create_upgrade_file.sh
           kubectl apply -f new-upgrade.yaml
 
       - name: Wait for upgrade to complete
