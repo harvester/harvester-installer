@@ -9,17 +9,12 @@ PACKAGE_HARVESTER_REPO_DIR="${TOP_DIR}/package/harvester-repo"
 
 cd ${TOP_DIR}
 
-addons_path=../addons
-if [ ! -d ${addons_path} ];then
-  echo "No existing addons source. Pulling..."
-  git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
-fi
+source ${SCRIPTS_DIR}/lib/addon
+addons_path=${TOP_DIR}/../addons
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
+# generate template file in ${addons_path}, and this is used for subsequent checks
+generate_addon ${addons_path}
 
-# will generate template file in ${addons_path}, and this is used for subsequent checks
-cd ${addons_path}
-go run . -generateTemplates
-echo "the rendered addon template"
-grep "version:" rancherd-22-addons.yaml -1 || echo "did not find any chart info from the addon file"
 cd ${TOP_DIR}
 
 source ${SCRIPTS_DIR}/version
@@ -27,15 +22,6 @@ source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/lib/http
 source ${SCRIPTS_DIR}/lib/image
-source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring
-source ${SCRIPTS_DIR}/hack/patch-rancher-logging
-source ${SCRIPTS_DIR}/hack/patch-rancher-monitoring-crd
-source ${addons_path}/version_info
-
-if [[ -z ${RANCHER_LOGGING_CHART_VERSION} ]] || [[ -z ${RANCHER_MONITORING_CHART_VERSION} ]] || [[ -z ${HARVESTER_EVENTROUTER_FULL_TAG} ]]; then
-    echo "monitoring, logging, eventrouter are not fully defined"
-    return 1
-fi
 
 MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
 LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
@@ -83,11 +69,11 @@ helm pull https://charts.rancher.io/assets/rancher-monitoring-crd/rancher-monito
 helm pull https://charts.rancher.io/assets/rancher-monitoring/rancher-monitoring-${MONITORING_VERSION}.tgz -d ${CHARTS_DIR}
 
 # patch rancher-monitoring chart to fix issues
-PKG_PATCH_MONITORING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-monitoring"
+PKG_PATCH_MONITORING_PATH="${addons_path}/pkg/config/templates/patch/rancher-monitoring"
 patch_rancher_monitoring_chart ${CHARTS_DIR} ${MONITORING_VERSION} ${PKG_PATCH_MONITORING_PATH}
 
 # patch rancher-monitoring-crd chart to fix issues
-PKG_PATCH_MONITORING_CRD_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-monitoring-crd"
+PKG_PATCH_MONITORING_CRD_PATH="${addons_path}/pkg/config/templates/patch/rancher-monitoring-crd"
 patch_rancher_monitoring_crd_chart ${CHARTS_DIR} ${MONITORING_VERSION} ${PKG_PATCH_MONITORING_CRD_PATH}
 
 # make chart sanity check
@@ -103,7 +89,7 @@ tar zxvf ${CHARTS_DIR}/rancher-logging-crd-${LOGGING_VERSION}.tgz >/dev/null  --
 tar zxvf ${CHARTS_DIR}/rancher-logging-${LOGGING_VERSION}.tgz >/dev/null --warning=no-timestamp
 
 # patch rancher-logging chart to collect more logs"
-PKG_PATCH_LOGGING_PATH="${TOP_DIR}/pkg/config/templates/patch/rancher-logging"
+PKG_PATCH_LOGGING_PATH="${addons_path}/pkg/config/templates/patch/rancher-logging"
 patch_rancher_logging_chart ${CHARTS_DIR} ${LOGGING_VERSION} ${PKG_PATCH_LOGGING_PATH}
 
 # make chart sanity check again after patch
