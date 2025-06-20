@@ -13,23 +13,16 @@ then
   VERSION_FILE="version-arm64.yaml"
 fi
 
-echo "source monitoring, logging versions from addons"
-addons_path=../addons
-if [ ! -d ${addons_path} ];then
-    echo "No existing addons source. Pulling..."
-    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
-fi
-source ../addons/version_info
-if [[ -z ${RANCHER_LOGGING_CHART_VERSION} ]] || [[ -z ${RANCHER_MONITORING_CHART_VERSION} ]] || [[ -z ${HARVESTER_EVENTROUTER_FULL_TAG} ]]; then
-    echo "monitoring, logging, eventrouter are not fully defined"
-    return 1
-fi
+source ${SCRIPTS_DIR}/lib/addon
+addons_path=${TOP_DIR}/../addons
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
+
 MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
 LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 echo "Rancher logging version: ${LOGGING_VERSION}"
 echo "Harvester eventrouter image tag: ${HARVESTER_EVENTROUTER_FULL_TAG}"
-rm -rf ../addons
+rm -rf ${addons_path}
 
 mkdir -p ${ARTIFACTS_DIR}
 
@@ -66,7 +59,7 @@ ${SCRIPTS_DIR}/archive-images-lists.sh "${TOP_DIR}/../harvester/package/upgrade-
 # Collect dependencies' versions
 ${SCRIPTS_DIR}/collect-deps.sh harvester-release.yaml
 
-echo "the harvester-release info is"
+echo "The harvester-release info is"
 cat ./harvester-release.yaml
 
 docker build --pull \

@@ -27,18 +27,10 @@ else
     git config --global --add safe.directory /go/src/github.com/harvester/harvester
 fi
 
-addons_path=../addons
-if [ ! -d ${addons_path} ];then
-    echo "No existing addons source. Pulling..."
-    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
-fi
+source ${SCRIPTS_DIR}/lib/addon
+addons_path=${TOP_DIR}/../addons
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
 
-echo "source monitoring, logging versions from addons"
-source ../addons/version_info
-if [[ -z ${RANCHER_LOGGING_CHART_VERSION} ]] || [[ -z ${RANCHER_MONITORING_CHART_VERSION} ]] || [[ -z ${HARVESTER_EVENTROUTER_FULL_TAG} ]]; then
-    echo "monitoring, logging, eventrouter are not fully defined"
-    return 1
-fi
 MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
 LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
 echo "HARVESTER_EVENTROUTER_FULL_TAG: $HARVESTER_EVENTROUTER_FULL_TAG"
