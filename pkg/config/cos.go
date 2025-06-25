@@ -41,12 +41,12 @@ const (
 
 var (
 	// Following variables are replaced by ldflags
-	RKE2Version            = ""
-	RancherVersion         = ""
-	HarvesterChartVersion  = ""
-	MonitoringChartVersion = ""
-	LoggingChartVersion    = ""
-
+	RKE2Version                   = ""
+	RancherVersion                = ""
+	HarvesterChartVersion         = ""
+	MonitoringChartVersion        = ""
+	LoggingChartVersion           = ""
+	KubeovnOperatorChartVersion   = ""
 	originalNetworkConfigs        = make(map[string][]byte)
 	saveOriginalNetworkConfigOnce sync.Once
 )
@@ -283,6 +283,10 @@ func setConfigDefaultValues(config *HarvesterConfig) {
 
 	if config.LoggingChartVersion == "" {
 		config.LoggingChartVersion = LoggingChartVersion
+	}
+
+	if config.KubeovnOperatorChartVersion == "" {
+		config.KubeovnOperatorChartVersion = KubeovnOperatorChartVersion
 	}
 
 	// 0 is invalid and skipped from yaml to strut, no need to check
@@ -784,6 +788,7 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 		"11-monitoring-crd.yaml",
 		"14-logging-crd.yaml",
 		"20-harvester-settings.yaml",
+		"15-kubeovn-operator-crd.yaml",
 		"22-addons.yaml",
 	} {
 		rendered, err := render("rancherd-"+templateName, config)
