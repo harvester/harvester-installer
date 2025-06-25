@@ -46,6 +46,7 @@ echo "Harvester chart version: ${HARVESTER_CHART_VERSION}"
 echo "Rancher version: ${RANCHER_VERSION}"
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 echo "Rancher logging version: ${LOGGING_VERSION}"
+echo "Kubeovn operator version: ${KUBEOVN_OPERATOR_CHART_VERSION}"
 echo "The ARCH is: ${ARCH}"
 
 mkdir -p bin
@@ -57,6 +58,7 @@ LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$R
            -X github.com/harvester/harvester-installer/pkg/config.HarvesterChartVersion=$HARVESTER_CHART_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.MonitoringChartVersion=$MONITORING_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.LoggingChartVersion=$LOGGING_VERSION
+           -X github.com/harvester/harvester-installer/pkg/config.KubeovnOperatorChartVersion=$KUBEOVN_OPERATOR_CHART_VERSION
            $LINKFLAGS"
 
 if [ "$(uname)" = "Linux" ]; then
