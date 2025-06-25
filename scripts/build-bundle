@@ -119,6 +119,16 @@ helm pull https://github.com/harvester/charts/releases/download/nvidia-driver-ru
 # make chart sanity check
 tar zxvf ${CHARTS_DIR}/nvidia-driver-runtime-${NVIDIA_DRIVER_RUNTIME_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
 
+# Prepare kubeovn-operator-crd chart
+helm pull https://github.com/harvester/charts/releases/download/kubeovn-operator-crd-${KUBEOVN_OPERATOR_CHART_VERSION}/kubeovn-operator-crd-${KUBEOVN_OPERATOR_CHART_VERSION}.tgz -d ${CHARTS_DIR}
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/kubeovn-operator-crd-${KUBEOVN_OPERATOR_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
+
+# Prepare kubeovn-operator chart
+helm pull https://github.com/harvester/charts/releases/download/kubeovn-operator-${KUBEOVN_OPERATOR_CHART_VERSION}/kubeovn-operator-${KUBEOVN_OPERATOR_CHART_VERSION}.tgz -d ${CHARTS_DIR}
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/kubeovn-operator-${KUBEOVN_OPERATOR_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
+
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
@@ -140,7 +150,6 @@ check_addon_chart_version_matching() {
       local chart=$(idx=$i yq '.resources[env(idx)].spec.chart' ${tmpfile})
       local version=$(idx=$i yq '.resources[env(idx)].spec.version' ${tmpfile})
       echo addon: "$chart" version: $version
-
       local EXIT_CODE=0
       local repover=$(chart=$chart yq '.entries[strenv(chart)][0].version' < ${CHARTS_DIR}/index.yaml) || EXIT_CODE=$?
       if [ $EXIT_CODE != 0 ]; then
@@ -235,6 +244,9 @@ add_addon_images_to_list() {
 
   # harvester eventrouter image
   add_addon_image "HARVESTER_EVENTROUTER_FULL_TAG" ${HARVESTER_EVENTROUTER_FULL_TAG}
+
+  # kubeovn operator image
+  add_addon_image "KUBEOVN_OPERATOR_IMAGE" ${KUBEOVN_OPERATOR_IMAGE}
 }
 
 add_addon_images_to_list
