@@ -7,7 +7,7 @@ cd $(dirname $0)/..
 addons_path=../addons
 if [ ! -d ${addons_path} ];then
     echo "No existing addons source. Pulling..."
-    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
+    git clone --branch v1.6 --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
 cp ${addons_path}/pkg/templates/*.yaml ./pkg/config/templates
 
