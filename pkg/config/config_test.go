@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -9,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 type SettingManifestMock struct {
@@ -483,6 +486,64 @@ func TestHarvesterReservedResourcesConfigRendering(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, systemCPUReserved, kubeCPUReserved*2/3)
+}
+
+func TestHarvesterAddonsFileRendering(t *testing.T) {
+	fname := "rancherd-22-addons.yaml"
+	conf := &HarvesterConfig{}
+	content, err := render(fname, conf)
+	assert.NoError(t, err)
+	// the file should not contain any addon templated key, otherwise the file is not fully templated
+	assert.False(t, strings.Contains(content, "<<"))
+}
+
+func TestHarvesterConstructedAddonsFileRendering(t *testing.T) {
+	addonKey := "<<"
+
+	testCases := []struct {
+		name            string
+		harvConfig      *HarvesterConfig
+		fname           string
+		rendError       bool
+		includeAddonKey bool
+	}{
+		{
+			name:       "error when addon file is malformed",
+			harvConfig: &HarvesterConfig{},
+			fname:      "./testdata/rancherd-22-fake-addons.yaml",
+			rendError:  true,
+		},
+		{
+			name:            "error when addon file is not templated",
+			harvConfig:      &HarvesterConfig{},
+			fname:           "./testdata/rancherd-22-not-templated-addons.yaml",
+			rendError:       false,
+			includeAddonKey: true,
+		},
+		{
+			name:            "ok when addon file is well templated",
+			harvConfig:      &HarvesterConfig{},
+			fname:           "./testdata/rancherd-22-good-addons.yaml",
+			rendError:       false,
+			includeAddonKey: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		fc, err := os.ReadFile(tc.fname)
+		assert.NoError(t, err)
+
+		conf := &HarvesterConfig{}
+		// render() can only work with files under templates, this test runs with files under testdata path
+		content, err := util.RenderTemplate(string(fc), conf)
+		if tc.rendError {
+			assert.Error(t, err)
+			continue
+		}
+		if tc.includeAddonKey {
+			assert.True(t, strings.Contains(content, addonKey))
+		}
+	}
 }
 
 func TestCalculateCPUReservedInMilliCPU(t *testing.T) {

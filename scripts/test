@@ -1,15 +1,25 @@
 #!/bin/bash
 set -e
 
-cd $(dirname $0)/..
+TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
+cd ${TOP_DIR}
 
-# duplicated from scripts/build, so that we can run `make test` standalone
-addons_path=../addons
-if [ ! -d ${addons_path} ];then
-    echo "No existing addons source. Pulling..."
-    git clone --branch v1.6 --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
-fi
-cp ${addons_path}/pkg/templates/*.yaml ./pkg/config/templates
+SCRIPTS_DIR="${TOP_DIR}/scripts"
+source ${SCRIPTS_DIR}/lib/addon
 
-echo Running tests
+addons_path=${TOP_DIR}/../addons
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git v1.6
+
+generate_addon ${addons_path}
+# copy the generated addon yamls to installer
+cp ${addons_path}/*.yaml ./pkg/config/templates
+
+echo "All existing template files"
+ls -alth ./pkg/config/templates
+echo "The templated rancherd-22-addons.yaml file"
+cat ./pkg/config/templates/rancherd-22-addons.yaml
+
+cd ${TOP_DIR}
+
+echo "Running tests"
 go test -cover -tags=test ./pkg/...
