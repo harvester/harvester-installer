@@ -11,7 +11,7 @@ cd ${TOP_DIR}
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
     echo "No existing harvester source. Pulling..."
-    git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
+    git clone --branch v1.6 --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
 else
     # When building against locally modified harvester source with
     # "-v /path/to/local/harvester/repo:/go/src/github.com/harvester/harvester"
@@ -30,7 +30,7 @@ fi
 addons_path=../addons
 if [ ! -d ${addons_path} ];then
     echo "No existing addons source. Pulling..."
-    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
+    git clone --branch v1.6 --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
 fi
 
 source ${SCRIPTS_DIR}/version-harvester $harvester_path
