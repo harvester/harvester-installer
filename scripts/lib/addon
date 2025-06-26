@@ -1,0 +1,60 @@
+#!/bin/bash
+set -e
+
+# load and source addon, the source code is saved
+load_and_source_addon() {
+  local apath=$1 # target path to save addon
+  local git=$2
+  local branch=$3
+  echo "Load and source addon from git $git branch $branch to path $apath"
+  if [[ -z ${apath} ]]; then
+    echo "Specify the target path to load addon source code"
+    return 1
+  fi
+  if [[ -z ${git} ]]; then
+    git=https://github.com/harvester/addons.git
+    echo "Use default git path ${git}"
+  fi
+  if [[ -z ${branch} ]]; then
+    branch=main
+    echo "Use default branch ${branch}"
+  fi
+  if [ ! -d ${apath} ];then
+    echo "No existing addons source on ${apath}. Pulling..."
+    git clone --branch ${branch} --single-branch --depth 1 ${git} ${apath}
+  else
+    echo "Addon path ${apath} is existing, reuse"
+  fi
+
+  ls -alth ${apath}
+
+  source ${apath}/version_info
+  source ${apath}/scripts/hack/patch-rancher-monitoring
+  source ${apath}/scripts/hack/patch-rancher-logging
+  source ${apath}/scripts/hack/patch-rancher-monitoring-crd
+
+  if [[ -z ${RANCHER_LOGGING_CHART_VERSION} ]] || [[ -z ${RANCHER_MONITORING_CHART_VERSION} ]] || [[ -z ${HARVESTER_EVENTROUTER_FULL_TAG} ]]; then
+    echo "Monitoring, logging and eventrouter are not fully defined on ${apath}/version_info"
+    return 1
+  fi
+}
+
+# generate template file to the addon path, and it is used for subsequent checks
+generate_addon() {
+  local apath=$1
+  if [[ -z ${apath} ]]; then
+    echo "Specify the target path to generate addon"
+    return 1
+  fi
+  if [ ! -d ${apath} ];then
+    echo "Addon path ${apath} is not existing, can't generate addon"
+    return 1
+  fi
+
+  echo "Generate addon templates"
+  cd ${apath}
+  go run . -generateTemplates
+  echo "The rendered addon template"
+  grep "version:" rancherd-22-addons.yaml -1 || echo "Did not find any chart info from the addon file"
+  cd -
+}

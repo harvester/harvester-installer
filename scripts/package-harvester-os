@@ -13,14 +13,23 @@ then
   VERSION_FILE="version-arm64.yaml"
 fi
 
+source ${SCRIPTS_DIR}/lib/addon
+addons_path=${TOP_DIR}/../addons
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
+
+MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
+LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
+echo "Rancher monitoring version: ${MONITORING_VERSION}"
+echo "Rancher logging version: ${LOGGING_VERSION}"
+echo "Harvester eventrouter image tag: ${HARVESTER_EVENTROUTER_FULL_TAG}"
+rm -rf ${addons_path}
+
 mkdir -p ${ARTIFACTS_DIR}
 
 source ${SCRIPTS_DIR}/version
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
-source ${SCRIPTS_DIR}/version-monitoring
-source ${SCRIPTS_DIR}/version-logging
 source ${SCRIPTS_DIR}/lib/iso
 
 BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
@@ -39,6 +48,7 @@ kubernetes: ${RKE2_VERSION}
 rancher: ${RANCHER_VERSION}
 monitoringChart: ${MONITORING_VERSION}
 loggingChart: ${LOGGING_VERSION}
+loggingChartHarvesterEventRouter: ${HARVESTER_EVENTROUTER_FULL_TAG}
 kubevirt: ${HARVESTER_KUBEVIRT_VERSION}
 minUpgradableVersion: '${HARVESTER_MIN_UPGRADABLE_VERSION}'
 EOF
@@ -48,6 +58,9 @@ ${SCRIPTS_DIR}/archive-images-lists.sh "${TOP_DIR}/../harvester/package/upgrade-
 
 # Collect dependencies' versions
 ${SCRIPTS_DIR}/collect-deps.sh harvester-release.yaml
+
+echo "The harvester-release info is"
+cat ./harvester-release.yaml
 
 docker build --pull \
 	--build-arg BASE_OS_IMAGE="${BASE_OS_IMAGE}" \

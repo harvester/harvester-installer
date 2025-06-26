@@ -27,18 +27,18 @@ else
     git config --global --add safe.directory /go/src/github.com/harvester/harvester
 fi
 
-addons_path=../addons
-if [ ! -d ${addons_path} ];then
-    echo "No existing addons source. Pulling..."
-    git clone --branch main --single-branch --depth 1 https://github.com/harvester/addons.git ../addons
-fi
+source ${SCRIPTS_DIR}/lib/addon
+addons_path=${TOP_DIR}/../addons
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
+
+MONITORING_VERSION=${RANCHER_MONITORING_CHART_VERSION}
+LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
+echo "HARVESTER_EVENTROUTER_FULL_TAG: $HARVESTER_EVENTROUTER_FULL_TAG"
 
 source ${SCRIPTS_DIR}/version-harvester $harvester_path
 source ${SCRIPTS_DIR}/version-rke2
 source ${SCRIPTS_DIR}/version
-source ${SCRIPTS_DIR}/version-monitoring
 source ${SCRIPTS_DIR}/version-rancher
-source ${SCRIPTS_DIR}/version-logging
 
 echo "Installer version: ${VERSION}"
 echo "Harvester version: ${HARVESTER_VERSION}"
@@ -68,11 +68,8 @@ if [ "$(uname)" = "Linux" ]; then
     fi
 fi
 
-source ${SCRIPTS_DIR}/patch-monitoring-logging
-
 # render template files
 cd ${addons_path}
-update_monitoring_logging_version version_info
 go run . -generateTemplates -path ${TOP_DIR}/pkg/config/templates
 
 cd ${TOP_DIR}
