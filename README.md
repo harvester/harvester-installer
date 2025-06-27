@@ -9,6 +9,12 @@ perform system installation when the ISO is booted.
 
 ## Building
 
+### Prerequisite
+- [Docker](https://docs.docker.com/engine/install/)
+- Git
+- Go (see `go.mod` for version)
+- Helm
+
 To build an ISO image, run:
 
 `make`
