@@ -412,12 +412,12 @@ func ScanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		return 0, nil, nil
 	}
 
-	if i := bytes.IndexByte(data, '\n'); i >= 0 {
-		// We have a full newline-terminated line.
+	if i := bytes.IndexByte(data, '\r'); i >= 0 {
+		// We have a full CR-terminated line.
 		return i + 1, dropCR(data[0:i]), nil
 	}
 
-	if i := bytes.IndexByte(data, '\r'); i >= 0 {
+	if i := bytes.IndexByte(data, '\n'); i >= 0 {
 		// We have a full newline-terminated line.
 		return i + 1, dropCR(data[0:i]), nil
 	}
