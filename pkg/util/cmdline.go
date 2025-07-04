@@ -105,7 +105,7 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 // "name: ens3"
 func parseIfDetails(details string) (*map[string]interface{}, error) {
 	var (
-		parts []string
+		parts = make([]string, 0, 7)
 		data  string
 	)
 

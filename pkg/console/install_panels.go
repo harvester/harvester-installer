@@ -234,12 +234,14 @@ func showDiskPage(c *Console) error {
 	}
 
 	showPersistentSizeOption := false
-	if len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device {
+	if c.config.Install.Role != config.RoleWitness &&
+		(len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device) {
 		showPersistentSizeOption = true
 	}
 
 	nextComponents := []string{diskPanel}
-	if len(diskOptions) > 1 {
+	if c.config.Install.Role != config.RoleWitness &&
+		len(diskOptions) > 1 {
 		nextComponents = append([]string{dataDiskPanel}, nextComponents...)
 	}
 
@@ -446,7 +448,11 @@ func addDiskPanel(c *Console) error {
 		installDisk := c.config.Install.Device
 		dataDisk := c.config.Install.DataDisk
 
-		if dataDisk == "" || installDisk == dataDisk {
+		if c.config.Install.Role == config.RoleWitness {
+			if err := validateDiskSize(installDisk, false); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+		} else if dataDisk == "" || installDisk == dataDisk {
 			if err := validateDiskSize(installDisk, true); err != nil {
 				return false, updateValidatorMessage(err.Error())
 			}
@@ -501,10 +507,12 @@ func addDiskPanel(c *Console) error {
 			return err
 		}
 
-		// Make sure the persistent partition size is in the correct size.
-		// Do NOT allow proceeding to next field.
-		if valid, err := validatePersistentPartitionSize(c.config.Install.PersistentPartitionSize); !valid || err != nil {
-			return err
+		if c.config.Install.Role != config.RoleWitness {
+			// Make sure the persistent partition size is in the correct size.
+			// Do NOT allow proceeding to next field.
+			if valid, err := validatePersistentPartitionSize(c.config.Install.PersistentPartitionSize); !valid || err != nil {
+				return err
+			}
 		}
 
 		if !diskConfirmed {
@@ -519,42 +527,6 @@ func addDiskPanel(c *Console) error {
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		}
 		return showNetworkPage(c)
-	}
-
-	diskConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
-		device, err := diskV.GetData()
-		if err != nil {
-			return err
-		}
-		dataDisk, err := dataDiskV.GetData()
-		if err != nil {
-			return err
-		}
-
-		if err := updateValidatorMessage(""); err != nil {
-			return err
-		}
-		c.config.Install.Device = device
-
-		if len(diskOpts) > 1 {
-			// Show error if disk size validation fails, but allow proceeding to next field
-			if _, err := validateAllDiskSizes(); err != nil {
-				return err
-			}
-			if device == dataDisk {
-				return showNext(c, persistentSizePanel, dataDiskPanel)
-			}
-			return showNext(c, dataDiskPanel)
-		}
-
-		if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
-			return err
-		}
-		// Show error if disk size validation fails, but allow proceeding to next field
-		if _, err := validateAllDiskSizes(); err != nil {
-			return err
-		}
-		return showNext(c, persistentSizePanel)
 	}
 
 	// isWipeDisksNeeded is a helper function to render the wipeDisksPanel if needed
@@ -582,6 +554,48 @@ func addDiskPanel(c *Console) error {
 			return showNext(c, askForceMBRPanel)
 		}
 		return gotoNextPage(g, v)
+	}
+
+	diskConfirm := func(g *gocui.Gui, v *gocui.View) error {
+		device, err := diskV.GetData()
+		if err != nil {
+			return err
+		}
+		dataDisk, err := dataDiskV.GetData()
+		if err != nil {
+			return err
+		}
+
+		if err := updateValidatorMessage(""); err != nil {
+			return err
+		}
+		c.config.Install.Device = device
+
+		if len(diskOpts) > 1 {
+			// Show error if disk size validation fails, but allow proceeding to next field
+			if _, err := validateAllDiskSizes(); err != nil {
+				return err
+			}
+			if c.config.Install.Role == config.RoleWitness {
+				return isWipeDisksNeeded(g, v)
+			}
+			if device == dataDisk {
+				return showNext(c, persistentSizePanel, dataDiskPanel)
+			}
+			return showNext(c, dataDiskPanel)
+		}
+
+		if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
+			return err
+		}
+		// Show error if disk size validation fails, but allow proceeding to next field
+		if _, err := validateAllDiskSizes(); err != nil {
+			return err
+		}
+		if c.config.Install.Role == config.RoleWitness {
+			return isWipeDisksNeeded(g, v)
+		}
+		return showNext(c, persistentSizePanel)
 	}
 
 	// Keybindings
@@ -720,6 +734,9 @@ func addDiskPanel(c *Console) error {
 				return err
 			}
 
+			if c.config.Install.Role == config.RoleWitness {
+				return showNext(c, diskPanel)
+			}
 			if len(diskOpts) > 1 && disk != dataDisk {
 				return showNext(c, dataDiskPanel)
 			}
@@ -767,6 +784,9 @@ func addDiskPanel(c *Console) error {
 				return err
 			}
 
+			if c.config.Install.Role == config.RoleWitness {
+				return showNext(c, diskPanel)
+			}
 			if len(diskOpts) > 1 && disk != dataDisk {
 				return showNext(c, dataDiskPanel)
 			}
@@ -1352,50 +1372,50 @@ func addHostnamePanel(c *Console) error {
 // If s is not a valid textual representation of an IP mask,
 // ParseMask returns an error describing why the parsing failed.
 func ParseMask(mask string) (IPMask, error) {
-    // Split the mask string by dots
-    parts := strings.Split(mask, ".")
+	// Split the mask string by dots
+	parts := strings.Split(mask, ".")
 
-    // Validate number of parts
-    if len(parts) != 4 {
-           return nil, &ParseError{Type: "mask format must be x.x.x.x, instead of", Text: mask}
-    }
+	// Validate number of parts
+	if len(parts) != 4 {
+		return nil, &ParseError{Type: "mask format must be x.x.x.x, instead of", Text: mask}
+	}
 
-    result := make(IPMask, 4)
+	result := make(IPMask, 4)
 
-    // Parse and validate each octet
-    for i, part := range parts {
-        // Convert string to integer
-        num, err := strconv.Atoi(part)
-        if err != nil {
-               return nil, &ParseError{Type: fmt.Sprintf("unknown number in position %d: %s", i+1, part), Text: mask}
-        }
-        // Validate range (0-255)
-        if num < 0 || num > 255 {
-               return nil, &ParseError{Type: fmt.Sprintf("number out of range in position %d: %d", i+1, num), Text: mask}
-        }
+	// Parse and validate each octet
+	for i, part := range parts {
+		// Convert string to integer
+		num, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, &ParseError{Type: fmt.Sprintf("unknown number in position %d: %s", i+1, part), Text: mask}
+		}
+		// Validate range (0-255)
+		if num < 0 || num > 255 {
+			return nil, &ParseError{Type: fmt.Sprintf("number out of range in position %d: %d", i+1, num), Text: mask}
+		}
 
-        result[i] = byte(num)
-    }
+		result[i] = byte(num)
+	}
 
-    // Validate mask format (must be continuous 1s followed by continuous 0s)
-    if !isValidMaskFormat(result) {
-           return nil, &ParseError{Type: "invalid subnet mask: not continuous", Text: mask}
-    }
+	// Validate mask format (must be continuous 1s followed by continuous 0s)
+	if !isValidMaskFormat(result) {
+		return nil, &ParseError{Type: "invalid subnet mask: not continuous", Text: mask}
+	}
 
 	return result, nil
 }
 
 // Helper function to validate mask format
 func isValidMaskFormat(mask IPMask) bool {
-    valid := false
-    outMask := net.IPv4Mask(mask[0], mask[1], mask[2], mask[3])
-    if outMask != nil {
-        ones, _ := outMask.Size()
-        cidrMask := net.CIDRMask(int(ones), 32)
-        valid = outMask.String() == cidrMask.String()
-    }
+	valid := false
+	outMask := net.IPv4Mask(mask[0], mask[1], mask[2], mask[3])
+	if outMask != nil {
+		ones, _ := outMask.Size()
+		cidrMask := net.CIDRMask(int(ones), 32)
+		valid = outMask.String() == cidrMask.String()
+	}
 
-    return valid
+	return valid
 }
 
 func addNetworkPanel(c *Console) error {
