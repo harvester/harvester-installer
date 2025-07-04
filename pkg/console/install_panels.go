@@ -234,12 +234,14 @@ func showDiskPage(c *Console) error {
 	}
 
 	showPersistentSizeOption := false
-	if len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device {
+	if c.config.Install.Role != config.RoleWitness &&
+		(len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device) {
 		showPersistentSizeOption = true
 	}
 
 	nextComponents := []string{diskPanel}
-	if len(diskOptions) > 1 {
+	if c.config.Install.Role != config.RoleWitness &&
+		len(diskOptions) > 1 {
 		nextComponents = append([]string{dataDiskPanel}, nextComponents...)
 	}
 
@@ -320,6 +322,9 @@ func addDiskPanel(c *Console) error {
 
 		if err := c.setContentByName(diskNotePanel, ""); err != nil {
 			return err
+		}
+		if c.config.Install.Role == config.RoleWitness {
+			return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
 		}
 		return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
 	}
@@ -446,7 +451,11 @@ func addDiskPanel(c *Console) error {
 		installDisk := c.config.Install.Device
 		dataDisk := c.config.Install.DataDisk
 
-		if dataDisk == "" || installDisk == dataDisk {
+		if c.config.Install.Role == config.RoleWitness {
+			if err := validateDiskSize(installDisk, false); err != nil {
+				return false, updateValidatorMessage(err.Error())
+			}
+		} else if dataDisk == "" || installDisk == dataDisk {
 			if err := validateDiskSize(installDisk, true); err != nil {
 				return false, updateValidatorMessage(err.Error())
 			}
@@ -501,10 +510,12 @@ func addDiskPanel(c *Console) error {
 			return err
 		}
 
-		// Make sure the persistent partition size is in the correct size.
-		// Do NOT allow proceeding to next field.
-		if valid, err := validatePersistentPartitionSize(c.config.Install.PersistentPartitionSize); !valid || err != nil {
-			return err
+		if c.config.Install.Role != config.RoleWitness {
+			// Make sure the persistent partition size is in the correct size.
+			// Do NOT allow proceeding to next field.
+			if valid, err := validatePersistentPartitionSize(c.config.Install.PersistentPartitionSize); !valid || err != nil {
+				return err
+			}
 		}
 
 		if !diskConfirmed {
@@ -548,7 +559,7 @@ func addDiskPanel(c *Console) error {
 		return gotoNextPage(g, v)
 	}
 
-	diskConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
+	diskConfirm := func(g *gocui.Gui, v *gocui.View) error {
 		device, err := diskV.GetData()
 		if err != nil {
 			return err
@@ -568,6 +579,9 @@ func addDiskPanel(c *Console) error {
 			if _, err := validateAllDiskSizes(); err != nil {
 				return err
 			}
+			if c.config.Install.Role == config.RoleWitness {
+				return isWipeDisksPanelNeeded(g, v)
+			}
 			if device == dataDisk {
 				return showNext(c, persistentSizePanel, dataDiskPanel)
 			}
@@ -580,6 +594,9 @@ func addDiskPanel(c *Console) error {
 		// Show error if disk size validation fails, but allow proceeding to next field
 		if _, err := validateAllDiskSizes(); err != nil {
 			return err
+		}
+		if c.config.Install.Role == config.RoleWitness {
+			return isWipeDisksPanelNeeded(g, v)
 		}
 		return showNext(c, persistentSizePanel)
 	}
@@ -720,6 +737,9 @@ func addDiskPanel(c *Console) error {
 				return err
 			}
 
+			if c.config.Install.Role == config.RoleWitness {
+				return showNext(c, diskPanel)
+			}
 			if len(diskOpts) > 1 && disk != dataDisk {
 				return showNext(c, dataDiskPanel)
 			}
@@ -767,6 +787,9 @@ func addDiskPanel(c *Console) error {
 				return err
 			}
 
+			if c.config.Install.Role == config.RoleWitness {
+				return showNext(c, diskPanel)
+			}
 			if len(diskOpts) > 1 && disk != dataDisk {
 				return showNext(c, dataDiskPanel)
 			}
