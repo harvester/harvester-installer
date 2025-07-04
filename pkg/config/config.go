@@ -330,12 +330,20 @@ func (c *HarvesterConfig) GetKubeReserved() string {
 }
 
 func (c HarvesterConfig) ShouldCreateDataPartitionOnOsDisk() bool {
+	// Witness nodes don't need a data partition
+	if c.Install.Role == RoleWitness {
+		return false
+	}
 	// DataDisk is empty means only using the OS disk, and most of the time we should create data
 	// partition on OS disk, unless when ForceMBR=true then we should not create data partition.
 	return c.DataDisk == "" && !c.ForceMBR
 }
 
 func (c HarvesterConfig) ShouldMountDataPartition() bool {
+	// Witness nodes don't need a data partition
+	if c.Install.Role == RoleWitness {
+		return false
+	}
 	// With ForceMBR=true and no DataDisk assigned (Using the OS disk), no data partition/disk will
 	// be created, so no need to mount the data disk/partition
 	if c.ForceMBR && c.DataDisk == "" {
