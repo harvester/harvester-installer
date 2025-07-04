@@ -4,6 +4,13 @@ ISOTEMP=""
 ISOMNT=/run/initramfs/live
 TARGET=/run/cos/target
 DATA_DISK_FSLABEL="HARV_LH_DEFAULT"
+declare -a CLEAR_FSLABELS=(
+  "$DATA_DISK_FSLABEL"
+  "COS_OEM"
+  "COS_STATE"
+  "COS_PERSISTENT"
+  "COS_RECOVERY"
+)
 
 clear_disk_label()
 {
@@ -26,15 +33,21 @@ clear_disk_label()
     #     }
     #   ]
     # }
-    # Clear the label of partitions that has $DATA_DISK_FSLABEL to prevent misidentification
+    # Clear the label of partitions that has $CLEAR_FSLABELS to prevent misidentification
     # Also, while yip is partitioning the disk, if it sees the LABEL to be used exists,
     # it won't create the partition. So it's necessary to clear the label
-    for part in $(blkid -t LABEL="$DATA_DISK_FSLABEL" -o device); do
-        echo "Remove filesystem label from $part"
-        # Run this tune2fs twice because sometimes the first run would show "Recovering journal"
-        # and label is not modified
-        tune2fs -L "" $part > /dev/null
-        tune2fs -L "" $part > /dev/null
+    echo "Assessing labels on data disk $HARVESTER_DATA_DISK partitions."
+    for part in $(blkid -o device "$HARVESTER_DATA_DISK"*); do
+        partition_label=$(blkid -s LABEL -o value $part)
+        for label in "${CLEAR_FSLABELS[@]}"; do
+            if [ "$partition_label" == "$label" ] ; then
+                echo "Removing filesystem label $label from $part"
+                # Run this tune2fs twice because sometimes the first run would show "Recovering journal"
+                # and label is not modified
+                tune2fs -L "" $part > /dev/null
+                tune2fs -L "" $part > /dev/null
+            fi
+        done
     done
     udevadm settle
 }
