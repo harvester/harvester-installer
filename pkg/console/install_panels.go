@@ -521,6 +521,33 @@ func addDiskPanel(c *Console) error {
 		return showNetworkPage(c)
 	}
 
+	// isWipeDisksPanelNeeded is a helper function to render the wipeDisksPanel if needed
+	// if there are no additional disks to wipe then it checks if MBR needs to be enabled
+	// else will move on to the next apge
+	isWipeDisksPanelNeeded := func(g *gocui.Gui, v *gocui.View) error {
+		options, err := getWipeDisksOptions(c.config)
+		if err != nil {
+			return err
+		}
+		if len(options) != 0 {
+			if slices.Contains(c.config.WipeDisksList, c.config.Device) || slices.Contains(c.config.WipeDisksList, c.config.DataDisk) {
+				c.config.WipeDisksList = []string{}
+				wipeDisksV.Reset()
+			}
+			return showNext(c, wipeDisksTitlePanel, wipeDisksPanel)
+		}
+		// no disks left to wipe, so close the wipeDisksTitlePanel and wipeDisksPanel
+		c.CloseElements(wipeDisksTitlePanel, wipeDisksPanel)
+
+		if systemIsBIOS() {
+			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
+				return err
+			}
+			return showNext(c, askForceMBRPanel)
+		}
+		return gotoNextPage(g, v)
+	}
+
 	diskConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
 		device, err := diskV.GetData()
 		if err != nil {
@@ -555,33 +582,6 @@ func addDiskPanel(c *Console) error {
 			return err
 		}
 		return showNext(c, persistentSizePanel)
-	}
-
-	// isWipeDisksNeeded is a helper function to render the wipeDisksPanel if needed
-	// if there are no additional disks to wipe then it checks if MBR needs to be enabled
-	// else will move on to the next apge
-	isWipeDisksNeeded := func(g *gocui.Gui, v *gocui.View) error {
-		options, err := getWipeDisksOptions(c.config)
-		if err != nil {
-			return err
-		}
-		if len(options) != 0 {
-			if slices.Contains(c.config.WipeDisksList, c.config.Device) || slices.Contains(c.config.WipeDisksList, c.config.DataDisk) {
-				c.config.WipeDisksList = []string{}
-				wipeDisksV.Reset()
-			}
-			return showNext(c, wipeDisksTitlePanel, wipeDisksPanel)
-		}
-		// no disks left to wipe, so close the wipeDisksTitlePanel and wipeDisksPanel
-		c.CloseElements(wipeDisksTitlePanel, wipeDisksPanel)
-
-		if systemIsBIOS() {
-			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
-				return err
-			}
-			return showNext(c, askForceMBRPanel)
-		}
-		return gotoNextPage(g, v)
 	}
 
 	// Keybindings
@@ -631,7 +631,7 @@ func addDiskPanel(c *Console) error {
 		// At this point the disk configuration is valid.
 		diskConfirmed = true
 
-		return isWipeDisksNeeded(g, v)
+		return isWipeDisksPanelNeeded(g, v)
 	}
 	dataDiskV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter:     dataDiskConfirm,
@@ -666,7 +666,7 @@ func addDiskPanel(c *Console) error {
 
 		// At this point the disk configuration is valid.
 		diskConfirmed = true
-		return isWipeDisksNeeded(g, v)
+		return isWipeDisksPanelNeeded(g, v)
 	}
 
 	persistentSizeV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
