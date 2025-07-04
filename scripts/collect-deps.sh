@@ -67,8 +67,10 @@ update_rancher_deps()
 
   # Extract rancher-charts helm index file
   repo_hash=$(docker run --rm --entrypoint=/bin/bash "$rancher_image" -c "ls /var/lib/rancher-data/local-catalogs/v2/rancher-charts | head -n1")
-  docker create --cidfile="$cid_file" "$rancher_image"
+  docker run --privileged -d --cidfile="$cid_file" "$rancher_image"
+  sleep 10
   docker cp $(<$cid_file):/var/lib/rancher-data/local-catalogs/v2/rancher-charts/$repo_hash/index.yaml $repo_index
+  docker stop $(<$cid_file)
   docker rm $(<$cid_file)
 
   # Get the latest version >= min_version and update it to yaml file
