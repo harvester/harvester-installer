@@ -138,7 +138,11 @@ func checkDevice(cfg *config.HarvesterConfig) error {
 		return prettyError(ErrMsgDeviceNotFound, installDisk)
 	}
 
-	if dataDisk == installDisk || dataDisk == "" {
+	if cfg.Install.Role == config.RoleWitness {
+		if err := validateDiskSize(installDisk, false); err != nil {
+			return prettyError(ErrMsgDeviceTooSmall, installDisk)
+		}
+	} else if dataDisk == installDisk || dataDisk == "" {
 		if err := validateDiskSize(installDisk, true); err != nil {
 			return prettyError(ErrMsgDeviceTooSmall, installDisk)
 		}
