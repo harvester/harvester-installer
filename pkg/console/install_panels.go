@@ -1352,50 +1352,50 @@ func addHostnamePanel(c *Console) error {
 // If s is not a valid textual representation of an IP mask,
 // ParseMask returns an error describing why the parsing failed.
 func ParseMask(mask string) (IPMask, error) {
-    // Split the mask string by dots
-    parts := strings.Split(mask, ".")
+	// Split the mask string by dots
+	parts := strings.Split(mask, ".")
 
-    // Validate number of parts
-    if len(parts) != 4 {
-           return nil, &ParseError{Type: "mask format must be x.x.x.x, instead of", Text: mask}
-    }
+	// Validate number of parts
+	if len(parts) != 4 {
+		return nil, &ParseError{Type: "mask format must be x.x.x.x, instead of", Text: mask}
+	}
 
-    result := make(IPMask, 4)
+	result := make(IPMask, 4)
 
-    // Parse and validate each octet
-    for i, part := range parts {
-        // Convert string to integer
-        num, err := strconv.Atoi(part)
-        if err != nil {
-               return nil, &ParseError{Type: fmt.Sprintf("unknown number in position %d: %s", i+1, part), Text: mask}
-        }
-        // Validate range (0-255)
-        if num < 0 || num > 255 {
-               return nil, &ParseError{Type: fmt.Sprintf("number out of range in position %d: %d", i+1, num), Text: mask}
-        }
+	// Parse and validate each octet
+	for i, part := range parts {
+		// Convert string to integer
+		num, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, &ParseError{Type: fmt.Sprintf("unknown number in position %d: %s", i+1, part), Text: mask}
+		}
+		// Validate range (0-255)
+		if num < 0 || num > 255 {
+			return nil, &ParseError{Type: fmt.Sprintf("number out of range in position %d: %d", i+1, num), Text: mask}
+		}
 
-        result[i] = byte(num)
-    }
+		result[i] = byte(num)
+	}
 
-    // Validate mask format (must be continuous 1s followed by continuous 0s)
-    if !isValidMaskFormat(result) {
-           return nil, &ParseError{Type: "invalid subnet mask: not continuous", Text: mask}
-    }
+	// Validate mask format (must be continuous 1s followed by continuous 0s)
+	if !isValidMaskFormat(result) {
+		return nil, &ParseError{Type: "invalid subnet mask: not continuous", Text: mask}
+	}
 
 	return result, nil
 }
 
 // Helper function to validate mask format
 func isValidMaskFormat(mask IPMask) bool {
-    valid := false
-    outMask := net.IPv4Mask(mask[0], mask[1], mask[2], mask[3])
-    if outMask != nil {
-        ones, _ := outMask.Size()
-        cidrMask := net.CIDRMask(int(ones), 32)
-        valid = outMask.String() == cidrMask.String()
-    }
+	valid := false
+	outMask := net.IPv4Mask(mask[0], mask[1], mask[2], mask[3])
+	if outMask != nil {
+		ones, _ := outMask.Size()
+		cidrMask := net.CIDRMask(int(ones), 32)
+		valid = outMask.String() == cidrMask.String()
+	}
 
-    return valid
+	return valid
 }
 
 func addNetworkPanel(c *Console) error {
