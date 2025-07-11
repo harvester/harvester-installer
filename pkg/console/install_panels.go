@@ -864,15 +864,6 @@ func addAskCreatePanel(c *Console) error {
 				Text:  "Join an existing Harvester cluster",
 			},
 		}
-		installed, err := harvesterInstalled()
-		if err != nil {
-			logrus.Error(err)
-		} else if installed {
-			options = append(options, widgets.Option{
-				Value: config.ModeUpgrade,
-				Text:  "Upgrade Harvester",
-			})
-		}
 
 		// layoutInstall is now called from layoutDashboard due to the addition
 		// of the new config.ModeInstall. config will be setup by layoutDashboard before passing control here

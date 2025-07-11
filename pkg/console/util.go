@@ -712,11 +712,6 @@ func retryRemoteConfig(configURL string, g *gocui.Gui) (*config.HarvesterConfig,
 	return harvestCfg, nil
 }
 
-// harvesterInstalled check existing harvester installation by partition label
-func harvesterInstalled() (bool, error) {
-	return false, nil
-}
-
 func validateDiskSize(devPath string, single bool) error {
 	diskSizeBytes, err := util.GetDiskSizeBytes(devPath)
 	if err != nil {
