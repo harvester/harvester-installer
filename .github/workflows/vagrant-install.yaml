@@ -12,6 +12,7 @@ on:
 
 env:
   LIBVIRT_DEFAULT_URI: "qemu:///system"
+  KEEP_ENV_WHEN_FAILURE: ${{ secrets.KEEP_CI_FAILURE }}
 
 jobs:
   main:
@@ -98,5 +99,6 @@ jobs:
           ./test_terraform_vm.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
       - name: Clean up vagrant cluster
         working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        if: ${{ env.KEEP_ENV_WHEN_FAILURE != 'true' }}
         run: |
           vagrant destroy -f
