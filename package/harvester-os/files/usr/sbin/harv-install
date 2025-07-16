@@ -37,15 +37,14 @@ clear_disk_label()
     # Also, while yip is partitioning the disk, if it sees the LABEL to be used exists,
     # it won't create the partition. So it's necessary to clear the label
     echo "Assessing labels on data disk $HARVESTER_DATA_DISK partitions."
-    for part in $(blkid -o device "$HARVESTER_DATA_DISK"*); do
+    for part in $(lsblk $HARVESTER_DATA_DISK -npr -oname,type | grep part | cut -d' ' -f1); do
         partition_label=$(blkid -s LABEL -o value $part)
         for label in "${CLEAR_FSLABELS[@]}"; do
             if [ "$partition_label" == "$label" ] ; then
                 echo "Removing filesystem label $label from $part"
                 # Run this tune2fs twice because sometimes the first run would show "Recovering journal"
                 # and label is not modified
-                tune2fs -L "" $part > /dev/null
-                tune2fs -L "" $part > /dev/null
+                tune2fs -L "" $part > /dev/null || tune2fs -L "" $part > /dev/null
             fi
         done
     done
