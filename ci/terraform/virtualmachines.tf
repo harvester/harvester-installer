@@ -8,12 +8,8 @@ resource "harvester_virtualmachine" "cirros-01" {
   cpu    = 2
   memory = "512Mi"
 
-  efi         = true
-  secure_boot = false
-
   run_strategy = "RerunOnFailure"
   hostname     = "vm001"
-  machine_type = "q35"
 
   network_interface {
     name           = "nic-1"
