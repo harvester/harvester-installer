@@ -2,6 +2,8 @@ module github.com/harvester/harvester-installer
 
 go 1.23
 
+toolchain go1.23.11
+
 require (
 	github.com/dell/goiscsi v1.9.0
 	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
