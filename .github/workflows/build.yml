@@ -126,6 +126,15 @@ jobs:
         headers: |-
           cache-control: public,no-cache,proxy-revalidate
 
+    - name: upload-iso-artifact
+      uses: actions/upload-artifact@v4
+      if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'iso-artifacts')
+      with:
+        name: harvester-master-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}.iso
+        path: dist/artifacts/harvester-master-${{ matrix.arch }}.iso
+        retention-days: 1
+        overwrite: true
+
   manifest-cluster-repo-image:
     name: Manifest harvester-cluster-repo image
     runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }}
