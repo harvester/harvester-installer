@@ -9,11 +9,12 @@ trap "rm -f $sorted_list_file" EXIT
 lines=$(wc -l < $sorted_list_file)
 echo Checking $lines images in $1...
 
-while true; do
     missing=$(ctr -n k8s.io images ls -q | grep -v ^sha256 | sort | comm -23 $sorted_list_file -)
     if [ -z "$missing" ]; then
         echo done
-        break
+        exit
     fi
-    sleep 2
-done
+
+echo "Following images have not been imported:"
+echo "$missing"
+exit 1
