@@ -46,6 +46,15 @@ you can do so as follows:
  $ make
 ```
 
+### Download the ISO image build during GitHub actions
+
+If you want to download the ISO image built during GitHub actions of your
+PR, then add the label `iso-artifacts` to your pull request. The ISO image
+will be available as an artifact in the `Build ISO images` workflow run.
+You can download the ISO images from the `Artifacts` section after clicking
+on the relevant workflow run at https://github.com/harvester/harvester-installer/actions.
+The ISO images will be automatically deleted after 1 day.
+
 ## Harvester Installation Process
 
 Harvester can be installed by either [booting the Harvester ISO](https://docs.harvesterhci.io/v1.2/install/index/),
