@@ -380,7 +380,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 
 	if cfg.Install.Mode != config.ModeInstall {
 		if len(cfg.Install.ManagementInterface.Interfaces) == 0 {
-			return errors.Errorf(ErrMsgManagementInterfaceNotFound)
+			return errors.Errorf("%s", ErrMsgManagementInterfaceNotFound)
 		}
 
 		if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
