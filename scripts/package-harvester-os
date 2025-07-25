@@ -22,7 +22,6 @@ LOGGING_VERSION=${RANCHER_LOGGING_CHART_VERSION}
 echo "Rancher monitoring version: ${MONITORING_VERSION}"
 echo "Rancher logging version: ${LOGGING_VERSION}"
 echo "Harvester eventrouter image tag: ${HARVESTER_EVENTROUTER_FULL_TAG}"
-rm -rf ${addons_path}
 
 mkdir -p ${ARTIFACTS_DIR}
 
