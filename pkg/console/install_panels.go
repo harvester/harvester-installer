@@ -588,14 +588,24 @@ func addDiskPanel(c *Console) error {
 			return showNext(c, dataDiskPanel)
 		}
 
-		if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
-			return err
+		if c.config.Install.Role != config.RoleWitness {
+			// Only show this for non-witness nodes, because:
+			// 1. witness nodes don't let you set persistent size, so the note makes no sense
+			// 2. showing the note for witness nodes, with no other fields present ends up
+			//    preventing key events and everything locks up
+			if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
+				return err
+			}
 		}
 		// Show error if disk size validation fails, but allow proceeding to next field
-		if _, err := validateAllDiskSizes(); err != nil {
+		valid, err := validateAllDiskSizes()
+		if err != nil {
 			return err
 		}
 		if c.config.Install.Role == config.RoleWitness {
+			// Set diskConfirmed here to avoid having to press ENTER twice
+			// to proceed if the disk configuration is valid
+			diskConfirmed = valid
 			return isWipeDisksPanelNeeded(g, v)
 		}
 		return showNext(c, persistentSizePanel)
