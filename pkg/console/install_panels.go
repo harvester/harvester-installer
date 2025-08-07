@@ -1782,16 +1782,22 @@ func addNetworkPanel(c *Console) error {
 		if err = checkStaticRequiredString("address", address); err != nil {
 			return err.Error(), nil
 		}
+		userInputData.Address = address
 		ip, ipNet, err := net.ParseCIDR(address)
 		if err != nil {
-			userInputData.Address = address
-			return "", nil
+			// It's not a CIDR address, but it might be a non-CIDR address
+			ip = net.ParseIP(address)
+			if ip == nil {
+				return fmt.Sprintf("%s is not a valid IP address", address), nil
+			}
 		}
-		mask := ipNet.Mask
-		userInputData.Address = address
-		userInputData.AddrMask = ipNet.Mask.String()
+		// At this point, ip is valid (so save it) but ipNet might be nil (non-CIDR address)
 		mgmtNetwork.IP = ip.String()
-		mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3])
+		if ipNet != nil {
+			mask := ipNet.Mask
+			userInputData.AddrMask = ipNet.Mask.String()
+			mgmtNetwork.SubnetMask = fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3])
+		}
 		return "", nil
 	}
 	addressVConfirm := gotoNextPanel(c, []string{addrMaskPanel}, validateAddress)
