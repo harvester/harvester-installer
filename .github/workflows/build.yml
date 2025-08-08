@@ -87,15 +87,19 @@ jobs:
         credentials_json: '${{ env.GOOGLE_AUTH }}'
 
     - name: upload-iso
-      uses: 'google-github-actions/upload-cloud-storage@v2'
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
+      uses: actions/upload-artifact@v4
       with:
-        path: dist/artifacts
-        parent: false
-        destination: releases.rancher.com/harvester/${{ env.branch }}
-        predefinedAcl: publicRead
-        headers: |-
-          cache-control: public,no-cache,proxy-revalidate
+        name: ${{ matrix.arch }}-iso-image
+        path: dist/artifacts/harvester-master-${{ matrix.arch }}.iso
+#      uses: 'google-github-actions/upload-cloud-storage@v2'
+#      if: ${{ startsWith(github.ref, 'refs/heads/') }}
+#      with:
+#        path: dist/artifacts
+#        parent: false
+#        destination: releases.rancher.com/harvester/${{ env.branch }}
+#        predefinedAcl: publicRead
+#        headers: |-
+#          cache-control: public,no-cache,proxy-revalidate
 
   manifest-cluster-repo-image:
     name: Manifest harvester-cluster-repo image
