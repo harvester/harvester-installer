@@ -97,6 +97,13 @@ jobs:
         headers: |-
           cache-control: public,no-cache,proxy-revalidate
 
+    - name: upload-iso-artifact
+      uses: actions/upload-artifact@v4
+      if: ${{ !startsWith(github.ref, 'refs/heads/') }}
+      with:
+        name: harvester-master-${{ matrix.arch }}.iso
+        path: dist/artifacts/harvester-master-${{ matrix.arch }}.iso
+
   manifest-cluster-repo-image:
     name: Manifest harvester-cluster-repo image
     runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }}
