@@ -1,8 +1,35 @@
+{{- if or .ExternalStorage.MultiPath.Blacklist .ExternalStorage.MultiPath.BlackListWwid -}}
 blacklist {
-{{ range $val := .ExternalStorage.MultiPathConfig }}
+{{- if .ExternalStorage.MultiPath.BlackListWwid }}
+    wwid "{{ .ExternalStorage.MultiPath.BlackListWwid }}"
+{{- end }}
+{{- range $val := .ExternalStorage.MultiPath.Blacklist }}
+    device {
+        vendor "{{ $val.Vendor }}"
+        product "{{ $val.Product }}"
+    }
+{{- end }}
+}
+{{- if or .ExternalStorage.MultiPath.Exceptions .ExternalStorage.MultiPath.ExceptionWwid }}
+blacklist_exceptions {
+{{- if .ExternalStorage.MultiPath.ExceptionWwid }}
+    wwid "{{ .ExternalStorage.MultiPath.ExceptionWwid }}"
+{{- end }}
+{{- range $val := .ExternalStorage.MultiPath.Exceptions }}
+    device {
+        vendor "{{ $val.Vendor }}"
+        product "{{ $val.Product }}"
+    }
+{{- end }}
+}
+{{- end }}
+{{- else if .ExternalStorage.MultiPathConfig -}}
+blacklist {
+{{- range $val := .ExternalStorage.MultiPathConfig }}
     device {
         vendor "!{{ $val.Vendor }}"
         product "!{{ $val.Product }}"
     }
-{{ end }}
+{{- end }}
 }
+{{- end }}
