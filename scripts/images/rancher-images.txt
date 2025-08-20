@@ -1,5 +1,5 @@
-docker.io/rancher/fleet-agent:v0.12.3
-docker.io/rancher/fleet:v0.12.3
+docker.io/rancher/fleet-agent:v0.12.4
+docker.io/rancher/fleet:v0.12.4
 docker.io/rancher/gitjob:v0.9.8
 docker.io/rancher/kubectl:v1.29.2
 docker.io/rancher/kubectl:v1.32.2
@@ -16,9 +16,9 @@ docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.75.1
 docker.io/rancher/mirrored-prometheus-operator-admission-webhook:v0.75.1
 docker.io/rancher/mirrored-prometheus-prometheus:v2.53.1
 docker.io/rancher/mirrored-prometheus-alertmanager:v0.27.0
-docker.io/rancher/rancher-webhook:v0.7.2
-docker.io/rancher/rancher:v2.11.2
-docker.io/rancher/rancher-agent:v2.11.2
+docker.io/rancher/rancher-webhook:v0.7.3
+docker.io/rancher/rancher:v2.11.3
+docker.io/rancher/rancher-agent:v2.11.3
 docker.io/rancher/shell:v0.3.0
 docker.io/rancher/shell:v0.4.1
 docker.io/rancher/system-agent:v0.3.12-suc
