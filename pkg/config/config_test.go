@@ -604,7 +604,7 @@ func TestCalculateCPUReservedInMilliCPU(t *testing.T) {
 func Test_MultipathConfig(t *testing.T) {
 	assert := require.New(t)
 	config := NewHarvesterConfig()
-	config.OS.ExternalStorage = ExternalStorageConfig{
+	config.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: []DiskConfig{
 			{
@@ -626,7 +626,7 @@ func Test_MultipathConfig(t *testing.T) {
 
 func Test_ToCosInstallEnv(t *testing.T) {
 	hvConfig := NewHarvesterConfig()
-	hvConfig.OS.ExternalStorage = ExternalStorageConfig{
+	hvConfig.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: []DiskConfig{
 			{
@@ -639,7 +639,7 @@ func Test_ToCosInstallEnv(t *testing.T) {
 			},
 		},
 	}
-	hvConfig.OS.AdditionalKernelArguments = "rd.iscsi.firmware rd.iscsi.ibft"
+	hvConfig.AdditionalKernelArguments = "rd.iscsi.firmware rd.iscsi.ibft"
 	assert := require.New(t)
 	env, err := hvConfig.ToCosInstallEnv()
 	assert.NoError(err)

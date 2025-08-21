@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -23,7 +22,9 @@ func ReadConfig() (HarvesterConfig, error) {
 	if err != nil {
 		return *result, err
 	}
-	schema.Mapper.ToInternal(data)
+	if err = schema.Mapper.ToInternal(data); err != nil {
+		return *result, err
+	}
 	return *result, convert.ToObj(data, result)
 }
 
@@ -65,7 +66,7 @@ func readUserData(fileName string) (HarvesterConfig, error) {
 		return *result, err
 	}
 
-	contents, err := ioutil.ReadFile(fileName)
+	contents, err := os.ReadFile(fileName) //nolint:gosec
 	if err != nil {
 		return *result, err
 	}

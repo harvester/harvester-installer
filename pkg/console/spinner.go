@@ -98,14 +98,16 @@ func (s *Spinner) writePanel(message string, clearView bool, fgColor gocui.Attri
 		}
 
 		if s.focus {
-			g.SetCurrentView(s.panel)
+			if _, err = g.SetCurrentView(s.panel); err != nil {
+				return err
+			}
 		}
 		if clearView {
 			v.Clear()
 		}
 		v.FgColor = fgColor
-		v.Write([]byte(message))
-		return nil
+		_, err = v.Write([]byte(message))
+		return err
 	})
 
 	<-ch

@@ -43,6 +43,6 @@ func TestReadUserData(t *testing.T) {
 	config, err := readUserData("./testdata/userdata.yaml")
 	assert.NoError(t, err, "expected no error during loading of userdata")
 	assert.Equal(t, config.Token, "token", "expected token to be token")
-	assert.Equal(t, config.OS.Password, "p@ssword", "expected password to be p@ssword")
-	assert.Equal(t, config.Install.ManagementInterface.Method, "dhcp", "expected network mode to be dhcp")
+	assert.Equal(t, config.Password, "p@ssword", "expected password to be p@ssword")
+	assert.Equal(t, config.ManagementInterface.Method, "dhcp", "expected network mode to be dhcp")
 }

@@ -6,20 +6,18 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/harvester/harvester-installer/pkg/config"
-	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 // TODO(weihanglo): do not re-implement logic in test.
 type FakeValidator struct {
-	hasInterfaces []string
-	hasDevices    []string
+	hasDevices []string
 }
 
 func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
-	if err := v.checkMgmtInterface(cfg.Install.ManagementInterface); err != nil {
+	if err := v.checkMgmtInterface(cfg.ManagementInterface); err != nil {
 		return err
 	}
-	if err := v.checkDevice(cfg.Install.Device); err != nil {
+	if err := v.checkDevice(cfg.Device); err != nil {
 		return err
 	}
 	return nil
@@ -45,14 +43,6 @@ func createDefaultFakeValidator() FakeValidator {
 	return FakeValidator{
 		hasDevices: []string{"/dev/vda"},
 	}
-}
-
-func loadConfig(t *testing.T, name string) *config.HarvesterConfig {
-	c, err := config.LoadHarvesterConfig(util.LoadFixture(t, name))
-	if err != nil {
-		t.Fatal("fail to load config: ", err)
-	}
-	return c
 }
 
 func TestValidateConfig(t *testing.T) {
@@ -141,7 +131,7 @@ func TestValidateConfig(t *testing.T) {
 			name: "invalid create config: interface not found",
 			cfg:  createCreateConfig(),
 			preApply: func(c *config.HarvesterConfig) {
-				c.Install.ManagementInterface.Interfaces = nil
+				c.ManagementInterface.Interfaces = nil
 			},
 			errMsg: ErrMsgMgmtInterfaceNotSpecified,
 		},

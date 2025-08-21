@@ -34,7 +34,7 @@ func initLogs() error {
 		logFilePath = defaultLogFilePath
 	}
 
-	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,7 @@ func (c *Console) ShowElement(name string) error {
 	if err != nil {
 		return err
 	}
-	elem.Show()
-	return nil
+	return elem.Show()
 }
 
 func (c *Console) setContentByName(name string, content string) error {
@@ -112,7 +111,7 @@ func (c *Console) setContentByName(name string, content string) error {
 		return err
 	}
 	v.SetContent(content)
-	_, err = c.Gui.SetViewOnTop(name)
+	_, err = c.SetViewOnTop(name)
 	return err
 }
 
@@ -142,7 +141,7 @@ func (c *Console) doRun() error {
 		if err := c.getHarvesterConfig(); err != nil {
 			return err
 		}
-		if c.config.Install.Mode == config.ModeCreate || c.config.Install.Mode == config.ModeJoin {
+		if c.config.Mode == config.ModeCreate || c.config.Mode == config.ModeJoin {
 			dashboard = c.layoutDashboard
 			// no need to do preflight check after the node is installed, it runs layoutDashboard directly
 			// preflightWarnings are used in layoutInstall
@@ -151,10 +150,10 @@ func (c *Console) doRun() error {
 	}
 
 	// installModeBoot is used to control options in layoutInstall
-	if c.config.Install.Mode == config.ModeInstall {
+	if c.config.Mode == config.ModeInstall {
 		logrus.Info("harvester already installed")
 		alreadyInstalled = true
-		c.config.Install.Mode = ""
+		c.config.Mode = ""
 		preflightCheck = false
 	}
 

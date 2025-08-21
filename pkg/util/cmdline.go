@@ -3,7 +3,6 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strconv"
@@ -57,7 +56,7 @@ func parseCmdLine(cmdline string, prefix string) (map[string]interface{}, error)
 
 // ReadCmdline parses /proc/cmdline and returns a map contains kernel parameters
 func ReadCmdline(prefix string) (map[string]interface{}, error) {
-	bytes, err := ioutil.ReadFile("/proc/cmdline")
+	bytes, err := os.ReadFile("/proc/cmdline")
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -74,11 +73,11 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 	}
 	ifDetails := make([]string, 0)
 
-	switch networkInterfaces.(type) {
+	switch networkInterfaces := networkInterfaces.(type) {
 	case string:
-		ifDetails = append(ifDetails, networkInterfaces.(string))
+		ifDetails = append(ifDetails, networkInterfaces)
 	case []string:
-		ifDetails = networkInterfaces.([]string)
+		ifDetails = networkInterfaces
 	}
 
 	outDetails := make([]interface{}, 0, len(ifDetails))

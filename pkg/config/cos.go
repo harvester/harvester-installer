@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -94,22 +93,22 @@ func NewElementalConfig() *ElementalConfig {
 func ConvertToElementalConfig(config *HarvesterConfig) (*ElementalConfig, error) {
 	elementalConfig := NewElementalConfig()
 
-	if config.Install.ForceEFI {
+	if config.ForceEFI {
 		elementalConfig.Install.Firmware = "efi"
 	}
 
 	elementalConfig.Install.PartTable = "gpt"
-	if !config.Install.ForceGPT {
+	if !config.ForceGPT {
 		elementalConfig.Install.PartTable = "msdos"
 	}
 
-	resolvedDevPath, err := filepath.EvalSymlinks(config.Install.Device)
+	resolvedDevPath, err := filepath.EvalSymlinks(config.Device)
 	if err != nil {
 		return nil, err
 	}
 	elementalConfig.Install.Target = resolvedDevPath
-	elementalConfig.Install.CloudInit = config.Install.ConfigURL
-	elementalConfig.Install.Tty = config.Install.TTY
+	elementalConfig.Install.CloudInit = config.ConfigURL
+	elementalConfig.Install.Tty = config.TTY
 
 	// Since https://github.com/rancher/elemental-toolkit/commit/7b348b51342c9041741145d1426951336836c757, elemental
 	// CLI calcuates active.img's size automatically. Specify the size to make the size consistent with previous versions.
@@ -139,16 +138,16 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	afterNetwork := yipSchema.Stage{
-		Hostname: config.OS.Hostname,
+		Hostname: config.Hostname,
 		SSHKeys:  make(map[string][]string),
 	}
 
 	initramfs.Users[cosLoginUser] = yipSchema.User{
-		PasswordHash: cfg.OS.Password,
+		PasswordHash: cfg.Password,
 	}
 
 	// Use modprobe to load modules as a temporary solution
-	for _, module := range cfg.OS.Modules {
+	for _, module := range cfg.Modules {
 		initramfs.Commands = append(initramfs.Commands, "modprobe "+module)
 	}
 	// Delete the cpu_manager_state file during the initramfs stage. During a reboot, this state file is always reverted
@@ -158,11 +157,11 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	// and make the entire node unavailable.
 	initramfs.Commands = append(initramfs.Commands, "rm -f /var/lib/kubelet/cpu_manager_state")
 
-	initramfs.Sysctl = cfg.OS.Sysctls
-	initramfs.Environment = cfg.OS.Environment
+	initramfs.Sysctl = cfg.Sysctls
+	initramfs.Environment = cfg.Environment
 
 	// OS
-	for _, ff := range cfg.OS.WriteFiles {
+	for _, ff := range cfg.WriteFiles {
 		perm, err := strconv.ParseUint(ff.RawFilePermissions, 8, 32)
 		if err != nil {
 			logrus.Warnf("fail to parse permission %s, use default permission.", err)
@@ -191,18 +190,18 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			return nil, err
 		}
 
-		initramfs.Hostname = cfg.OS.Hostname
+		initramfs.Hostname = cfg.Hostname
 
-		if len(cfg.OS.NTPServers) > 0 {
-			initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
+		if len(cfg.NTPServers) > 0 {
+			initramfs.TimeSyncd["NTP"] = strings.Join(cfg.NTPServers, " ")
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
 		}
-		if len(cfg.OS.DNSNameservers) > 0 {
-			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
+		if len(cfg.DNSNameservers) > 0 {
+			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.DNSNameservers))
 		}
 
-		if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
+		if err := UpdateWifiConfig(&initramfs, cfg.Wifi, false); err != nil {
 			return nil, err
 		}
 
@@ -211,7 +210,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			return nil, err
 		}
 
-		afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
+		afterNetwork.SSHKeys[cosLoginUser] = cfg.SSHAuthorizedKeys
 	}
 
 	cosConfig := &yipSchema.YipConfig{
@@ -227,7 +226,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	overwriteSSHDComponent(config)
 
 	// Add after-install-chroot stage
-	if len(config.OS.AfterInstallChrootCommands) > 0 {
+	if len(config.AfterInstallChrootCommands) > 0 {
 		afterInstallChroot := yipSchema.Stage{}
 		if err := overwriteAfterInstallChrootStage(config, &afterInstallChroot); err != nil {
 			return nil, err
@@ -239,9 +238,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 }
 
 func overwriteSSHDComponent(config *HarvesterConfig) {
-	if config.OS.SSHD.SFTP {
-		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
-		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/lib/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
+	if config.SSHD.SFTP {
+		config.AfterInstallChrootCommands = append(config.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
+		config.AfterInstallChrootCommands = append(config.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/lib/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
 	}
 }
 
@@ -332,7 +331,7 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		},
 	)
 
-	if config.Install.Mode == "create" {
+	if config.Mode == "create" {
 		bootstrapResources, err := genBootstrapResources(config)
 		if err != nil {
 			return err
@@ -478,7 +477,7 @@ func RestoreOriginalNetworkConfig() error {
 	}
 
 	for name, bytes := range originalNetworkConfigs {
-		if err := ioutil.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
 			return err
 		}
 	}
@@ -501,7 +500,7 @@ func SaveOriginalNetworkConfig() error {
 				return err
 			}
 			for _, path := range filepaths {
-				bytes, err := ioutil.ReadFile(path)
+				bytes, err := os.ReadFile(path) //nolint:gosec
 				if err != nil {
 					return err
 				}
@@ -515,7 +514,6 @@ func SaveOriginalNetworkConfig() error {
 			return
 		}
 		err = save(ifcfgGlobPattern)
-		return
 	})
 
 	return err
@@ -653,11 +651,8 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) error {
 	// add Bridge named MgmtInterfaceName and attach Bond named MgmtBondInterfaceName to bridge
 
-	needVlanInterface := false
 	// pvid is always 1, if vlan id is 1, it means untagged vlan.
-	if mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094 {
-		needVlanInterface = true
-	}
+	needVlanInterface := mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094
 
 	// setup pre up script
 	stage.Directories = append(stage.Directories, yipSchema.Directory{
@@ -859,12 +854,12 @@ func CreateRootPartitioningLayoutSeparateDataDisk(elementalConfig *ElementalConf
 }
 
 func CreateRootPartitioningLayoutSharedDataDisk(elementalConfig *ElementalConfig, hvstConfig *HarvesterConfig) (*ElementalConfig, error) {
-	diskSizeBytes, err := util.GetDiskSizeBytes(hvstConfig.Install.Device)
+	diskSizeBytes, err := util.GetDiskSizeBytes(hvstConfig.Device)
 	if err != nil {
 		return nil, err
 	}
 
-	persistentSize := hvstConfig.Install.PersistentPartitionSize
+	persistentSize := hvstConfig.PersistentPartitionSize
 	if persistentSize == "" {
 		persistentSize = fmt.Sprintf("%dGi", PersistentSizeMinGiB)
 	}
@@ -910,10 +905,10 @@ func CreateRootPartitioningLayoutSharedDataDisk(elementalConfig *ElementalConfig
 
 // setupExternalStorage is needed to support boot of external disks
 // this involves enable multipath service and configuring it to blacklist
-// all devices except the ones listed in the config.OS.ExternalStorage.MultiPathConfig
+// all devices except the ones listed in the config.ExternalStorage.MultiPathConfig
 
 func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error {
-	if !config.OS.ExternalStorage.Enabled {
+	if !config.ExternalStorage.Enabled {
 		return nil
 	}
 	stage.Systemctl.Enable = append(stage.Systemctl.Enable, "multipathd")
@@ -935,9 +930,9 @@ func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error
 // to avoid this we drop in a default stage in /etc/multipath/conf.d/99-longhorn.conf
 // which contains a blacklist directive for Longhorn specific VENDOR/PRODUCT combination
 func disableLonghornMultipathing(stage *yipSchema.Stage) {
-	ignoreLonghorn := []byte(`blacklist { 
-  device { 
-    vendor "IET" 
+	ignoreLonghorn := []byte(`blacklist {
+  device {
+    vendor "IET"
     product "VIRTUAL-DISK"
   }
 }`)
