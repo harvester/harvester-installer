@@ -1,7 +1,6 @@
 package console
 
 import (
-	"io/ioutil"
 	"os"
 	goruntime "runtime"
 	"strings"
@@ -10,7 +9,7 @@ import (
 )
 
 func getFirstConsoleTTY() string {
-	b, err := ioutil.ReadFile("/sys/class/tty/console/active")
+	b, err := os.ReadFile("/sys/class/tty/console/active")
 	if err != nil {
 		logrus.Error(err)
 		return ""

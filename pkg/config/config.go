@@ -292,12 +292,12 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	for labelName, labelValue := range c.Labels {
 		if errs := validation.IsQualifiedName(labelName); len(errs) > 0 {
 			errJoined := strings.Join(errs, ", ")
-			return nil, fmt.Errorf("Invalid label name '%s': %s", labelName, errJoined)
+			return nil, fmt.Errorf("invalid label name '%s': %s", labelName, errJoined)
 		}
 
 		if errs := validation.IsValidLabelValue(labelValue); len(errs) > 0 {
 			errJoined := strings.Join(errs, ", ")
-			return nil, fmt.Errorf("Invalid label value '%s': %s", labelValue, errJoined)
+			return nil, fmt.Errorf("invalid label value '%s': %s", labelValue, errJoined)
 		}
 		labelStrs = append(labelStrs, fmt.Sprintf("%s=%s", labelName, labelValue))
 	}
@@ -331,7 +331,7 @@ func (c *HarvesterConfig) GetKubeReserved() string {
 
 func (c HarvesterConfig) ShouldCreateDataPartitionOnOsDisk() bool {
 	// Witness nodes don't need a data partition
-	if c.Install.Role == RoleWitness {
+	if c.Role == RoleWitness {
 		return false
 	}
 	// DataDisk is empty means only using the OS disk, and most of the time we should create data
@@ -341,7 +341,7 @@ func (c HarvesterConfig) ShouldCreateDataPartitionOnOsDisk() bool {
 
 func (c HarvesterConfig) ShouldMountDataPartition() bool {
 	// Witness nodes don't need a data partition
-	if c.Install.Role == RoleWitness {
+	if c.Role == RoleWitness {
 		return false
 	}
 	// With ForceMBR=true and no DataDisk assigned (Using the OS disk), no data partition/disk will
@@ -443,21 +443,21 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		SystemdFirstBoot: make(map[string]string),
 	}
 
-	runtimeConfig.Hostname = config.OS.Hostname
-	if len(config.OS.NTPServers) > 0 {
-		runtimeConfig.TimeSyncd["NTP"] = strings.Join(config.OS.NTPServers, " ")
+	runtimeConfig.Hostname = config.Hostname
+	if len(config.NTPServers) > 0 {
+		runtimeConfig.TimeSyncd["NTP"] = strings.Join(config.NTPServers, " ")
 		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, ntpdService)
 		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, timeWaitSyncService)
 	}
-	if len(config.OS.DNSNameservers) > 0 {
-		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
+	if len(config.DNSNameservers) > 0 {
+		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.DNSNameservers))
 	}
 	err := initRancherdStage(config, &runtimeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := UpdateWifiConfig(&runtimeConfig, config.OS.Wifi, true); err != nil {
+	if err := UpdateWifiConfig(&runtimeConfig, config.Wifi, true); err != nil {
 		return nil, err
 	}
 
@@ -465,9 +465,9 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		return nil, err
 	}
 
-	runtimeConfig.SSHKeys[cosLoginUser] = config.OS.SSHAuthorizedKeys
+	runtimeConfig.SSHKeys[cosLoginUser] = config.SSHAuthorizedKeys
 	runtimeConfig.Users[cosLoginUser] = yipSchema.User{
-		PasswordHash: config.OS.Password,
+		PasswordHash: config.Password,
 	}
 
 	conf := &yipSchema.YipConfig{

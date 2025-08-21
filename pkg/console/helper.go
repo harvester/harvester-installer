@@ -29,8 +29,13 @@ func (p *passwordWrapper) passwordVConfirmKeyBinding(_ *gocui.Gui, _ *gocui.View
 }
 
 func (p *passwordWrapper) passwordVEscapeKeyBinding(_ *gocui.Gui, _ *gocui.View) error {
-	p.passwordV.Close()
-	p.passwordConfirmV.Close()
+	var err error
+	if err = p.passwordV.Close(); err != nil {
+		return err
+	}
+	if err = p.passwordConfirmV.Close(); err != nil {
+		return err
+	}
 	if installModeOnly {
 		return showDiskPage(p.c)
 	}
@@ -58,8 +63,12 @@ func (p *passwordWrapper) passwordConfirmVKeyEnter(_ *gocui.Gui, _ *gocui.View) 
 	if userInputData.Password != userInputData.PasswordConfirm {
 		return p.c.setContentByName(validatorPanel, "Password mismatching")
 	}
-	p.passwordV.Close()
-	p.passwordConfirmV.Close()
+	if err = p.passwordV.Close(); err != nil {
+		return err
+	}
+	if err = p.passwordConfirmV.Close(); err != nil {
+		return err
+	}
 	encrypted, err := util.GetEncryptedPasswd(userInputData.Password)
 	if err != nil {
 		return err
@@ -73,8 +82,13 @@ func (p *passwordWrapper) passwordConfirmVKeyEnter(_ *gocui.Gui, _ *gocui.View) 
 }
 
 func (p *passwordWrapper) passwordConfirmVKeyEscape(_ *gocui.Gui, _ *gocui.View) error {
-	p.passwordV.Close()
-	p.passwordConfirmV.Close()
+	var err error
+	if err = p.passwordV.Close(); err != nil {
+		return err
+	}
+	if err = p.passwordConfirmV.Close(); err != nil {
+		return err
+	}
 	if err := p.c.setContentByName(notePanel, ""); err != nil {
 		return err
 	}

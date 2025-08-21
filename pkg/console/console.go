@@ -34,7 +34,7 @@ func initLogs() error {
 		logFilePath = defaultLogFilePath
 	}
 
-	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,7 @@ func (c *Console) ShowElement(name string) error {
 	if err != nil {
 		return err
 	}
-	elem.Show()
-	return nil
+	return elem.Show()
 }
 
 func (c *Console) setContentByName(name string, content string) error {
@@ -112,7 +111,7 @@ func (c *Console) setContentByName(name string, content string) error {
 		return err
 	}
 	v.SetContent(content)
-	_, err = c.Gui.SetViewOnTop(name)
+	_, err = c.SetViewOnTop(name)
 	return err
 }
 

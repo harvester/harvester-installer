@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -94,22 +93,22 @@ func NewElementalConfig() *ElementalConfig {
 func ConvertToElementalConfig(config *HarvesterConfig) (*ElementalConfig, error) {
 	elementalConfig := NewElementalConfig()
 
-	if config.Install.ForceEFI {
+	if config.ForceEFI {
 		elementalConfig.Install.Firmware = "efi"
 	}
 
 	elementalConfig.Install.PartTable = "gpt"
-	if !config.Install.ForceGPT {
+	if !config.ForceGPT {
 		elementalConfig.Install.PartTable = "msdos"
 	}
 
-	resolvedDevPath, err := filepath.EvalSymlinks(config.Install.Device)
+	resolvedDevPath, err := filepath.EvalSymlinks(config.Device)
 	if err != nil {
 		return nil, err
 	}
 	elementalConfig.Install.Target = resolvedDevPath
-	elementalConfig.Install.CloudInit = config.Install.ConfigURL
-	elementalConfig.Install.Tty = config.Install.TTY
+	elementalConfig.Install.CloudInit = config.ConfigURL
+	elementalConfig.Install.Tty = config.TTY
 
 	// Since https://github.com/rancher/elemental-toolkit/commit/7b348b51342c9041741145d1426951336836c757, elemental
 	// CLI calcuates active.img's size automatically. Specify the size to make the size consistent with previous versions.
@@ -139,16 +138,16 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	afterNetwork := yipSchema.Stage{
-		Hostname: config.OS.Hostname,
+		Hostname: config.Hostname,
 		SSHKeys:  make(map[string][]string),
 	}
 
 	initramfs.Users[cosLoginUser] = yipSchema.User{
-		PasswordHash: cfg.OS.Password,
+		PasswordHash: cfg.Password,
 	}
 
 	// Use modprobe to load modules as a temporary solution
-	for _, module := range cfg.OS.Modules {
+	for _, module := range cfg.Modules {
 		initramfs.Commands = append(initramfs.Commands, "modprobe "+module)
 	}
 	// Delete the cpu_manager_state file during the initramfs stage. During a reboot, this state file is always reverted
@@ -332,7 +331,7 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		},
 	)
 
-	if config.Install.Mode == "create" {
+	if config.Mode == "create" {
 		bootstrapResources, err := genBootstrapResources(config)
 		if err != nil {
 			return err
@@ -478,7 +477,7 @@ func RestoreOriginalNetworkConfig() error {
 	}
 
 	for name, bytes := range originalNetworkConfigs {
-		if err := ioutil.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
 			return err
 		}
 	}
@@ -501,7 +500,7 @@ func SaveOriginalNetworkConfig() error {
 				return err
 			}
 			for _, path := range filepaths {
-				bytes, err := ioutil.ReadFile(path)
+				bytes, err := os.ReadFile(path) //nolint:gosec
 				if err != nil {
 					return err
 				}
@@ -515,7 +514,6 @@ func SaveOriginalNetworkConfig() error {
 			return
 		}
 		err = save(ifcfgGlobPattern)
-		return
 	})
 
 	return err
@@ -653,11 +651,8 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) error {
 	// add Bridge named MgmtInterfaceName and attach Bond named MgmtBondInterfaceName to bridge
 
-	needVlanInterface := false
 	// pvid is always 1, if vlan id is 1, it means untagged vlan.
-	if mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094 {
-		needVlanInterface = true
-	}
+	needVlanInterface := mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094
 
 	// setup pre up script
 	stage.Directories = append(stage.Directories, yipSchema.Directory{
@@ -859,12 +854,12 @@ func CreateRootPartitioningLayoutSeparateDataDisk(elementalConfig *ElementalConf
 }
 
 func CreateRootPartitioningLayoutSharedDataDisk(elementalConfig *ElementalConfig, hvstConfig *HarvesterConfig) (*ElementalConfig, error) {
-	diskSizeBytes, err := util.GetDiskSizeBytes(hvstConfig.Install.Device)
+	diskSizeBytes, err := util.GetDiskSizeBytes(hvstConfig.Device)
 	if err != nil {
 		return nil, err
 	}
 
-	persistentSize := hvstConfig.Install.PersistentPartitionSize
+	persistentSize := hvstConfig.PersistentPartitionSize
 	if persistentSize == "" {
 		persistentSize = fmt.Sprintf("%dGi", PersistentSizeMinGiB)
 	}
@@ -935,9 +930,9 @@ func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error
 // to avoid this we drop in a default stage in /etc/multipath/conf.d/99-longhorn.conf
 // which contains a blacklist directive for Longhorn specific VENDOR/PRODUCT combination
 func disableLonghornMultipathing(stage *yipSchema.Stage) {
-	ignoreLonghorn := []byte(`blacklist { 
-  device { 
-    vendor "IET" 
+	ignoreLonghorn := []byte(`blacklist {
+  device {
+    vendor "IET"
     product "VIRTUAL-DISK"
   }
 }`)

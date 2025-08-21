@@ -91,7 +91,7 @@ func getIPThroughDHCP(iface string) (net.IP, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer broadcast.Close()
+	defer broadcast.Close() //nolint:errcheck
 
 	lease, err := broadcast.Request(context.TODO())
 	if err != nil {

@@ -78,7 +78,7 @@ func (p *RenderedWebhook) Handle() error {
 			Timeout: defaultHTTPTimeout,
 		}
 
-		if p.Webhook.Insecure {
+		if p.Insecure {
 			c.Transport = &http.Transport{
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
@@ -91,7 +91,7 @@ func (p *RenderedWebhook) Handle() error {
 			body = strings.NewReader(p.RenderedPayload)
 		}
 
-		req, err := http.NewRequest(p.Webhook.Method, p.RenderedURL, body)
+		req, err := http.NewRequest(p.Method, p.RenderedURL, body)
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ func (p *RenderedWebhook) Handle() error {
 			req.SetBasicAuth(p.BasicAuth.User, p.BasicAuth.Password)
 		}
 
-		for k, vv := range p.Webhook.Headers {
+		for k, vv := range p.Headers {
 			for _, v := range vv {
 				req.Header.Add(k, v)
 			}
@@ -163,17 +163,17 @@ func prepareWebhook(h config.Webhook, context map[string]string) (*RenderedWebho
 		},
 	}
 
-	if !IsValidEvent(p.Webhook.Event) {
-		return nil, errors.Errorf("unknown install event: %s", p.Webhook.Event)
+	if !IsValidEvent(p.Event) {
+		return nil, errors.Errorf("unknown install event: %s", p.Event)
 	}
-	if !IsValidHTTPMethod(p.Webhook.Method) {
-		return nil, errors.Errorf("unknown HTTP method: %s", p.Webhook.Method)
+	if !IsValidHTTPMethod(p.Method) {
+		return nil, errors.Errorf("unknown HTTP method: %s", p.Method)
 	}
 
 	// render URL
 	tmplOption := "missingkey=zero"
 	bs := bytes.NewBufferString("")
-	tmpl, err := template.New("URL").Option(tmplOption).Parse(p.Webhook.URL)
+	tmpl, err := template.New("URL").Option(tmplOption).Parse(p.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func prepareWebhook(h config.Webhook, context map[string]string) (*RenderedWebho
 
 	// render payload
 	bs.Reset()
-	tmpl, err = template.New("Payload").Option(tmplOption).Parse(p.Webhook.Payload)
+	tmpl, err = template.New("Payload").Option(tmplOption).Parse(p.Payload)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func PrepareWebhooks(hooks []config.Webhook, context map[string]string) (Rendere
 func (hooks RendererWebhooks) Handle(event string) {
 	logrus.Infof("handle webhooks for event %s", event)
 	for _, h := range hooks {
-		if event != h.Webhook.Event {
+		if event != h.Event {
 			continue
 		}
 		if err := h.Handle(); err != nil {

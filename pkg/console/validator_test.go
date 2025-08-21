@@ -6,13 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/harvester/harvester-installer/pkg/config"
-	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 // TODO(weihanglo): do not re-implement logic in test.
 type FakeValidator struct {
-	hasInterfaces []string
-	hasDevices    []string
+	hasDevices []string
 }
 
 func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
@@ -45,14 +43,6 @@ func createDefaultFakeValidator() FakeValidator {
 	return FakeValidator{
 		hasDevices: []string{"/dev/vda"},
 	}
-}
-
-func loadConfig(t *testing.T, name string) *config.HarvesterConfig {
-	c, err := config.LoadHarvesterConfig(util.LoadFixture(t, name))
-	if err != nil {
-		t.Fatal("fail to load config: ", err)
-	}
-	return c
 }
 
 func TestValidateConfig(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -76,8 +75,8 @@ func getURL(client http.Client, url string) ([]byte, error) {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close() //nolint:errcheck
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +139,7 @@ func validateNTPServers(ntpServerList []string) error {
 				logrus.Errorf("fail to dial %s, err: %v", address, err)
 				continue
 			}
-			defer conn.Close()
+			defer conn.Close() //nolint:errcheck
 			if err = conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
 				logrus.Errorf("fail to set deadline for connection")
 			}
@@ -190,7 +189,9 @@ func enableNTPServers(ntpServerList []string) error {
 	}
 
 	cfg.Section("Time").Key("NTP").SetValue(strings.Join(ntpServerList, " "))
-	cfg.SaveTo("/etc/systemd/timesyncd.conf")
+	if err = cfg.SaveTo("/etc/systemd/timesyncd.conf"); err != nil {
+		return err
+	}
 
 	// When users want to reset NTP servers, we should stop timesyncd first,
 	// so it can reload timesyncd.conf after restart.
@@ -370,13 +371,13 @@ func execute(ctx context.Context, g *gocui.Gui, env []string, cmdName string) er
 	if err != nil {
 		return err
 	}
-	defer stderr.Close()
+	defer stderr.Close() //nolint:errcheck
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
-	defer stdout.Close()
+	defer stdout.Close() //nolint:errcheck
 
 	var wg sync.WaitGroup
 	var writeLock sync.Mutex
@@ -443,7 +444,7 @@ func printToPanelAndLog(g *gocui.Gui, panel string, logPrefix string, reader io.
 }
 
 func saveElementalConfig(obj interface{}) (string, string, error) {
-	err := os.MkdirAll(ElementalConfigDir, os.ModePerm)
+	err := os.MkdirAll(ElementalConfigDir, os.ModePerm) //nolint:gosec
 	if err != nil {
 		return "", "", err
 	}
@@ -454,7 +455,7 @@ func saveElementalConfig(obj interface{}) (string, string, error) {
 	}
 
 	elementalConfigFile := filepath.Join(ElementalConfigDir, ElementalConfigFile)
-	err = ioutil.WriteFile(elementalConfigFile, bytes, 0600)
+	err = os.WriteFile(elementalConfigFile, bytes, 0600)
 	if err != nil {
 		return "", "", err
 	}
@@ -463,7 +464,7 @@ func saveElementalConfig(obj interface{}) (string, string, error) {
 }
 
 func saveTemp(obj interface{}, prefix string) (string, error) {
-	tempFile, err := ioutil.TempFile("/tmp", fmt.Sprintf("%s.", prefix))
+	tempFile, err := os.CreateTemp("/tmp", fmt.Sprintf("%s.", prefix))
 	if err != nil {
 		return "", err
 	}
@@ -525,7 +526,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		return err
 	}
 
-	if hvstConfig.Install.Automatic && hvstConfig.Install.Mode == config.ModeInstall && hvstConfig.Install.RawDiskImagePath != "" {
+	if hvstConfig.Automatic && hvstConfig.Mode == config.ModeInstall && hvstConfig.RawDiskImagePath != "" {
 		return streamImageToDisk(ctx, g, env, *hvstConfig)
 	}
 
@@ -552,18 +553,18 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	// when WipeAllDisks is enabled then find all non installation disks with COS_ prefixed labels
 	// and add them to a list for wiping
-	if hvstConfig.Install.WipeAllDisks {
+	if hvstConfig.WipeAllDisks {
 		diskOpts, err := getWipeDisksOptions(hvstConfig)
 		if err != nil {
 			return err
 		}
 		for _, opt := range diskOpts {
-			hvstConfig.Install.WipeDisksList = append(hvstConfig.Install.WipeDisksList, opt.Value)
+			hvstConfig.WipeDisksList = append(hvstConfig.WipeDisksList, opt.Value)
 		}
 	}
 
 	// prepare to wipe disks
-	for _, disk := range hvstConfig.Install.WipeDisksList {
+	for _, disk := range hvstConfig.WipeDisksList {
 		if err := executeWipeDisks(ctx, disk); err != nil {
 			return fmt.Errorf("error wiping disk %s: %w", disk, err)
 		}
@@ -663,8 +664,8 @@ func printToPanel(g *gocui.Gui, message string, panelName string) {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(v, message)
-		return nil
+		_, err = fmt.Fprintln(v, message)
+		return err
 	})
 
 	<-ch
@@ -702,12 +703,12 @@ func retryRemoteConfig(configURL string, g *gocui.Gui) (*config.HarvesterConfig,
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("Fail to fetch config: %w", err)
+		return nil, fmt.Errorf("fail to fetch config: %w", err)
 	}
 
 	harvestCfg, err := config.LoadHarvesterConfig(confData)
 	if err != nil {
-		return nil, fmt.Errorf("Fail to load config: %w", err)
+		return nil, fmt.Errorf("fail to load config: %w", err)
 	}
 	return harvestCfg, nil
 }
@@ -723,7 +724,7 @@ func validateDiskSize(devPath string, single bool) error {
 		limit = config.MultipleDiskMinSizeGiB
 	}
 	if util.ByteToGi(diskSizeBytes) < limit {
-		return fmt.Errorf("Installation disk size is too small. Minimum %dGi is required", limit)
+		return fmt.Errorf("installation disk size is too small. Minimum %dGi is required", limit)
 	}
 
 	return nil
@@ -735,7 +736,7 @@ func validateDataDiskSize(devPath string) error {
 		return err
 	}
 	if util.ByteToGi(diskSizeBytes) < config.HardMinDataDiskSizeGiB {
-		return fmt.Errorf("Data disk size is too small. Minimum %dGi is required", config.HardMinDataDiskSizeGiB)
+		return fmt.Errorf("data disk size is too small. Minimum %dGi is required", config.HardMinDataDiskSizeGiB)
 	}
 
 	return nil
@@ -748,29 +749,8 @@ func systemIsBIOS() bool {
 	return false
 }
 
-func canChooseDataDisk() (bool, error) {
-	// TODO This is a copy of getDiskOptions(). Deduplicate these two
-	output, err := exec.Command("/bin/sh", "-c", `lsblk -r -o NAME,SIZE,TYPE | grep -w disk|cut -d ' ' -f 1,2`).CombinedOutput()
-	if err != nil {
-		return false, err
-	}
-	lines := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
-	var options []widgets.Option
-	for _, line := range lines {
-		splits := strings.SplitN(line, " ", 2)
-		if len(splits) == 2 {
-			options = append(options, widgets.Option{
-				Value: "/dev/" + splits[0],
-				Text:  line,
-			})
-		}
-	}
-
-	return len(options) > 1, nil
-}
-
 func createVerticalLocator(c *Console) func(elem widgets.Element, height int) {
-	maxX, maxY := c.Gui.Size()
+	maxX, maxY := c.Size()
 	lastY := maxY / 8
 	return func(elem widgets.Element, height int) {
 		var (
@@ -790,7 +770,7 @@ func createVerticalLocator(c *Console) func(elem widgets.Element, height int) {
 }
 
 func createVerticalLocatorWithName(c *Console) func(elemName string, height int) error {
-	maxX, maxY := c.Gui.Size()
+	maxX, maxY := c.Size()
 	lastY := maxY / 8
 	return func(elemName string, height int) error {
 		elem, err := c.GetElement(elemName)
@@ -865,8 +845,8 @@ func configureInstalledNode(g *gocui.Gui, hvstConfig *config.HarvesterConfig, we
 		return err
 	}
 
-	defer os.Remove(cosConfigFile)
-	defer os.Remove(hvstConfigFile)
+	defer os.Remove(cosConfigFile)  //nolint:errcheck
+	defer os.Remove(hvstConfigFile) //nolint:errcheck
 
 	if err := applyRancherdConfig(ctx, g, hvstConfig, cosConfig); err != nil {
 		printToPanel(g, fmt.Sprintf("error applying rancherd config :%v", err), installPanel)
@@ -887,13 +867,13 @@ func apply(ctx context.Context, g *gocui.Gui, configFile string, stage string) e
 	if err != nil {
 		return err
 	}
-	defer stderr.Close()
+	defer stderr.Close() //nolint:errcheck
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
-	defer stdout.Close()
+	defer stdout.Close() //nolint:errcheck
 
 	var wg sync.WaitGroup
 	var writeLock sync.Mutex
@@ -936,9 +916,7 @@ func applyRancherdConfig(ctx context.Context, g *gocui.Gui, hvstConfig *config.H
 		return err
 	}
 
-	for _, v := range conf.Stages["live"] {
-		cosConfig.Stages["initramfs"] = append(cosConfig.Stages["initramfs"], v)
-	}
+	cosConfig.Stages["initramfs"] = append(cosConfig.Stages["initramfs"], conf.Stages["live"]...)
 
 	// additional config to copy files over to persist the new changes
 	cosConfigFile, err := saveTemp(cosConfig, "cos")
@@ -1022,8 +1000,8 @@ func generateEnvAndConfig(g *gocui.Gui, hvstConfig *config.HarvesterConfig) ([]s
 		return nil, nil, err
 	}
 
-	userDataURL := hvstConfig.Install.ConfigURL
-	hvstConfig.Install.ConfigURL = cosConfigFile
+	userDataURL := hvstConfig.ConfigURL
+	hvstConfig.ConfigURL = cosConfigFile
 	elementalConfig, err := config.ConvertToElementalConfig(hvstConfig)
 	if err != nil {
 		return nil, nil, err
@@ -1135,7 +1113,11 @@ func getDiskOptions() ([]widgets.Option, error) {
 		return nil, err
 	}
 
-	disks, err := identifyUniqueDisks(output)
+	var disks []string
+	disks, err = identifyUniqueDisks(output)
+	if err != nil {
+		return nil, err
+	}
 
 	return generateDiskWidgetOptions(disks), nil
 }

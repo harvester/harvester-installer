@@ -90,7 +90,7 @@ func (d *DropDown) Show() error {
 		}
 		err = d.g.SetKeybinding(d.ViewName, gocui.KeyTab, gocui.ModNone, func(_ *gocui.Gui, _ *gocui.View) error {
 			d.Select.Value = d.Value
-			d.Select.Panel.SetLocation(x0, y0, x1, y0+1)
+			d.Select.SetLocation(x0, y0, x1, y0+1)
 			return d.Select.Show()
 		})
 		if err != nil {
@@ -173,28 +173,40 @@ func (d *DropDown) SetData(data string) error {
 	}
 	v.Clear()
 
-	render := func(text string) {
+	render := func(text string) error {
+		var err error
 		textLen := len(text)
 		if d.InputLen > textLen {
-			v.Write([]byte(text))
+			if _, err = v.Write([]byte(text)); err != nil {
+				return err
+			}
 			for i := 0; i < d.InputLen-textLen-1; i++ {
-				v.Write([]byte{' '})
+				if _, err = v.Write([]byte{' '}); err != nil {
+					return err
+				}
 			}
 		} else {
 			for i := 0; i < d.InputLen-1; i++ {
-				v.Write([]byte{text[i]})
+				if _, err = v.Write([]byte{text[i]}); err != nil {
+					return err
+				}
 			}
 		}
-		v.Write([]byte{'>'})
+		if _, err = v.Write([]byte{'>'}); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	if d.multi {
-		render(d.Value)
+		return render(d.Value)
 	} else {
 		for _, option := range d.Select.options {
 			if option.Value == data {
 				text := option.Text
-				render(text)
+				if err := render(text); err != nil {
+					return err
+				}
 				break
 			}
 		}

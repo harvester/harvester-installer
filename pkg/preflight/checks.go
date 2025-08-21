@@ -148,7 +148,13 @@ func (c MemoryCheck) Run() (string, error) {
 			return "", err
 		}
 
-		defer meminfo.Close()
+		defer func() {
+			if closeErr := meminfo.Close(); closeErr != nil {
+				// Log the close error but don't override the main function's return
+				// since this is a cleanup operation
+				logrus.Warnf("Failed to close meminfo file: %v", closeErr)
+			}
+		}()
 		scanner := bufio.NewScanner(meminfo)
 
 		for scanner.Scan() {
@@ -229,7 +235,7 @@ func (c KVMHostCheck) Run() (msg string, err error) {
 
 func (c NetworkSpeedCheck) Run() (msg string, err error) {
 	speedPath := fmt.Sprintf(sysClassNetDevSpeed, c.Dev)
-	out, err := os.ReadFile(speedPath)
+	out, err := os.ReadFile(speedPath) //nolint:gosec
 	if err != nil {
 		return
 	}

@@ -36,10 +36,7 @@ func ArrowDown(_ *gocui.Gui, v *gocui.View) error {
 
 func isAtTop(v *gocui.View) bool {
 	_, cy := v.Cursor()
-	if cy == 0 {
-		return true
-	}
-	return false
+	return cy == 0
 }
 
 func isAtEnd(v *gocui.View) bool {
