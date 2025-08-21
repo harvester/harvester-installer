@@ -544,11 +544,11 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 		env = append(env, fmt.Sprintf("HARVESTER_DATA_DISK=%s", hvstConfig.DataDisk))
 	}
 
-	if !hvstConfig.OS.ExternalStorage.Enabled {
+	if !hvstConfig.ExternalStorage.Enabled {
 		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", multipathOff))
 	}
-	if hvstConfig.OS.AdditionalKernelArguments != "" {
-		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", hvstConfig.OS.AdditionalKernelArguments))
+	if hvstConfig.AdditionalKernelArguments != "" {
+		env = append(env, fmt.Sprintf("HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS=%s", hvstConfig.AdditionalKernelArguments))
 	}
 
 	// when WipeAllDisks is enabled then find all non installation disks with COS_ prefixed labels
@@ -811,14 +811,14 @@ func executeSupportconfig(ctx context.Context, fileName string) error {
 }
 
 func updateSystemSettings(harvConfig *config.HarvesterConfig) error {
-	if len(harvConfig.OS.NTPServers) == 0 {
+	if len(harvConfig.NTPServers) == 0 {
 		return nil
 	}
 
 	if harvConfig.SystemSettings == nil {
 		harvConfig.SystemSettings = make(map[string]string)
 	}
-	content := config.NTPSettings{NTPServers: harvConfig.OS.NTPServers}
+	content := config.NTPSettings{NTPServers: harvConfig.NTPServers}
 	ntpSettingBytes, err := json.Marshal(content)
 	if err != nil {
 		return err
@@ -973,7 +973,7 @@ func generateTempConfigFiles(hvstConfig *config.HarvesterConfig) (*yipSchema.Yip
 }
 
 func streamImageToDisk(ctx context.Context, g *gocui.Gui, env []string, cfg config.HarvesterConfig) error {
-	printToPanel(g, fmt.Sprintf("streaming disk image %s to device %s", cfg.Install.RawDiskImagePath, cfg.Install.Device), installPanel)
+	printToPanel(g, fmt.Sprintf("streaming disk image %s to device %s", cfg.RawDiskImagePath, cfg.Device), installPanel)
 	if err := execute(ctx, g, env, "/usr/sbin/stream-disk"); err != nil {
 		printToPanel(g, fmt.Sprintf("stream to disk failed %v", err), installPanel)
 		return err

@@ -157,11 +157,11 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	// and make the entire node unavailable.
 	initramfs.Commands = append(initramfs.Commands, "rm -f /var/lib/kubelet/cpu_manager_state")
 
-	initramfs.Sysctl = cfg.OS.Sysctls
-	initramfs.Environment = cfg.OS.Environment
+	initramfs.Sysctl = cfg.Sysctls
+	initramfs.Environment = cfg.Environment
 
 	// OS
-	for _, ff := range cfg.OS.WriteFiles {
+	for _, ff := range cfg.WriteFiles {
 		perm, err := strconv.ParseUint(ff.RawFilePermissions, 8, 32)
 		if err != nil {
 			logrus.Warnf("fail to parse permission %s, use default permission.", err)
@@ -190,18 +190,18 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			return nil, err
 		}
 
-		initramfs.Hostname = cfg.OS.Hostname
+		initramfs.Hostname = cfg.Hostname
 
-		if len(cfg.OS.NTPServers) > 0 {
-			initramfs.TimeSyncd["NTP"] = strings.Join(cfg.OS.NTPServers, " ")
+		if len(cfg.NTPServers) > 0 {
+			initramfs.TimeSyncd["NTP"] = strings.Join(cfg.NTPServers, " ")
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
 		}
-		if len(cfg.OS.DNSNameservers) > 0 {
-			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
+		if len(cfg.DNSNameservers) > 0 {
+			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.DNSNameservers))
 		}
 
-		if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
+		if err := UpdateWifiConfig(&initramfs, cfg.Wifi, false); err != nil {
 			return nil, err
 		}
 
@@ -210,7 +210,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			return nil, err
 		}
 
-		afterNetwork.SSHKeys[cosLoginUser] = cfg.OS.SSHAuthorizedKeys
+		afterNetwork.SSHKeys[cosLoginUser] = cfg.SSHAuthorizedKeys
 	}
 
 	cosConfig := &yipSchema.YipConfig{
@@ -226,7 +226,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	overwriteSSHDComponent(config)
 
 	// Add after-install-chroot stage
-	if len(config.OS.AfterInstallChrootCommands) > 0 {
+	if len(config.AfterInstallChrootCommands) > 0 {
 		afterInstallChroot := yipSchema.Stage{}
 		if err := overwriteAfterInstallChrootStage(config, &afterInstallChroot); err != nil {
 			return nil, err
@@ -238,9 +238,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 }
 
 func overwriteSSHDComponent(config *HarvesterConfig) {
-	if config.OS.SSHD.SFTP {
-		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
-		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/lib/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
+	if config.SSHD.SFTP {
+		config.AfterInstallChrootCommands = append(config.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
+		config.AfterInstallChrootCommands = append(config.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/lib/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
 	}
 }
 
@@ -905,10 +905,10 @@ func CreateRootPartitioningLayoutSharedDataDisk(elementalConfig *ElementalConfig
 
 // setupExternalStorage is needed to support boot of external disks
 // this involves enable multipath service and configuring it to blacklist
-// all devices except the ones listed in the config.OS.ExternalStorage.MultiPathConfig
+// all devices except the ones listed in the config.ExternalStorage.MultiPathConfig
 
 func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error {
-	if !config.OS.ExternalStorage.Enabled {
+	if !config.ExternalStorage.Enabled {
 		return nil
 	}
 	stage.Systemctl.Enable = append(stage.Systemctl.Enable, "multipathd")

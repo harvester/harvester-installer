@@ -101,8 +101,8 @@ func checkInterface(iface config.NetworkInterface) error {
 }
 
 func checkDevice(cfg *config.HarvesterConfig) error {
-	installDisk := cfg.Install.Device
-	dataDisk := cfg.Install.DataDisk
+	installDisk := cfg.Device
+	dataDisk := cfg.DataDisk
 
 	if installDisk == "" {
 		return errors.New(ErrMsgDeviceNotSpecified)
@@ -138,7 +138,7 @@ func checkDevice(cfg *config.HarvesterConfig) error {
 		return prettyError(ErrMsgDeviceNotFound, installDisk)
 	}
 
-	if cfg.Install.Role == config.RoleWitness {
+	if cfg.Role == config.RoleWitness {
 		if err := validateDiskSize(installDisk, false); err != nil {
 			return prettyError(ErrMsgDeviceTooSmall, installDisk)
 		}
@@ -369,7 +369,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 
 	// check hostname
 	// ref: https://github.com/kubernetes/kubernetes/blob/b15f788d29df34337fedc4d75efe5580c191cbf3/pkg/apis/core/validation/validation.go#L242-L245
-	if errs := validation.IsDNS1123Subdomain(cfg.OS.Hostname); len(errs) > 0 {
+	if errs := validation.IsDNS1123Subdomain(cfg.Hostname); len(errs) > 0 {
 		// TODO: show regexp for validation to users
 		return errors.Errorf("invalid hostname. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'")
 	}
@@ -378,12 +378,12 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		return err
 	}
 
-	if cfg.Install.Mode != config.ModeInstall {
-		if len(cfg.Install.ManagementInterface.Interfaces) == 0 {
+	if cfg.Mode != config.ModeInstall {
+		if len(cfg.ManagementInterface.Interfaces) == 0 {
 			return errors.Errorf("%s", ErrMsgManagementInterfaceNotFound)
 		}
 
-		if err := checkNetworks(cfg.Install.ManagementInterface, cfg.OS.DNSNameservers); err != nil {
+		if err := checkNetworks(cfg.ManagementInterface, cfg.DNSNameservers); err != nil {
 			return err
 		}
 
@@ -392,7 +392,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 		}
 	}
 
-	if cfg.Install.Mode == config.ModeCreate {
+	if cfg.Mode == config.ModeCreate {
 		if err := checkVip(cfg.Vip, cfg.VipHwAddr, cfg.VipMode); err != nil {
 			return err
 		}
@@ -410,7 +410,7 @@ func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 
 func commonCheck(cfg *config.HarvesterConfig) error {
 	// modes
-	switch mode := cfg.Install.Mode; mode {
+	switch mode := cfg.Mode; mode {
 	case config.ModeUpgrade, config.ModeInstall:
 		return nil
 	case config.ModeCreate:
@@ -425,11 +425,11 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 		return prettyError(ErrMsgModeUnknown, mode)
 	}
 
-	if !alreadyInstalled && cfg.Install.Mode != config.ModeInstall && cfg.Install.Automatic && cfg.Install.ISOURL == "" {
+	if !alreadyInstalled && cfg.Mode != config.ModeInstall && cfg.Automatic && cfg.ISOURL == "" {
 		return errors.New(ErrMsgISOURLNotSpecified)
 	}
 
-	if cfg.Install.Mode != config.ModeInstall && cfg.Token == "" {
+	if cfg.Mode != config.ModeInstall && cfg.Token == "" {
 		return errors.New(ErrMsgTokenNotSpecified)
 	}
 
@@ -437,7 +437,7 @@ func commonCheck(cfg *config.HarvesterConfig) error {
 		return errors.New(ErrMsgNoCredentials)
 	}
 
-	return checkPersistentStatePaths(cfg.OS.PersistentStatePaths)
+	return checkPersistentStatePaths(cfg.PersistentStatePaths)
 }
 
 func validateConfig(v ValidatorInterface, cfg *config.HarvesterConfig) error {
@@ -454,7 +454,7 @@ func diskChecks(cfg *config.HarvesterConfig) error {
 	}
 
 	if cfg.ForceMBR {
-		if err := checkForceMBR(cfg.Install.Device); err != nil {
+		if err := checkForceMBR(cfg.Device); err != nil {
 			return err
 		}
 	}

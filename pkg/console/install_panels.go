@@ -93,7 +93,7 @@ func (c *Console) layoutInstall(_ *gocui.Gui) error {
 			initPanel = preflightCheckPanel
 		}
 
-		c.config.OS.Modules = []string{"kvm", "vhost_net"}
+		c.config.Modules = []string{"kvm", "vhost_net"}
 
 		// if already installed then lets check if cloud init allows us to provision
 		if alreadyInstalled {
@@ -113,12 +113,12 @@ func (c *Console) layoutInstall(_ *gocui.Gui) error {
 			if err = c.config.Merge(cfg); err != nil {
 				return
 			}
-			if cfg.Install.Automatic && isFirstConsoleTTY() {
+			if cfg.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
 				// setup InstallMode to ensure that during automatic install
 				// we are only copying binaries and ignoring network / rancherd setup
 				// needed for generating pre-installed qcow2 image
-				if c.config.Install.Mode == config.ModeInstall && !alreadyInstalled {
+				if c.config.Mode == config.ModeInstall && !alreadyInstalled {
 					installModeOnly = true
 				}
 				initPanel = installPanel
@@ -129,7 +129,7 @@ func (c *Console) layoutInstall(_ *gocui.Gui) error {
 
 		// add SchemeVersion in non-automatic mode
 		// in automatic mode, SchemeVersion should be from config.yaml directly
-		if !c.config.Install.Automatic {
+		if !c.config.Automatic {
 			c.config.SchemeVersion = config.SchemeVersion
 		}
 
@@ -237,11 +237,11 @@ func showDiskPage(c *Console) error {
 		return err
 	}
 
-	showPersistentSizeOption := c.config.Install.Role != config.RoleWitness &&
-		(len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device)
+	showPersistentSizeOption := c.config.Role != config.RoleWitness &&
+		(len(diskOptions) == 1 || c.config.DataDisk == c.config.Device)
 
 	nextComponents := []string{diskPanel}
-	if c.config.Install.Role != config.RoleWitness &&
+	if c.config.Role != config.RoleWitness &&
 		len(diskOptions) > 1 {
 		nextComponents = append([]string{dataDiskPanel}, nextComponents...)
 	}
@@ -314,17 +314,17 @@ func addDiskPanel(c *Console) error {
 		return err
 	}
 	diskV.PreShow = func() error {
-		if c.config.Install.Device == "" {
-			c.config.Install.Device = diskOpts[0].Value
+		if c.config.Device == "" {
+			c.config.Device = diskOpts[0].Value
 		}
-		if err := diskV.SetData(c.config.Install.Device); err != nil {
+		if err := diskV.SetData(c.config.Device); err != nil {
 			return err
 		}
 
 		if err := c.setContentByName(diskNotePanel, ""); err != nil {
 			return err
 		}
-		if c.config.Install.Role == config.RoleWitness {
+		if c.config.Role == config.RoleWitness {
 			return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
 		}
 		return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
@@ -340,10 +340,10 @@ func addDiskPanel(c *Console) error {
 	}
 
 	dataDiskV.PreShow = func() error {
-		if c.config.Install.DataDisk == "" {
-			c.config.Install.DataDisk = c.config.Install.Device
+		if c.config.DataDisk == "" {
+			c.config.DataDisk = c.config.Device
 		}
-		return dataDiskV.SetData(c.config.Install.DataDisk)
+		return dataDiskV.SetData(c.config.DataDisk)
 	}
 	setLocation(dataDiskV.Panel, 3)
 	c.AddElement(dataDiskPanel, dataDiskV)
@@ -356,15 +356,15 @@ func addDiskPanel(c *Console) error {
 	persistentSizeV.PreShow = func() error {
 		c.Cursor = true
 
-		device := c.config.Install.Device
+		device := c.config.Device
 		if device == "" {
 			device = diskOpts[0].Value
 		}
 
 		//If the user has already set a persistent partition size, use that
 		if persistentSizeV.Value != "" {
-			if c.config.Install.PersistentPartitionSize != "" {
-				persistentSizeV.Value = c.config.Install.PersistentPartitionSize
+			if c.config.PersistentPartitionSize != "" {
+				persistentSizeV.Value = c.config.PersistentPartitionSize
 			} else {
 				defaultValue, err := calculateDefaultPersistentSize(device)
 				if err != nil {
@@ -449,10 +449,10 @@ func addDiskPanel(c *Console) error {
 
 	// Helper functions
 	validateAllDiskSizes := func() (bool, error) {
-		installDisk := c.config.Install.Device
-		dataDisk := c.config.Install.DataDisk
+		installDisk := c.config.Device
+		dataDisk := c.config.DataDisk
 
-		if c.config.Install.Role == config.RoleWitness {
+		if c.config.Role == config.RoleWitness {
 			if err := validateDiskSize(installDisk, false); err != nil {
 				return false, updateValidatorMessage(err.Error())
 			}
@@ -471,8 +471,8 @@ func addDiskPanel(c *Console) error {
 		return true, nil
 	}
 	validatePersistentPartitionSize := func(persistentSize string) (bool, error) {
-		installDisk := c.config.Install.Device
-		dataDisk := c.config.Install.DataDisk
+		installDisk := c.config.Device
+		dataDisk := c.config.DataDisk
 		if dataDisk == "" || installDisk == dataDisk {
 			diskSize, err := util.GetDiskSizeBytes(installDisk)
 			if err != nil {
@@ -500,7 +500,7 @@ func addDiskPanel(c *Console) error {
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		diskConfirmed = false
-		if c.config.Install.Mode == config.ModeJoin {
+		if c.config.Mode == config.ModeJoin {
 			return showNext(c, askRolePanel)
 		}
 		return showNext(c, askCreatePanel)
@@ -511,10 +511,10 @@ func addDiskPanel(c *Console) error {
 			return err
 		}
 
-		if c.config.Install.Role != config.RoleWitness {
+		if c.config.Role != config.RoleWitness {
 			// Make sure the persistent partition size is in the correct size.
 			// Do NOT allow proceeding to next field.
-			if valid, err := validatePersistentPartitionSize(c.config.Install.PersistentPartitionSize); !valid || err != nil {
+			if valid, err := validatePersistentPartitionSize(c.config.PersistentPartitionSize); !valid || err != nil {
 				return err
 			}
 		}
@@ -573,14 +573,14 @@ func addDiskPanel(c *Console) error {
 		if err := updateValidatorMessage(""); err != nil {
 			return err
 		}
-		c.config.Install.Device = device
+		c.config.Device = device
 
 		if len(diskOpts) > 1 {
 			// Show error if disk size validation fails, but allow proceeding to next field
 			if _, err := validateAllDiskSizes(); err != nil {
 				return err
 			}
-			if c.config.Install.Role == config.RoleWitness {
+			if c.config.Role == config.RoleWitness {
 				return isWipeDisksPanelNeeded(g, v)
 			}
 			if device == dataDisk {
@@ -589,7 +589,7 @@ func addDiskPanel(c *Console) error {
 			return showNext(c, dataDiskPanel)
 		}
 
-		if c.config.Install.Role != config.RoleWitness {
+		if c.config.Role != config.RoleWitness {
 			// Only show this for non-witness nodes, because:
 			// 1. witness nodes don't let you set persistent size, so the note makes no sense
 			// 2. showing the note for witness nodes, with no other fields present ends up
@@ -603,7 +603,7 @@ func addDiskPanel(c *Console) error {
 		if err != nil {
 			return err
 		}
-		if c.config.Install.Role == config.RoleWitness {
+		if c.config.Role == config.RoleWitness {
 			// Set diskConfirmed here to avoid having to press ENTER twice
 			// to proceed if the disk configuration is valid
 			diskConfirmed = valid
@@ -631,7 +631,7 @@ func addDiskPanel(c *Console) error {
 		if err := updateValidatorMessage(""); err != nil {
 			return err
 		}
-		c.config.Install.DataDisk = dataDisk
+		c.config.DataDisk = dataDisk
 
 		installDisk, err := diskV.GetData()
 		if err != nil {
@@ -690,7 +690,7 @@ func addDiskPanel(c *Console) error {
 			return err
 		}
 
-		c.config.Install.PersistentPartitionSize = persistentSize
+		c.config.PersistentPartitionSize = persistentSize
 
 		// At this point the disk configuration is valid.
 		diskConfirmed = true
@@ -748,7 +748,7 @@ func addDiskPanel(c *Console) error {
 				return err
 			}
 
-			if c.config.Install.Role == config.RoleWitness {
+			if c.config.Role == config.RoleWitness {
 				return showNext(c, diskPanel)
 			}
 			if len(diskOpts) > 1 && disk != dataDisk {
@@ -798,7 +798,7 @@ func addDiskPanel(c *Console) error {
 				return err
 			}
 
-			if c.config.Install.Role == config.RoleWitness {
+			if c.config.Role == config.RoleWitness {
 				return showNext(c, diskPanel)
 			}
 			if len(diskOpts) > 1 && disk != dataDisk {
@@ -907,7 +907,7 @@ func addAskCreatePanel(c *Console) error {
 		// of the initial preflight checks failed, or if the later network
 		// speed check fails.
 		c.config.SkipChecks = true
-		askCreateV.Value = c.config.Install.Mode
+		askCreateV.Value = c.config.Mode
 		if alreadyInstalled {
 			return c.setContentByName(titlePanel, "Harvester already installed. Choose configuration mode")
 		}
@@ -924,10 +924,10 @@ func addAskCreatePanel(c *Console) error {
 				// need to wipe the Mode value before we set panel
 				// needed to ensure that value lookup fails as install
 				// is not available in the option in this case
-				c.config.Install.Mode = ""
+				c.config.Mode = ""
 			}
 
-			c.config.Install.Mode = selected
+			c.config.Mode = selected
 			// explicitly set this false to ensure if user changes from
 			// install mode only to create /join then the variable is
 			// reset to ensure correct panel sequence is displayed
@@ -936,8 +936,8 @@ func addAskCreatePanel(c *Console) error {
 				installModeOnly = true
 			}
 
-			if c.config.Install.Mode == config.ModeCreate {
-				c.config.Install.Role = config.RoleDefault
+			if c.config.Mode == config.ModeCreate {
+				c.config.Role = config.RoleDefault
 			}
 
 			if err = askCreateV.Close(); err != nil {
@@ -954,7 +954,7 @@ func addAskCreatePanel(c *Console) error {
 
 			// all packages are already install
 			// configure hostname and network
-			if c.config.Install.Mode == config.ModeJoin {
+			if c.config.Mode == config.ModeJoin {
 				return showRolePage(c)
 			}
 			if alreadyInstalled {
@@ -1004,7 +1004,7 @@ func addAskRolePanel(c *Console) error {
 		return showNext(c, askCreatePanel)
 	}
 	askRoleV.PreShow = func() error {
-		askRoleV.Value = c.config.Install.Role
+		askRoleV.Value = c.config.Role
 		return c.setContentByName(titlePanel, "Choose installation role")
 	}
 	askRoleV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -1013,7 +1013,7 @@ func addAskRolePanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			c.config.Install.Role = selected
+			c.config.Role = selected
 			if err = askRoleV.Close(); err != nil {
 				return err
 			}
@@ -1259,7 +1259,7 @@ func addTokenPanel(c *Console) error {
 		c.Cursor = true
 		tokenV.Value = c.config.Token
 		tokenNote := clusterTokenJoinNote
-		if c.config.Install.Mode == config.ModeCreate {
+		if c.config.Mode == config.ModeCreate {
 			tokenNote = clusterTokenCreateNote
 		}
 		if err = c.setContentByName(notePanel, tokenNote); err != nil {
@@ -1293,7 +1293,7 @@ func addTokenPanel(c *Console) error {
 			if err := closeThisPage(); err != nil {
 				return err
 			}
-			if c.config.Install.Mode == config.ModeCreate {
+			if c.config.Mode == config.ModeCreate {
 				g.Cursor = false
 				return showNext(c, vipTextPanel, askVipMethodPanel)
 			}
@@ -1352,7 +1352,7 @@ func addHostnamePanel(c *Console) error {
 
 	prev := func(_ *gocui.Gui, _ *gocui.View) error {
 		c.CloseElements(hostnamePanel, hostnameValidatorPanel)
-		if c.config.Install.Mode == config.ModeCreate {
+		if c.config.Mode == config.ModeCreate {
 			return showClusterNetworkPage(c)
 		}
 		return showNetworkPage(c)
@@ -1632,7 +1632,7 @@ func addNetworkPanel(c *Console) error {
 				spinner.Stop(false, "")
 				g.Update(func(_ *gocui.Gui) error {
 					closeThisPage()
-					if c.config.Install.Mode == config.ModeCreate {
+					if c.config.Mode == config.ModeCreate {
 						return showClusterNetworkPage(c)
 					}
 					return showHostnamePage(c)
@@ -1645,7 +1645,7 @@ func addNetworkPanel(c *Console) error {
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		if alreadyInstalled {
-			if c.config.Install.Mode == config.ModeJoin {
+			if c.config.Mode == config.ModeJoin {
 				return showNext(c, askRolePanel)
 			}
 			return showNext(c, askCreatePanel)
@@ -2349,7 +2349,7 @@ func addCloudInitPanel(c *Console) error {
 	}
 	cloudInitV.PreShow = func() error {
 		c.Cursor = true
-		cloudInitV.Value = c.config.Install.ConfigURL
+		cloudInitV.Value = c.config.ConfigURL
 		return c.setContentByName(titlePanel, "Optional: remote Harvester config")
 	}
 	gotoNextPage := func() error {
@@ -2364,7 +2364,7 @@ func addCloudInitPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			c.config.Install.ConfigURL = configURL
+			c.config.ConfigURL = configURL
 			if configURL != "" {
 				asyncTaskV, err := c.GetElement(spinnerPanel)
 				if err != nil {
@@ -2436,11 +2436,11 @@ func addConfirmInstallPanel(c *Console) error {
 		if err != nil {
 			return err
 		}
-		options := fmt.Sprintf("install mode: %v\n", c.config.Install.Mode)
+		options := fmt.Sprintf("install mode: %v\n", c.config.Mode)
 		if !installModeOnly {
-			options += fmt.Sprintf("install role: %v\n", c.config.Install.Role)
+			options += fmt.Sprintf("install role: %v\n", c.config.Role)
 		}
-		options += fmt.Sprintf("hostname: %v\n", c.config.OS.Hostname)
+		options += fmt.Sprintf("hostname: %v\n", c.config.Hostname)
 		if userInputData.DNSServers != "" {
 			options += fmt.Sprintf("dns servers: %v\n", userInputData.DNSServers)
 		}
@@ -2455,7 +2455,7 @@ func addConfirmInstallPanel(c *Console) error {
 		}
 		options += string(installBytes)
 		logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))
-		if !c.config.Install.Silent {
+		if !c.config.Silent {
 			if alreadyInstalled {
 				confirmV.SetContent(options +
 					"\nHarvester is already installed. It will be configured with the above configuration. Continue?\n")
@@ -2564,9 +2564,9 @@ func addInstallPanel(c *Console) error {
 
 			// Need to merge remote config first
 			logrus.Info("Local config: ", c.config)
-			if c.config.Install.ConfigURL != "" {
-				printToPanel(c.Gui, fmt.Sprintf("Fetching %s...", c.config.Install.ConfigURL), installPanel)
-				remoteConfig, err := retryRemoteConfig(c.config.Install.ConfigURL, c.Gui)
+			if c.config.ConfigURL != "" {
+				printToPanel(c.Gui, fmt.Sprintf("Fetching %s...", c.config.ConfigURL), installPanel)
+				remoteConfig, err := retryRemoteConfig(c.config.ConfigURL, c.Gui)
 				if err != nil {
 					logrus.Error(err)
 					printToPanel(c.Gui, err.Error(), installPanel)
@@ -2596,7 +2596,7 @@ func addInstallPanel(c *Console) error {
 				}
 			}
 
-			if c.config.Automatic && c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
+			if c.config.Automatic && c.config.ManagementInterface.Method == config.NetworkMethodDHCP {
 				// Only need to do this for automatic installs, as manual installs will
 				// have already run applyNetworks()
 				printToPanel(c.Gui, "Configuring network...", installPanel)
@@ -2665,7 +2665,7 @@ func addInstallPanel(c *Console) error {
 				printToPanel(c.Gui, "Failed to check default route.", installPanel)
 				return
 			}
-			if !installModeOnly && !isDefaultRouteExist && c.config.Install.ManagementInterface.Method == config.NetworkMethodDHCP {
+			if !installModeOnly && !isDefaultRouteExist && c.config.ManagementInterface.Method == config.NetworkMethodDHCP {
 				logrus.Error(ErrMsgNoDefaultRoute)
 				printToPanel(c.Gui, ErrMsgNoDefaultRoute, installPanel)
 				return
@@ -3010,7 +3010,7 @@ func addNTPServersPanel(c *Console) error {
 				userInputData.HasCheckedNTPServers = true
 				userInputData.NTPServers = ntpServers
 				ntpServerList := strings.Split(ntpServers, ",")
-				c.config.OS.NTPServers = ntpServerList
+				c.config.NTPServers = ntpServerList
 
 				if ntpServers == "" {
 					gotoSpinnerErrorPage(g, spinner, "Empty NTP Server is not recommended. Press Enter again to use current configuration anyway.")
@@ -3081,7 +3081,7 @@ func addDNSServersPanel(c *Console) error {
 		if err := closeThisPage(); err != nil {
 			return err
 		}
-		if c.config.Install.Mode == config.ModeCreate {
+		if c.config.Mode == config.ModeCreate {
 			return showNext(c, vipTextPanel, askVipMethodPanel)
 		}
 		return showNext(c, serverURLPanel)
@@ -3139,7 +3139,7 @@ func addDNSServersPanel(c *Console) error {
 						return
 					}
 
-					c.config.OS.DNSNameservers = dnsServerList
+					c.config.DNSNameservers = dnsServerList
 				}
 				spinner.Stop(false, "")
 				g.Update(func(_ *gocui.Gui) error {
@@ -3167,7 +3167,7 @@ func addDNSServersPanel(c *Console) error {
 }
 
 func configureInstallModeDHCP(c *Console) {
-	netDef := c.config.Install.ManagementInterface
+	netDef := c.config.ManagementInterface
 	// copy settings before application //
 	mgmtNetwork.Interfaces = netDef.Interfaces
 	if netDef.BondOptions == nil {
@@ -3196,7 +3196,7 @@ func configureInstallModeDHCP(c *Console) {
 	}
 
 	// if need vip via dhcp
-	if c.config.Install.VipMode == config.NetworkMethodDHCP {
+	if c.config.VipMode == config.NetworkMethodDHCP {
 		vip, err := getVipThroughDHCP(getManagementInterfaceName(c.config.ManagementInterface), "")
 		if err != nil {
 			printToPanel(c.Gui, fmt.Sprintf("fail to get vip: %s", err), installPanel)
@@ -3230,15 +3230,15 @@ func mergeCloudInit(c *config.HarvesterConfig) error {
 	if err != nil {
 		return err
 	}
-	if cloudConfig.Install.Automatic {
+	if cloudConfig.Automatic {
 		if err = c.Merge(cloudConfig); err != nil {
 			return err
 		}
-		if cloudConfig.OS.Hostname != "" {
-			c.OS.Hostname = cloudConfig.OS.Hostname
+		if cloudConfig.Hostname != "" {
+			c.Hostname = cloudConfig.Hostname
 		}
-		if cloudConfig.OS.Password != "" {
-			c.OS.Password = cloudConfig.OS.Password
+		if cloudConfig.Password != "" {
+			c.Password = cloudConfig.Password
 		}
 	}
 

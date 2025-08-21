@@ -14,10 +14,10 @@ type FakeValidator struct {
 }
 
 func (v FakeValidator) Validate(cfg *config.HarvesterConfig) error {
-	if err := v.checkMgmtInterface(cfg.Install.ManagementInterface); err != nil {
+	if err := v.checkMgmtInterface(cfg.ManagementInterface); err != nil {
 		return err
 	}
-	if err := v.checkDevice(cfg.Install.Device); err != nil {
+	if err := v.checkDevice(cfg.Device); err != nil {
 		return err
 	}
 	return nil
@@ -131,7 +131,7 @@ func TestValidateConfig(t *testing.T) {
 			name: "invalid create config: interface not found",
 			cfg:  createCreateConfig(),
 			preApply: func(c *config.HarvesterConfig) {
-				c.Install.ManagementInterface.Interfaces = nil
+				c.ManagementInterface.Interfaces = nil
 			},
 			errMsg: ErrMsgMgmtInterfaceNotSpecified,
 		},

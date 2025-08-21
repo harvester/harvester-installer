@@ -30,27 +30,27 @@ func TestCalcCosPersistentPartSize(t *testing.T) {
 		{
 			diskSize:      250,
 			partitionSize: "240Gi",
-			err:           "Partition size is too large. Maximum 176Gi is allowed",
+			err:           "partition size is too large. Maximum 176Gi is allowed",
 		},
 		{
 			diskSize:      150,
 			partitionSize: "100Gi",
-			err:           "Installation disk size is too small. Minimum 250Gi is required",
+			err:           "installation disk size is too small. Minimum 250Gi is required",
 		},
 		{
 			diskSize:      300,
 			partitionSize: "153600Ki",
-			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
+			err:           "partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
 		},
 		{
 			diskSize:      2000,
 			partitionSize: "1.5Ti",
-			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
+			err:           "partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
 		},
 		{
 			diskSize:      500,
 			partitionSize: "abcd",
-			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
+			err:           "partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
 		},
 	}
 
@@ -70,7 +70,7 @@ func TestConvertToCos_SSHKeysInYipNetworkStage(t *testing.T) {
 	yipConfig, err := ConvertToCOS(conf)
 	assert.NoError(t, err)
 
-	assert.Equal(t, yipConfig.Stages["network"][0].SSHKeys["rancher"], conf.OS.SSHAuthorizedKeys)
+	assert.Equal(t, yipConfig.Stages["network"][0].SSHKeys["rancher"], conf.SSHAuthorizedKeys)
 	assert.Nil(t, yipConfig.Stages["initramfs"][0].SSHKeys)
 }
 
@@ -85,7 +85,7 @@ func TestConvertToCos_InstallModeOnly(t *testing.T) {
 	assert.Len(t, yipConfig.Stages["network"][0].SSHKeys, 0)
 	assert.NotNil(t, yipConfig.Stages["initramfs"])
 	assert.Equal(t, yipConfig.Stages["initramfs"][0].Users[cosLoginUser], yipSchema.User{
-		PasswordHash: conf.OS.Password,
+		PasswordHash: conf.Password,
 	})
 }
 
@@ -95,7 +95,7 @@ func Test_GenerateRancherdConfig(t *testing.T) {
 	conf.Mode = ModeInstall
 	yipConfig, err := GenerateRancherdConfig(conf)
 	assert.NoError(t, err)
-	assert.Equal(t, yipConfig.Stages["live"][0].TimeSyncd["NTP"], strings.Join(conf.OS.NTPServers, " "))
+	assert.Equal(t, yipConfig.Stages["live"][0].TimeSyncd["NTP"], strings.Join(conf.NTPServers, " "))
 	assert.Contains(t, yipConfig.Stages["live"][0].Commands, "wicked ifreload all")
 }
 
