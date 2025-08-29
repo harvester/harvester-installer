@@ -54,6 +54,7 @@ mkdir -p bin
 LINKFLAGS="-X github.com/harvester/harvester-installer/pkg/config.RKE2Version=$RKE2_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.RancherVersion=$RANCHER_VERSION
            -X github.com/harvester/harvester-installer/pkg/version.Version=$VERSION
+           -X github.com/harvester/harvester-installer/pkg/version.GitCommit=$COMMIT
            -X github.com/harvester/harvester-installer/pkg/version.HarvesterVersion=$HARVESTER_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.HarvesterChartVersion=$HARVESTER_CHART_VERSION
            -X github.com/harvester/harvester-installer/pkg/config.MonitoringChartVersion=$MONITORING_VERSION

@@ -59,7 +59,13 @@ func RunConsole() error {
 	if err := initLogs(); err != nil {
 		return err
 	}
-	return c.doRun()
+	err = c.doRun()
+	if err != nil {
+		// This ensures difficult to debug failures
+		// (e.g. invalid dimensions) are actually logged
+		logrus.Errorf("console.doRun() failed: %v", err)
+	}
+	return err
 }
 
 // NewConsole initialize the console
