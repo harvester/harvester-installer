@@ -165,9 +165,10 @@ github.com/rivo/uniseg
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/stretchr/testify v1.9.0
+# github.com/stretchr/testify v1.10.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/require
 # github.com/tredoe/osutil v1.5.0
 ## explicit; go 1.16
@@ -184,6 +185,9 @@ github.com/twpayne/go-vfs/v4
 ## explicit; go 1.16
 github.com/u-root/uio/rand
 github.com/u-root/uio/uio
+# github.com/urfave/cli/v3 v3.4.1
+## explicit; go 1.22
+github.com/urfave/cli/v3
 # github.com/vbatts/tar-split v0.11.3
 ## explicit; go 1.15
 github.com/vbatts/tar-split/archive/tar
