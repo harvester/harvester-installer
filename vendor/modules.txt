@@ -86,8 +86,8 @@ github.com/itchyny/gojq
 # github.com/itchyny/timefmt-go v0.1.6
 ## explicit; go 1.20
 github.com/itchyny/timefmt-go
-# github.com/jroimartin/gocui v0.4.0
-## explicit
+# github.com/jroimartin/gocui v0.5.0
+## explicit; go 1.16
 github.com/jroimartin/gocui
 # github.com/klauspost/compress v1.16.5
 ## explicit; go 1.18
