@@ -1,6 +1,6 @@
 module github.com/harvester/harvester-installer
 
-go 1.22
+go 1.24.2
 
 require (
 	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
@@ -9,18 +9,18 @@ require (
 	github.com/jroimartin/gocui v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
-	github.com/rancher/wharfie v0.6.8
+	github.com/rancher/wharfie v0.7.0
 	github.com/rancher/yip v1.9.2
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tredoe/osutil v1.5.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
-	golang.org/x/crypto v0.31.0
-	golang.org/x/net v0.33.0
-	golang.org/x/sys v0.28.0
+	golang.org/x/crypto v0.36.0
+	golang.org/x/net v0.38.0
+	golang.org/x/sys v0.31.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/apimachinery v0.27.4
+	k8s.io/apimachinery v0.33.0
 )
 
 require (
@@ -40,7 +40,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/itchyny/gojq v0.12.16 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
-	github.com/klauspost/compress v1.16.5 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-shellwords v1.0.10 // indirect
@@ -49,7 +49,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.0-rc3 // indirect
+	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rancher/wrangler v0.0.0-20190426050201-5946f0eaed19 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -59,10 +59,10 @@ require (
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
+	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 )
 
 replace (
