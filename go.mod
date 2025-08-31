@@ -6,7 +6,7 @@ require (
 	github.com/harvester/go-common v0.0.0-20230718010724-11313421a8f5
 	github.com/imdario/mergo v0.3.16
 	github.com/insomniacslk/dhcp v0.0.0-20210827173440-b95caade3eac
-	github.com/jroimartin/gocui v0.4.0
+	github.com/jroimartin/gocui v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/mapper v0.0.0-20190814232720-058a8b7feb99
 	github.com/rancher/wharfie v0.6.8
