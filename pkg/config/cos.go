@@ -852,10 +852,20 @@ func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error
 		return nil
 	}
 	stage.Systemctl.Enable = append(stage.Systemctl.Enable, "multipathd")
-	content, err := render("multipath.conf.tmpl", config)
+	option, err := config.ExternalStorage.ParseMultiPathConfig()
 	if err != nil {
 		return fmt.Errorf("error rending multipath.conf template: %v", err)
 	}
+
+	if option == nil {
+		return nil
+	}
+
+	content, err := option.Render()
+	if err != nil {
+		return fmt.Errorf("error rending multipath.conf template: %v", err)
+	}
+
 	stage.Files = append(stage.Files, yipSchema.File{
 		Path:        "/etc/multipath.conf",
 		Content:     content,
