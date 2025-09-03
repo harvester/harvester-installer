@@ -162,6 +162,7 @@ func (c *Console) doRun() error {
 		checks := []preflight.Check{
 			preflight.CPUCheck{},
 			preflight.MemoryCheck{},
+			preflight.DiskCheck{},
 			preflight.VirtCheck{},
 			preflight.KVMHostCheck{},
 		}

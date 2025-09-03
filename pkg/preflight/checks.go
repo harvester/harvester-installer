@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 const (
@@ -42,6 +43,7 @@ type Check interface {
 
 type CPUCheck struct{}
 type MemoryCheck struct{}
+type DiskCheck struct{}
 type VirtCheck struct{}
 type KVMHostCheck struct{}
 type NetworkSpeedCheck struct {
@@ -198,6 +200,19 @@ func (c MemoryCheck) Run() (string, error) {
 	}
 
 	return "", nil
+}
+
+func (c DiskCheck) Run() (msg string, err error) {
+	disks, err := util.GetUniqueDisks()
+	if err != nil {
+		msg = fmt.Sprintf("Unable to get number of disks: %s", err.Error())
+		return
+	}
+
+	if len(disks) < 1 {
+		msg = "No disk detected. Harvester requires at least one disk."
+	}
+	return
 }
 
 func (c VirtCheck) Run() (msg string, err error) {
