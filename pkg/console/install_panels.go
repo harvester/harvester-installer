@@ -87,7 +87,9 @@ func (c *Console) layoutInstall(_ *gocui.Gui) error {
 		initPanel := askCreatePanel
 
 		// If there's any preflight warnings/fatals, show those first.
-		if len(preflightWarnings) > 0 || len(preflightFatals) > 0 {
+		if len(preflightFatals) > 0 {
+			initPanel = preflightFatalPanel
+		} else if len(preflightWarnings) > 0 {
 			initPanel = preflightCheckPanel
 		}
 
@@ -156,6 +158,7 @@ func setPanels(c *Console) error {
 		addValidatorPanel,
 		addNotePanel,
 		addFooterPanel,
+		addPreflightFatalPanel,
 		addPreflightCheckPanel,
 		addAskCreatePanel,
 		addAskRolePanel,
@@ -814,18 +817,46 @@ func addDiskPanel(c *Console) error {
 	return nil
 }
 
+func addPreflightFatalPanel(c *Console) error {
+	ackFunc := func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Value: "",
+				Text:  "Acknowledged",
+			},
+		}, nil
+	}
+	preflightFatalV, err := widgets.NewSelect(c.Gui, preflightFatalPanel, "", ackFunc)
+	if err != nil {
+		return err
+	}
+	preflightFatalV.FirstPage = true
+	preflightFatalV.FgColor = gocui.ColorRed
+	preflightFatalV.Wrap = true
+	preflightFatalV.PreShow = func() error {
+		var lines string
+		for _, l := range preflightFatals {
+			lines += l + "\n"
+		}
+		preflightFatalV.SetContent(lines)
+		c.Gui.Cursor = false
+		return c.setContentByName(titlePanel, "Hardware Issues")
+	}
+	preflightFatalV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
+			preflightFatalV.Close()
+			c.setContentByName(titlePanel, "")
+			c.setContentByName(footerPanel, "")
+			go util.SleepAndReboot()
+			return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
+		},
+	}
+	c.AddElement(preflightFatalPanel, preflightFatalV)
+	return nil
+}
+
 func addPreflightCheckPanel(c *Console) error {
 	ackWarningsFunc := func() ([]widgets.Option, error) {
-		// Forbid proceeding if there is fatal error
-		if len(preflightFatals) > 0 {
-			return []widgets.Option{
-				{
-					Value: "no",
-					Text:  "No, please address the fatal error(s)",
-				},
-			}, nil
-		}
-
 		return []widgets.Option{
 			{
 				Value: "yes",
@@ -843,14 +874,11 @@ func addPreflightCheckPanel(c *Console) error {
 	preflightCheckV.FirstPage = true
 	preflightCheckV.Wrap = true
 	preflightCheckV.PreShow = func() error {
-		var lines string
-		for _, w := range preflightFatals {
-			lines += w + "\n"
-		}
+		var warnings string
 		for _, w := range preflightWarnings {
-			lines += w + "\n"
+			warnings += w + "\n"
 		}
-		preflightCheckV.SetContent(lines +
+		preflightCheckV.SetContent(warnings +
 			"\nDo you wish to proceed?\n")
 		c.Gui.Cursor = false
 		return c.setContentByName(titlePanel, "Hardware Checks")

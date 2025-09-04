@@ -12,6 +12,7 @@ const (
 	askForceMBRTitlePanel       = "askForceMBRTitle"
 	askForceMBRPanel            = "askForceMBR"
 	diskNotePanel               = "diskNote"
+	preflightFatalPanel         = "preflightFatal"
 	preflightCheckPanel         = "preflightCheck"
 	askCreatePanel              = "askCreate"
 	serverURLPanel              = "serverUrl"
