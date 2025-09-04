@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
@@ -174,7 +175,11 @@ func (c *Console) doRun() error {
 				logrus.Error(err)
 			}
 			if len(msg) > 0 {
-				preflightWarnings = append(preflightWarnings, msg)
+				if strings.HasPrefix(msg, preflight.FatalPrefix) {
+					preflightFatals = append(preflightFatals, msg)
+				} else {
+					preflightWarnings = append(preflightWarnings, msg)
+				}
 			}
 		}
 	}

@@ -205,6 +205,10 @@ func TestMemoryCheckProcMemInfo(t *testing.T) {
 	}
 }
 
+// TODO: add test
+// func TestDiskCheck(t *testing.T) {
+// }
+
 func TestKVMHostCheck(t *testing.T) {
 	defaultDevKvm := devKvm
 	defer func() { devKvm = defaultDevKvm }()

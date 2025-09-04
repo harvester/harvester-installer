@@ -23,6 +23,8 @@ const (
 	MinMemoryProd      = 64
 	MinNetworkGbpsTest = 1
 	MinNetworkGbpsProd = 10
+
+	FatalPrefix        = "Fatal: "
 )
 
 var (
@@ -209,7 +211,7 @@ func (c DiskCheck) Run() (msg string, err error) {
 	}
 
 	if len(disks) < 1 {
-		msg = "No disk detected. Harvester requires at least one disk."
+		msg = fmt.Sprintf("%sNo disk detected. Harvester requires at least one disk.", FatalPrefix)
 	}
 	return
 }

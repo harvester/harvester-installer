@@ -62,6 +62,7 @@ var (
 	installModeOnly   bool
 	diskConfirmed     bool
 	preflightWarnings []string
+	preflightFatals   []string
 )
 
 func (c *Console) doNetworkSpeedCheck(interfaces []config.NetworkInterface) (warnings []string) {
@@ -85,8 +86,8 @@ func (c *Console) layoutInstall(_ *gocui.Gui) error {
 		setPanels(c)
 		initPanel := askCreatePanel
 
-		// If there's any preflight warnings, show those first.
-		if len(preflightWarnings) > 0 {
+		// If there's any preflight warnings/fatals, show those first.
+		if len(preflightWarnings) > 0 || len(preflightFatals) > 0 {
 			initPanel = preflightCheckPanel
 		}
 
@@ -815,6 +816,16 @@ func addDiskPanel(c *Console) error {
 
 func addPreflightCheckPanel(c *Console) error {
 	ackWarningsFunc := func() ([]widgets.Option, error) {
+		// Forbid proceeding if there is fatal error
+		if len(preflightFatals) > 0 {
+			return []widgets.Option{
+				{
+					Value: "no",
+					Text:  "No, please address the fatal error(s)",
+				},
+			}, nil
+		}
+
 		return []widgets.Option{
 			{
 				Value: "yes",
@@ -832,11 +843,14 @@ func addPreflightCheckPanel(c *Console) error {
 	preflightCheckV.FirstPage = true
 	preflightCheckV.Wrap = true
 	preflightCheckV.PreShow = func() error {
-		var warnings string
-		for _, w := range preflightWarnings {
-			warnings += w + "\n"
+		var lines string
+		for _, w := range preflightFatals {
+			lines += w + "\n"
 		}
-		preflightCheckV.SetContent(warnings +
+		for _, w := range preflightWarnings {
+			lines += w + "\n"
+		}
+		preflightCheckV.SetContent(lines +
 			"\nDo you wish to proceed?\n")
 		c.Gui.Cursor = false
 		return c.setContentByName(titlePanel, "Hardware Checks")
@@ -2558,6 +2572,16 @@ func addInstallPanel(c *Console) error {
 			}
 
 			if !alreadyInstalled {
+				// Abort if we have fatal errors during preflight check
+				// whether SkipChecks is enable or not
+				if len(preflightFatals) > 0 {
+						for _, fatals := range preflightFatals {
+							logrus.Error(fatals)
+							printToPanel(c.Gui, fatals, installPanel)
+						}
+						return
+				}
+
 				// Have to handle preflight warnings here because we can't check
 				// the NIC speed until we've got the correct set of interfaces.
 				preflightWarnings = append(preflightWarnings, c.doNetworkSpeedCheck(c.config.ManagementInterface.Interfaces)...)
