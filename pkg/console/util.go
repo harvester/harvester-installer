@@ -1045,8 +1045,8 @@ func getDiskOptions() ([]widgets.Option, error) {
 		return nil, err
 	}
 
-	if len(disks) == 0 {
-		return nil, fmt.Errorf("got 0 disk")
+	if len(disks) < 1 {
+		return nil, fmt.Errorf("Harvester needs at least one disk to install the system, but no disk is found")
 	}
 
 	return generateDiskWidgetOptions(disks), nil
