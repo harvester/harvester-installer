@@ -172,7 +172,6 @@ func (c *Console) doRun() error {
 				// Preflight checks that fail to run at all are
 				// logged, rather than killing the installer
 				logrus.Error(err)
-				continue
 			}
 			if len(msg) > 0 {
 				preflightWarnings = append(preflightWarnings, msg)

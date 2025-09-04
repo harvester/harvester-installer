@@ -205,7 +205,6 @@ func (c MemoryCheck) Run() (string, error) {
 func (c DiskCheck) Run() (msg string, err error) {
 	disks, err := util.GetUniqueDisks()
 	if err != nil {
-		msg = fmt.Sprintf("Unable to get number of disks: %s", err.Error())
 		return
 	}
 

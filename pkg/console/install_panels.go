@@ -71,7 +71,6 @@ func (c *Console) doNetworkSpeedCheck(interfaces []config.NetworkInterface) (war
 			// Preflight checks that fail to run at all are
 			// logged, rather than killing the installer
 			logrus.Error(err)
-			continue
 		}
 		if len(msg) > 0 {
 			warnings = append(warnings, msg)
