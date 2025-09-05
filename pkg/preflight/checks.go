@@ -30,6 +30,7 @@ const (
 var (
 	// So that we can fake this stuff up for unit tests
 	execCommand         = exec.Command
+	utilGetUniqueDisks  = util.GetUniqueDisks
 	procMemInfo         = "/proc/meminfo"
 	devKvm              = "/dev/kvm"
 	sysClassNetDevSpeed = "/sys/class/net/%s/speed"
@@ -205,7 +206,7 @@ func (c MemoryCheck) Run() (string, error) {
 }
 
 func (c DiskCheck) Run() (msg string, err error) {
-	disks, err := util.GetUniqueDisks()
+	disks, err := utilGetUniqueDisks()
 	if err != nil {
 		return
 	}

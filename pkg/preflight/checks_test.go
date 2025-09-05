@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 type fakeOutput struct {
@@ -205,9 +206,58 @@ func TestMemoryCheckProcMemInfo(t *testing.T) {
 	}
 }
 
-// TODO: add test
-// func TestDiskCheck(t *testing.T) {
-// }
+func TestDiskCheck(t *testing.T) {
+	defer func() { utilGetUniqueDisks = util.GetUniqueDisks }()
+
+	tests := []struct {
+		name        string
+		disks       []util.Device
+		expectedMsg string
+	}{
+		{
+			name:  "0 disk",
+			disks: []util.Device{},
+			expectedMsg: "Fatal: No disk detected. Harvester requires at least one disk.",
+		},
+		{
+			name:  "1 disk",
+			disks: []util.Device{
+				{
+					Name: "vda",
+					Size: "500G",
+					DiskType: "disk",
+				},
+			},
+			expectedMsg: "",
+		},
+		{
+			name:  "2 disks",
+			disks: []util.Device{
+				{
+					Name: "vda",
+					Size: "500G",
+					DiskType: "disk",
+				},
+				{
+					Name: "vdb",
+					Size: "500G",
+					DiskType: "disk",
+				},
+			},
+			expectedMsg: "",
+		},
+	}
+
+	check := DiskCheck{}
+	for _, tt := range tests {
+		utilGetUniqueDisks = func() ([]util.Device, error) {
+			return tt.disks, nil
+		}
+		msg, err := check.Run()
+		assert.Nil(t, err)
+		assert.Equal(t, tt.expectedMsg, msg)
+	}
+}
 
 func TestKVMHostCheck(t *testing.T) {
 	defaultDevKvm := devKvm
