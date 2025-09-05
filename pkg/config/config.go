@@ -123,6 +123,8 @@ type LHDefaultSettings struct {
 	// from Longhorn v1.5.0, LH merges the above two into one
 	// the above two are not used afterwards, but Harvester keeps them for compatibility
 	GuaranteedInstanceManagerCPU *uint32 `json:"guaranteedInstanceManagerCPU,omitempty"`
+
+	StorageReservedPercentageForDefaultDisk *uint32 `json:"storageReservedPercentageForDefaultDisk,omitempty"`
 }
 
 type LonghornChartValues struct {
