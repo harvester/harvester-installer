@@ -1624,7 +1624,7 @@ func addNetworkPanel(c *Console) error {
 	validateInterface := func() (string, error) {
 		ifaces := askInterfaceV.GetMultiData()
 		if len(ifaces) == 0 {
-			return "Must select at least once interface", nil
+			return "Must select at least one interface", nil
 		}
 		interfaces := make([]config.NetworkInterface, 0, len(ifaces))
 		for _, iface := range ifaces {
