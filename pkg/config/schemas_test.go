@@ -42,16 +42,6 @@ func TestToHarvesterConfig(t *testing.T) {
 						"0.us.pool.ntp.org",
 						"1.us.pool.ntp.org",
 					},
-					Wifi: []Wifi{
-						{
-							Name:       "home",
-							Passphrase: "mypassword",
-						},
-						{
-							Name:       "nothome",
-							Passphrase: "somethingelse",
-						},
-					},
 					Password: "rancher",
 					Environment: map[string]string{
 						"http_proxy":  "http://myserver",
