@@ -753,17 +753,16 @@ func createVerticalLocator(c *Console) func(elem widgets.Element, height int) {
 	maxX, maxY := c.Gui.Size()
 	lastY := maxY / 8
 	return func(elem widgets.Element, height int) {
+		if height <= 0 {
+			panic("element height must be > 0")
+		}
+
 		var (
 			x0 = maxX / 8
 			y0 = lastY
 			x1 = maxX / 8 * 7
-			y1 int
+			y1 = lastY + height
 		)
-		if height == 0 {
-			y1 = maxY / 8 * 7
-		} else {
-			y1 = y0 + height
-		}
 		lastY += height
 		elem.SetLocation(x0, y0, x1, y1)
 	}
@@ -773,6 +772,10 @@ func createVerticalLocatorWithName(c *Console) func(elemName string, height int)
 	maxX, maxY := c.Gui.Size()
 	lastY := maxY / 8
 	return func(elemName string, height int) error {
+		if height <= 0 {
+			panic(fmt.Sprintf("height of element %q must be > 0", elemName))
+		}
+
 		elem, err := c.GetElement(elemName)
 		if err != nil {
 			return err
@@ -782,13 +785,8 @@ func createVerticalLocatorWithName(c *Console) func(elemName string, height int)
 			x0 = maxX / 8
 			y0 = lastY
 			x1 = maxX / 8 * 7
-			y1 int
+			y1 = lastY + height
 		)
-		if height == 0 {
-			y1 = maxY / 8 * 7
-		} else {
-			y1 = y0 + height
-		}
 		lastY += height
 		elem.SetLocation(x0, y0, x1, y1)
 		return nil

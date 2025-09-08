@@ -1319,7 +1319,7 @@ func showHostnamePage(c *Console) error {
 		return err
 	}
 
-	if err := setLocation(hostnameValidatorPanel, 0); err != nil {
+	if err := setLocation(hostnameValidatorPanel, 3); err != nil {
 		return err
 	}
 	return showNext(c, hostnamePanel)
@@ -1963,13 +1963,13 @@ func addNetworkPanel(c *Console) error {
 
 	// bondNoteV
 	bondNoteV.Wrap = true
-	setLocation(bondNoteV, 0)
+	setLocation(bondNoteV, 4)
 	c.AddElement(bondNotePanel, bondNoteV)
 
 	// networkValidatorV
 	networkValidatorV.FgColor = gocui.ColorRed
 	networkValidatorV.Wrap = true
-	setLocation(networkValidatorV, 0)
+	setLocation(networkValidatorV, 3)
 	c.AddElement(networkValidatorPanel, networkValidatorV)
 
 	return nil
@@ -2924,7 +2924,7 @@ func addVIPPanel(c *Console) error {
 	vipTextV.FgColor = gocui.ColorRed
 	vipTextV.Focus = false
 	vipTextV.Wrap = true
-	setLocation(vipTextV, 0)
+	setLocation(vipTextV, 3)
 	c.AddElement(vipTextPanel, vipTextV)
 
 	return nil
