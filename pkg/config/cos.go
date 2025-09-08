@@ -202,10 +202,6 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
 		}
 
-		if err := UpdateWifiConfig(&initramfs, cfg.OS.Wifi, false); err != nil {
-			return nil, err
-		}
-
 		_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
 		if err != nil {
 			return nil, err
@@ -739,37 +735,6 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 			Owner:       0,
 			Group:       0,
 		})
-	}
-
-	return nil
-}
-
-func UpdateWifiConfig(stage *yipSchema.Stage, wifis []Wifi, run bool) error {
-	if len(wifis) == 0 {
-		return nil
-	}
-
-	interfaces := make([]string, 0, len(wifis))
-	for i, wifi := range wifis {
-		iface := fmt.Sprintf("wlan%d", i)
-
-		ifcfg, err := render("wicked-ifcfg-wlan", wifi)
-		if err != nil {
-			return err
-		}
-		stage.Files = append(stage.Files, yipSchema.File{
-			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", iface),
-			Content:     ifcfg,
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
-
-		interfaces = append(interfaces, iface)
-	}
-
-	if run {
-		stage.Commands = append(stage.Commands, fmt.Sprintf("wicked ifreload %s", strings.Join(interfaces, " ")))
 	}
 
 	return nil
