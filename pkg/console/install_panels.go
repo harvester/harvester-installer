@@ -1515,10 +1515,6 @@ func addNetworkPanel(c *Console) error {
 		}
 		bondNoteV.Focus = false
 		bondNoteMsg := bondNote
-		// This is just for display purposes on the network screen
-		for _, warning := range c.doNetworkSpeedCheck(mgmtNetwork.Interfaces) {
-			bondNoteMsg += "\n" + warning
-		}
 		return c.setContentByName(bondNotePanel, bondNoteMsg)
 	}
 
@@ -1680,6 +1676,10 @@ func addNetworkPanel(c *Console) error {
 				return "", err
 			}
 			interfaces = append(interfaces, tmpInterface)
+		}
+		warnings := c.doNetworkSpeedCheck(interfaces)
+		if len(warnings) > 0 {
+			return strings.Join(warnings, "\n"), nil
 		}
 		mgmtNetwork.Interfaces = interfaces
 		return "", nil
@@ -1963,13 +1963,13 @@ func addNetworkPanel(c *Console) error {
 
 	// bondNoteV
 	bondNoteV.Wrap = true
-	setLocation(bondNoteV, 4)
+	setLocation(bondNoteV, 3)
 	c.AddElement(bondNotePanel, bondNoteV)
 
 	// networkValidatorV
 	networkValidatorV.FgColor = gocui.ColorRed
 	networkValidatorV.Wrap = true
-	setLocation(networkValidatorV, 3)
+	setLocation(networkValidatorV, 5)
 	c.AddElement(networkValidatorPanel, networkValidatorV)
 
 	return nil
