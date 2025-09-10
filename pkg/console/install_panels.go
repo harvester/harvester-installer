@@ -351,7 +351,7 @@ func addDiskPanel(c *Console) error {
 	diskV.PreShow = func() error {
 		diskOpts, err := getDiskOptions()
 		if err != nil {
-			return nil
+			return err
 		}
 		if c.config.Install.Device == "" {
 			c.config.Install.Device = diskOpts[0].Value
@@ -396,7 +396,7 @@ func addDiskPanel(c *Console) error {
 		if device == "" {
 			diskOpts, err := getDiskOptions()
 			if err != nil {
-				return nil
+				return err
 			}
 			device = diskOpts[0].Value
 		}
@@ -596,7 +596,7 @@ func addDiskPanel(c *Console) error {
 
 		diskOpts, err := getDiskOptions()
 		if err != nil {
-			return nil
+			return err
 		}
 		if len(diskOpts) > 1 {
 			// Show error if disk size validation fails, but allow proceeding to next field
@@ -726,7 +726,7 @@ func addDiskPanel(c *Console) error {
 			diskConfirmed = false
 			diskOpts, err := getDiskOptions()
 			if err != nil {
-				return nil
+				return err
 			}
 			if len(diskOpts) > 1 {
 				if err := updateValidatorMessage(""); err != nil {
@@ -781,7 +781,7 @@ func addDiskPanel(c *Console) error {
 
 			diskOpts, err := getDiskOptions()
 			if err != nil {
-				return nil
+				return err
 			}
 			if len(diskOpts) > 1 && disk != dataDisk {
 				return showNext(c, dataDiskPanel)
@@ -836,7 +836,7 @@ func addDiskPanel(c *Console) error {
 
 			diskOpts, err := getDiskOptions()
 			if err != nil {
-				return nil
+				return err
 			}
 			if len(diskOpts) > 1 && disk != dataDisk {
 				return showNext(c, dataDiskPanel)
