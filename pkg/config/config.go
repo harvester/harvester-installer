@@ -292,12 +292,12 @@ func (c *HarvesterConfig) GetKubeletArgs() ([]string, error) {
 	for labelName, labelValue := range c.Labels {
 		if errs := validation.IsQualifiedName(labelName); len(errs) > 0 {
 			errJoined := strings.Join(errs, ", ")
-			return nil, fmt.Errorf("Invalid label name '%s': %s", labelName, errJoined)
+			return nil, fmt.Errorf("invalid label name '%s': %s", labelName, errJoined)
 		}
 
 		if errs := validation.IsValidLabelValue(labelValue); len(errs) > 0 {
 			errJoined := strings.Join(errs, ", ")
-			return nil, fmt.Errorf("Invalid label value '%s': %s", labelValue, errJoined)
+			return nil, fmt.Errorf("invalid label value '%s': %s", labelValue, errJoined)
 		}
 		labelStrs = append(labelStrs, fmt.Sprintf("%s=%s", labelName, labelValue))
 	}

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -99,7 +98,9 @@ func clusterPanel(g *gocui.Gui) error {
 		}
 		v.Frame = false
 		v.Wrap = true
-		fmt.Fprintln(v, "* Management URL:\n  loading...")
+		if _, err = fmt.Fprintln(v, "* Management URL:\n  loading..."); err != nil {
+			return err
+		}
 		go syncManagementURL(context.Background(), g)
 	}
 	if v, err := g.SetView("clusterStatus", maxX/2-39, 13, maxX/2+34, 15); err != nil {
@@ -108,7 +109,9 @@ func clusterPanel(g *gocui.Gui) error {
 		}
 		v.Frame = false
 		v.Wrap = true
-		fmt.Fprintln(v, "* Status: loading...")
+		if _, err = fmt.Fprintln(v, "* Status: loading..."); err != nil {
+			return err
+		}
 		go syncHarvesterStatus(context.Background(), g)
 	}
 	return nil
@@ -128,7 +131,9 @@ func nodePanel(g *gocui.Gui) error {
 		}
 		v.Frame = false
 		v.Wrap = true
-		fmt.Fprintln(v, "* Hostname: loading...\n* IP Address: loading...")
+		if _, err = fmt.Fprintln(v, "* Hostname: loading...\n* IP Address: loading..."); err != nil {
+			return err
+		}
 		go syncNodeInfo(context.Background(), g)
 	}
 	if v, err := g.SetView("nodeStatus", maxX/2-39, 19, maxX/2+34, 21); err != nil {
@@ -137,7 +142,9 @@ func nodePanel(g *gocui.Gui) error {
 		}
 		v.Frame = false
 		v.Wrap = true
-		fmt.Fprintln(v, "* Status: loading...")
+		if _, err = fmt.Fprintln(v, "* Status: loading..."); err != nil {
+			return err
+		}
 		go syncNodeStatus(context.Background(), g)
 	}
 	return nil
@@ -150,7 +157,9 @@ func footer(g *gocui.Gui) error {
 			return err
 		}
 		v.Frame = false
-		fmt.Fprintf(v, "<Use F12 to switch between Harvester console and Shell>")
+		if _, err = fmt.Fprintf(v, "<Use F12 to switch between Harvester console and Shell>"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -162,12 +171,18 @@ func logoPanel(g *gocui.Gui) error {
 			return err
 		}
 		v.Frame = false
-		fmt.Fprintf(v, logo)
+		if _, err = fmt.Fprint(v, logo); err != nil {
+			return err
+		}
 		versionStr := "version: " + version.HarvesterVersion
 		logoLength := 74
 		nSpace := logoLength - len(versionStr)
-		fmt.Fprintf(v, "\n%*s", nSpace, "")
-		fmt.Fprintf(v, "%s", versionStr)
+		if _, err = fmt.Fprintf(v, "\n%*s", nSpace, ""); err != nil {
+			return err
+		}
+		if _, err = fmt.Fprintf(v, "%s", versionStr); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -229,10 +244,7 @@ func validateAdminPassword(passwd string) bool {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "rancher:") {
-			if util.CompareByShadow(passwd, line) {
-				return true
-			}
-			return false
+			return util.CompareByShadow(passwd, line)
 		}
 	}
 	return false
@@ -243,7 +255,7 @@ func initState() error {
 	if _, err := os.Stat(envFile); os.IsNotExist(err) {
 		return err
 	}
-	content, err := ioutil.ReadFile(envFile)
+	content, err := os.ReadFile(envFile) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -253,7 +265,7 @@ func initState() error {
 	}
 
 	if serverURL != "" {
-		os.Setenv("KUBECONFIG", "/var/lib/rancher/rke2/agent/kubelet.kubeconfig")
+		return os.Setenv("KUBECONFIG", "/var/lib/rancher/rke2/agent/kubelet.kubeconfig")
 	} else {
 		current.firstHost = true
 	}
@@ -290,8 +302,8 @@ func doSyncManagementURL(g *gocui.Gui) {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintf(v, "* Management URL:\n  %s", managementURL)
-		return nil
+		_, err = fmt.Fprintf(v, "* Management URL:\n  %s", managementURL)
+		return err
 	})
 }
 
@@ -336,8 +348,8 @@ func doSyncNodeInfo(g *gocui.Gui) {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintf(v, "%s", nodeIP)
-		return nil
+		_, err = fmt.Fprintf(v, "%s", nodeIP)
+		return err
 	})
 }
 
@@ -405,8 +417,8 @@ func doSyncHarvesterStatus(g *gocui.Gui) {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintf(v, "* Status: %s", status)
-		return nil
+		_, err = fmt.Fprintf(v, "* Status: %s", status)
+		return err
 	})
 }
 
@@ -433,8 +445,8 @@ func doSyncNodeStatus(g *gocui.Gui) {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintf(v, "* Status: %s", status)
-		return nil
+		_, err = fmt.Fprintf(v, "* Status: %s", status)
+		return err
 	})
 }
 
@@ -479,18 +491,6 @@ func isAPIReady(managementURL, path string) bool {
 		return false
 	}
 	command := fmt.Sprintf(`curl -fk %s%s`, managementURL, path)
-	cmd := exec.Command("/bin/sh", "-c", command)
-	cmd.Env = os.Environ()
-	_, err := cmd.CombinedOutput()
-	return err == nil
-}
-
-func isPodReady(namespace string, labelSelectors ...string) bool {
-	var labelSelector string
-	for _, selector := range labelSelectors {
-		labelSelector += fmt.Sprintf("-l %s ", selector)
-	}
-	command := fmt.Sprintf(`kubectl get po -n %s %s -o jsonpath='{range .items[*]}{range @.status.conditions[*]}{@.type}={@.status};{end}{"\n"}' | grep "Ready=True"`, namespace, labelSelector)
 	cmd := exec.Command("/bin/sh", "-c", command)
 	cmd.Env = os.Environ()
 	_, err := cmd.CombinedOutput()
@@ -555,7 +555,7 @@ func wrapColor(s string, color int) string {
 }
 
 func (c *Console) getHarvesterConfig() error {
-	content, err := ioutil.ReadFile(defaultHarvesterConfig)
+	content, err := os.ReadFile(defaultHarvesterConfig)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logrus.Infof("no existing harvester config detected in %s", defaultHarvesterConfig)

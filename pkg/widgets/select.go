@@ -19,7 +19,6 @@ type Select struct {
 	Value          string
 	getOptionsFunc GetOptionsFunc
 	options        []Option
-	optionV        *gocui.View
 
 	// For multiselect
 	values          []string
@@ -66,7 +65,9 @@ func (s *Select) Show() error {
 			if len(s.selectedIndexes) == 0 {
 				s.selectedIndexes = make([]bool, len(s.options))
 			}
-			s.updateSelectedStatus(v)
+			if err = s.updateSelectedStatus(v); err != nil {
+				return err
+			}
 		} else {
 			v.Highlight = true
 			v.SelBgColor = gocui.ColorGreen
@@ -181,7 +182,9 @@ func (s *Select) SetData(data string) error {
 func (s *Select) updateSelectedStatus(v *gocui.View) error {
 	v.Clear()
 	_, cy := v.Cursor()
-	v.SetCursor(1, cy)
+	if err := v.SetCursor(1, cy); err != nil {
+		return err
+	}
 	values := make([]string, 0)
 	for i, opt := range s.options {
 		selected := " "
@@ -199,15 +202,16 @@ func (s *Select) updateSelectedStatus(v *gocui.View) error {
 }
 
 func (s *Select) setOptionsKeyBindings(viewName string) error {
-	setOptionsKeyBindings(s.g, viewName)
+	if err := setOptionsKeyBindings(s.g, viewName); err != nil {
+		return err
+	}
 	if s.multi {
 		handler := func(_ *gocui.Gui, v *gocui.View) error {
 			_, cy := v.Cursor()
 			if len(s.options) >= cy+1 {
 				s.selectedIndexes[cy] = !s.selectedIndexes[cy]
 			}
-			s.updateSelectedStatus(v)
-			return nil
+			return s.updateSelectedStatus(v)
 		}
 		if err := s.g.SetKeybinding(viewName, gocui.KeySpace, gocui.ModNone, handler); err != nil {
 			return err

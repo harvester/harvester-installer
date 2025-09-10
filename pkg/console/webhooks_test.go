@@ -1,7 +1,7 @@
 package console
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -153,8 +153,8 @@ func TestParsedWebhook_Send(t *testing.T) {
 			ts := newTestServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				recorder.Method = r.Method
 				recorder.Headers = dupHeaders(r.Header)
-				defer r.Body.Close()
-				body, err := ioutil.ReadAll(r.Body)
+				defer r.Body.Close() //nolint:errcheck
+				body, err := io.ReadAll(r.Body)
 				if err != nil {
 					return
 				}
@@ -168,7 +168,7 @@ func TestParsedWebhook_Send(t *testing.T) {
 				RenderedURL:     ts.URL,
 				RenderedPayload: tt.fields.RenderedPayload,
 			}
-			p.Handle()
+			p.Handle() //nolint:errcheck,gosec
 			assert.Equal(t, true, recorder.Handled)
 			assert.Equal(t, tt.wantMethod, recorder.Method)
 			for k, vv := range tt.wantHeaders {

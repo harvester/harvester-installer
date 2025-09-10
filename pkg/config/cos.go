@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -21,8 +20,6 @@ import (
 
 const (
 	cosLoginUser         = "rancher"
-	manifestsDirectory   = "/var/lib/rancher/rke2/server/manifests/"
-	harvesterConfig      = "harvester-config.yaml"
 	ntpdService          = "systemd-timesyncd"
 	timeWaitSyncService  = "systemd-time-wait-sync"
 	rancherdBootstrapDir = "/etc/rancher/rancherd/config.yaml.d/"
@@ -478,7 +475,7 @@ func RestoreOriginalNetworkConfig() error {
 	}
 
 	for name, bytes := range originalNetworkConfigs {
-		if err := ioutil.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
 			return err
 		}
 	}
@@ -501,7 +498,7 @@ func SaveOriginalNetworkConfig() error {
 				return err
 			}
 			for _, path := range filepaths {
-				bytes, err := ioutil.ReadFile(path)
+				bytes, err := os.ReadFile(path) //nolint:gosec
 				if err != nil {
 					return err
 				}
@@ -515,7 +512,6 @@ func SaveOriginalNetworkConfig() error {
 			return
 		}
 		err = save(ifcfgGlobPattern)
-		return
 	})
 
 	return err
@@ -653,11 +649,8 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) error {
 	// add Bridge named MgmtInterfaceName and attach Bond named MgmtBondInterfaceName to bridge
 
-	needVlanInterface := false
 	// pvid is always 1, if vlan id is 1, it means untagged vlan.
-	if mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094 {
-		needVlanInterface = true
-	}
+	needVlanInterface := mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094
 
 	// setup pre up script
 	stage.Directories = append(stage.Directories, yipSchema.Directory{
@@ -935,9 +928,9 @@ func setupExternalStorage(config *HarvesterConfig, stage *yipSchema.Stage) error
 // to avoid this we drop in a default stage in /etc/multipath/conf.d/99-longhorn.conf
 // which contains a blacklist directive for Longhorn specific VENDOR/PRODUCT combination
 func disableLonghornMultipathing(stage *yipSchema.Stage) {
-	ignoreLonghorn := []byte(`blacklist { 
-  device { 
-    vendor "IET" 
+	ignoreLonghorn := []byte(`blacklist {
+  device {
+    vendor "IET"
     product "VIRTUAL-DISK"
   }
 }`)
