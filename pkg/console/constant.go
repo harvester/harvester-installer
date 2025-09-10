@@ -4,6 +4,7 @@ const (
 	titlePanel                  = "title"
 	debugPanel                  = "debug"
 	diskPanel                   = "disk"
+	diskFatalPanel              = "diskFatal"
 	persistentSizePanel         = "persistentSize"
 	dataPersistentSizePanel     = "dataPersistentSize"
 	dataPersistentSizeNotePanel = "dataPersistentSizeNote"
