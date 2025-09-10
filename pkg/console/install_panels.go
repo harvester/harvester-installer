@@ -303,9 +303,9 @@ func addDiskPanel(c *Console) error {
 
 	setPageTitle := func() (error) {
 			if c.config.Install.Role == config.RoleWitness {
-				return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
+				return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
 			}
-			return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
+			return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
 	}
 	closeThisPage := func() {
 		c.CloseElements(
