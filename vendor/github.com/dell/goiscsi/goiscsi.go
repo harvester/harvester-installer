@@ -28,6 +28,10 @@ type ISCSIinterface interface {
 	// returns an array of ISCSITarget instances
 	DiscoverTargets(address string, login bool) ([]ISCSITarget, error)
 
+	// Discover the targets exposed via a given portal and interface
+	// returns an array of ISCSITarget instances
+	DiscoverTargetsWithInterface(address, iface string, login bool) ([]ISCSITarget, error)
+
 	// Get a list of iSCSI initiators defined in a specified file
 	// To use the system default file of "/etc/iscsi/initiatorname.iscsi", provide a filename of ""
 	GetInitiators(filename string) ([]string, error)
@@ -55,6 +59,12 @@ type ISCSIinterface interface {
 
 	// DeleteNode delete iSCSI node from iscsid database
 	DeleteNode(target ISCSITarget) error
+
+	// GetInterfaces returns a list of iSCSI interfaces
+	GetInterfaces() ([]ISCSIInterface, error)
+
+	// GetInterfaceForTargetIP returns the iSCSI interfaces for target IP
+	GetInterfaceForTargetIP(address ...string) (map[string]string, error)
 
 	// generic implementations
 	isMock() bool
