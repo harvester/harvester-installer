@@ -233,13 +233,11 @@ func showDiskPage(c *Console) error {
 		return err
 	}
 
-	showPersistentSizeOption := false
-	if c.config.Install.Role != config.RoleWitness &&
-		(len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device) {
-		showPersistentSizeOption = true
+	nextComponents := []string{diskPanel}
+	if len(diskOptions) == 0 {
+		return showNext(c, nextComponents...)
 	}
 
-	nextComponents := []string{diskPanel}
 	if c.config.Install.Role != config.RoleWitness &&
 		len(diskOptions) > 1 {
 		nextComponents = append([]string{dataDiskPanel}, nextComponents...)
@@ -249,9 +247,11 @@ func showDiskPage(c *Console) error {
 		nextComponents = append([]string{askForceMBRTitlePanel, askForceMBRPanel}, nextComponents...)
 	}
 
-	if showPersistentSizeOption {
+	if c.config.Install.Role != config.RoleWitness &&
+		(len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device) {
 		nextComponents = append([]string{persistentSizePanel}, nextComponents...)
 	}
+
 	return showNext(c, nextComponents...)
 }
 
@@ -305,6 +305,50 @@ func addDiskPanel(c *Console) error {
 		return err
 	}
 
+	setPageTitle := func() (error) {
+			if c.config.Install.Role == config.RoleWitness {
+				return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
+			}
+			return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
+	}
+	closeThisPage := func() {
+		c.CloseElements(
+			diskPanel,
+			dataDiskPanel,
+			askForceMBRPanel,
+			diskValidatorPanel,
+			diskNotePanel,
+			askForceMBRTitlePanel,
+			persistentSizePanel,
+			wipeDisksTitlePanel,
+			wipeDisksPanel,
+		)
+	}
+	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
+		closeThisPage()
+		diskConfirmed = false
+		if c.config.Install.Mode == config.ModeJoin {
+			return showNext(c, askRolePanel)
+		}
+		return showNext(c, askCreatePanel)
+	}
+
+	if len(diskOpts) == 0 {
+		diskFatalV := widgets.NewPanel(c.Gui, diskPanel)
+		diskFatalV.FgColor = gocui.ColorRed
+		diskFatalV.Wrap = true
+		diskFatalV.PreShow = func() error {
+			diskFatalV.SetContent("No disk detected. Harvester requires at least one disk.")
+			return setPageTitle()
+		}
+		setLocation(diskFatalV, 3)
+		c.AddElement(diskPanel, diskFatalV)
+		diskFatalV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+			gocui.KeyEsc: gotoPrevPage,
+		}
+		return nil
+	}
+
 	// Select device panel
 	diskV, err := widgets.NewDropDown(c.Gui, diskPanel, diskLabel, func() ([]widgets.Option, error) {
 		return diskOpts, nil
@@ -323,10 +367,7 @@ func addDiskPanel(c *Console) error {
 		if err := c.setContentByName(diskNotePanel, ""); err != nil {
 			return err
 		}
-		if c.config.Install.Role == config.RoleWitness {
-			return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
-		}
-		return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
+		return setPageTitle()
 	}
 	setLocation(diskV.Panel, 3)
 	c.AddElement(diskPanel, diskV)
@@ -482,27 +523,6 @@ func addDiskPanel(c *Console) error {
 			}
 		}
 		return true, nil
-	}
-	closeThisPage := func() {
-		c.CloseElements(
-			diskPanel,
-			dataDiskPanel,
-			askForceMBRPanel,
-			diskValidatorPanel,
-			diskNotePanel,
-			askForceMBRTitlePanel,
-			persistentSizePanel,
-			wipeDisksTitlePanel,
-			wipeDisksPanel,
-		)
-	}
-	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
-		closeThisPage()
-		diskConfirmed = false
-		if c.config.Install.Mode == config.ModeJoin {
-			return showNext(c, askRolePanel)
-		}
-		return showNext(c, askCreatePanel)
 	}
 	gotoNextPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		// Don't proceed to the next page if disk size validation fails
