@@ -28,12 +28,15 @@ const (
 	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
 	ifrouteGlobPattern     = networkConfigDirectory + "ifroute-*"
 
-	bootstrapConfigCount                = 6
-	defaultReplicaCount                 = 3
-	defaultGuaranteedEngineManagerCPU   = 12   // means percentage 12%
-	defaultGuaranteedReplicaManagerCPU  = 12   // means percentage 12%
-	defaultGuaranteedInstanceManagerCPU = 12   // means percentage 12%
-	defaultSystemImageSize              = 3072 // size of /run/initramfs/cos-state/cOS/active.img in MB
+	bootstrapConfigCount                           = 6
+	defaultReplicaCount                            = 3
+	defaultGuaranteedEngineManagerCPU              = 12   // means percentage 12%
+	defaultGuaranteedReplicaManagerCPU             = 12   // means percentage 12%
+	defaultGuaranteedInstanceManagerCPU            = 12   // means percentage 12%
+	defaultStorageReservedPercentageForDefaultDisk = 0    // means percentage 0%
+	defaultSystemImageSize                         = 3072 // size of /run/initramfs/cos-state/cOS/active.img in MB
+
+	maxStorageReservedPercentageForDefaultDisk = 30 // means percentage 30%
 )
 
 var (
@@ -301,6 +304,15 @@ func setConfigDefaultValues(config *HarvesterConfig) {
 
 	if config.Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU != nil && *config.Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU > defaultGuaranteedInstanceManagerCPU {
 		*config.Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU = defaultGuaranteedInstanceManagerCPU
+	}
+
+	if config.Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk != nil {
+		if *config.Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk > maxStorageReservedPercentageForDefaultDisk {
+			*config.Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk = maxStorageReservedPercentageForDefaultDisk
+		}
+	} else {
+		config.Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk = new(uint32)
+		*config.Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk = uint32(defaultStorageReservedPercentageForDefaultDisk)
 	}
 }
 
