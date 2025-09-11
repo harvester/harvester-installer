@@ -2344,14 +2344,14 @@ func addProxyPanel(c *Console) error {
 }
 
 func addCloudInitPanel(c *Console) error {
-	cloudInitV, err := widgets.NewInput(c.Gui, cloudInitPanel, "HTTP URL", false)
+	cloudInitV, err := widgets.NewInput(c.Gui, cloudInitPanel, "URL", false)
 	if err != nil {
 		return err
 	}
 	cloudInitV.PreShow = func() error {
 		c.Gui.Cursor = true
 		cloudInitV.Value = c.config.Install.ConfigURL
-		return c.setContentByName(titlePanel, "Optional: remote Harvester config")
+		return c.setContentByName(titlePanel, "Optional: Harvester config file (file:// or http://)")
 	}
 	gotoNextPage := func() error {
 		if err := cloudInitV.Close(); err != nil {
