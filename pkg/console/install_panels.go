@@ -83,7 +83,9 @@ func (c *Console) doNetworkSpeedCheck(interfaces []config.NetworkInterface) (war
 func (c *Console) layoutInstall(_ *gocui.Gui) error {
 	var err error
 	once.Do(func() {
-		setPanels(c)
+		if err = setPanels(c); err != nil {
+			return
+		}
 		initPanel := askCreatePanel
 
 		// If there's any preflight warnings, show those first.
@@ -108,7 +110,10 @@ func (c *Console) layoutInstall(_ *gocui.Gui) error {
 		}
 
 		if cfg, err := config.ReadConfig(); err == nil {
-			c.config.Merge(cfg)
+			if err = c.config.Merge(cfg); err != nil {
+				logrus.Errorf("error merging config file: %v", err)
+				return
+			}
 			if cfg.Install.Automatic && isFirstConsoleTTY() {
 				logrus.Info("Start automatic installation...")
 				// setup InstallMode to ensure that during automatic install
@@ -233,11 +238,8 @@ func showDiskPage(c *Console) error {
 		return err
 	}
 
-	showPersistentSizeOption := false
-	if c.config.Install.Role != config.RoleWitness &&
-		(len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device) {
-		showPersistentSizeOption = true
-	}
+	showPersistentSizeOption := c.config.Install.Role != config.RoleWitness &&
+		(len(diskOptions) == 1 || c.config.Install.DataDisk == c.config.Install.Device)
 
 	nextComponents := []string{diskPanel}
 	if c.config.Install.Role != config.RoleWitness &&
@@ -849,13 +851,21 @@ func addPreflightCheckPanel(c *Console) error {
 				return err
 			}
 			if proceed == "no" {
-				preflightCheckV.Close()
-				c.setContentByName(titlePanel, "")
-				c.setContentByName(footerPanel, "")
-				go util.SleepAndReboot()
+				if err = preflightCheckV.Close(); err != nil {
+					return err
+				}
+				if err = c.setContentByName(titlePanel, ""); err != nil {
+					return err
+				}
+				if err = c.setContentByName(footerPanel, ""); err != nil {
+					return err
+				}
+				go util.SleepAndReboot() //nolint:errcheck
 				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
 			}
-			preflightCheckV.Close()
+			if err = preflightCheckV.Close(); err != nil {
+				return err
+			}
 			return showNext(c, askCreatePanel)
 		},
 	}
@@ -931,12 +941,15 @@ func addAskCreatePanel(c *Console) error {
 				c.config.Install.Role = config.RoleDefault
 			}
 
-			askCreateV.Close()
+			if err = askCreateV.Close(); err != nil {
+				return err
+			}
 
-			if selected == config.ModeCreate {
+			switch selected {
+			case config.ModeCreate:
 				c.config.ServerURL = ""
 				userInputData.ServerURL = ""
-			} else if selected == config.ModeUpgrade {
+			case config.ModeUpgrade:
 				return showNext(c, confirmUpgradePanel)
 			}
 
@@ -1002,7 +1015,9 @@ func addAskRolePanel(c *Console) error {
 				return err
 			}
 			c.config.Install.Role = selected
-			askRoleV.Close()
+			if err = askRoleV.Close(); err != nil {
+				return err
+			}
 			if alreadyInstalled {
 				return showNetworkPage(c)
 			}
@@ -1033,7 +1048,9 @@ func addServerURLPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			asyncTaskV.Close()
+			if err = asyncTaskV.Close(); err != nil {
+				return err
+			}
 
 			userInputData.ServerURL, err = serverURLV.GetData()
 			if err != nil {
@@ -1051,7 +1068,9 @@ func addServerURLPanel(c *Console) error {
 			c.CloseElement(validatorPanel)
 
 			// focus on task panel to prevent input
-			asyncTaskV.Show()
+			if err = asyncTaskV.Show(); err != nil {
+				return err
+			}
 
 			pingServerURL := fmtServerURL + "/ping"
 			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", pingServerURL))
@@ -1067,7 +1086,9 @@ func addServerURLPanel(c *Console) error {
 				spinner.Stop(false, "")
 				c.config.ServerURL = fmtServerURL
 				g.Update(func(_ *gocui.Gui) error {
-					serverURLV.Close()
+					if err := serverURLV.Close(); err != nil {
+						return err
+					}
 					return showNext(c, tokenPanel)
 				})
 			}(c.Gui)
@@ -1075,7 +1096,9 @@ func addServerURLPanel(c *Console) error {
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, _ *gocui.View) error {
 			g.Cursor = false
-			serverURLV.Close()
+			if err := serverURLV.Close(); err != nil {
+				return err
+			}
 			return showNext(c, dnsServersPanel)
 		},
 	}
@@ -1124,7 +1147,9 @@ func addPasswordPanels(c *Console) error {
 	pw.passwordConfirmV.PreShow = func() error {
 		c.Gui.Cursor = true
 		passwordConfirmV.Value = userInputData.PasswordConfirm
-		c.setContentByName(notePanel, "")
+		if err := c.setContentByName(notePanel, ""); err != nil {
+			return err
+		}
 		return c.setContentByName(titlePanel, "Configure the password to access the node")
 	}
 	pw.passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -1156,7 +1181,9 @@ func addSSHKeyPanel(c *Console) error {
 		return sshKeyV.Close()
 	}
 	gotoNextPage := func() error {
-		closeThisPage()
+		if err := closeThisPage(); err != nil {
+			return err
+		}
 		return showNext(c, cloudInitPanel)
 	}
 	sshKeyV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -1173,8 +1200,12 @@ func addSSHKeyPanel(c *Console) error {
 				if err != nil {
 					return err
 				}
-				asyncTaskV.Close()
-				asyncTaskV.Show()
+				if err = asyncTaskV.Close(); err != nil {
+					return err
+				}
+				if err = asyncTaskV.Show(); err != nil {
+					return err
+				}
 
 				spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", url))
 				spinner.Start()
@@ -1200,7 +1231,9 @@ func addSSHKeyPanel(c *Console) error {
 			return gotoNextPage()
 		},
 		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
-			closeThisPage()
+			if err := closeThisPage(); err != nil {
+				return err
+			}
 			return showNext(c, proxyPanel)
 		},
 	}
@@ -1252,11 +1285,15 @@ func addTokenPanel(c *Console) error {
 				return c.setContentByName(validatorPanel, err.Error())
 			}
 			c.config.Token = token
-			closeThisPage()
+			if err := closeThisPage(); err != nil {
+				return err
+			}
 			return showNext(c, passwordConfirmPanel, passwordPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, _ *gocui.View) error {
-			closeThisPage()
+			if err := closeThisPage(); err != nil {
+				return err
+			}
 			if c.config.Install.Mode == config.ModeCreate {
 				g.Cursor = false
 				return showNext(c, vipTextPanel, askVipMethodPanel)
@@ -1574,7 +1611,7 @@ func addNetworkPanel(c *Console) error {
 		if err := networkValidatorV.Show(); err != nil {
 			return err
 		}
-		spinner := NewFocusSpinner(c.Gui, networkValidatorPanel, fmt.Sprintf("Applying network configuration..."))
+		spinner := NewFocusSpinner(c.Gui, networkValidatorPanel, "Applying network configuration...")
 		spinner.Start()
 		go func(g *gocui.Gui) {
 			msg, err := preGotoNextPage()
@@ -2058,16 +2095,16 @@ func addClusterNetworkPanel(c *Console) error {
 		// service CIDR
 		ipAddr, err := netip.ParseAddr(ip)
 		if err != nil {
-			return fmt.Errorf("Invalid cluster DNS IP: %w", err)
+			return fmt.Errorf("invalid cluster DNS IP: %w", err)
 		}
 
 		svcNet, err := netip.ParsePrefix(serviceCIDR)
 		if err != nil {
-			return fmt.Errorf("To override the cluster DNS IP, the service CIDR must be valid: %w", err)
+			return fmt.Errorf("to override the cluster DNS IP, the service CIDR must be valid: %w", err)
 		}
 
 		if !svcNet.Contains(ipAddr) {
-			return fmt.Errorf("Invalid cluster DNS IP: %s is not in the service CIDR %s", ip, serviceCIDR)
+			return fmt.Errorf("invalid cluster DNS IP: %s is not in the service CIDR %s", ip, serviceCIDR)
 		}
 
 		return nil
@@ -2081,16 +2118,17 @@ func addClusterNetworkPanel(c *Console) error {
 		}
 
 		if err := validateCIDR(podCIDR); err != nil {
-			c.setContentByName(
+			return c.setContentByName(
 				clusterNetworkValidatorPanel,
 				fmt.Sprintf("Invalid pod CIDR: %s", err))
-			return nil
 		}
 		c.config.ClusterPodCIDR = podCIDR
 
 		// reset any previous error in the validator panel before
 		// moving to the next panel
-		c.setContentByName(clusterNetworkValidatorPanel, "")
+		if err := c.setContentByName(clusterNetworkValidatorPanel, ""); err != nil {
+			return err
+		}
 		return showNext(c, clusterServiceCIDRPanel)
 	}
 
@@ -2100,17 +2138,18 @@ func addClusterNetworkPanel(c *Console) error {
 			return err
 		}
 
-		if err := validateCIDR(serviceCIDR); err != nil {
-			c.setContentByName(
+		if err = validateCIDR(serviceCIDR); err != nil {
+			return c.setContentByName(
 				clusterNetworkValidatorPanel,
 				fmt.Sprintf("Invalid service CIDR: %s", err))
-			return nil
 		}
 		c.config.ClusterServiceCIDR = serviceCIDR
 
 		// reset any previous error in the validator panel before
 		// moving to the next panel
-		c.setContentByName(clusterNetworkValidatorPanel, "")
+		if err = c.setContentByName(clusterNetworkValidatorPanel, ""); err != nil {
+			return err
+		}
 		return showNext(c, clusterDNSPanel)
 	}
 
@@ -2119,14 +2158,15 @@ func addClusterNetworkPanel(c *Console) error {
 		if err != nil {
 			return err
 		}
-		if err := validateDNSIP(dns); err != nil {
-			c.setContentByName(clusterNetworkValidatorPanel, err.Error())
-			return nil
+		if err = validateDNSIP(dns); err != nil {
+			return c.setContentByName(clusterNetworkValidatorPanel, err.Error())
 		}
 		c.config.ClusterDNS = dns
 
 		// reset the validator panel before moving to the next page
-		c.setContentByName(clusterNetworkValidatorPanel, "")
+		if err = c.setContentByName(clusterNetworkValidatorPanel, ""); err != nil {
+			return err
+		}
 		return nextPage()
 	}
 
@@ -2265,22 +2305,36 @@ func addProxyPanel(c *Console) error {
 				return err
 			}
 			if proxy != "" {
-				os.Setenv("HTTP_PROXY", proxy)
-				os.Setenv("HTTPS_PROXY ", proxy)
+				if err = os.Setenv("HTTP_PROXY", proxy); err != nil {
+					return err
+				}
+				if err = os.Setenv("HTTPS_PROXY ", proxy); err != nil {
+					return err
+				}
 			} else {
-				os.Unsetenv("HTTP_PROXY")
-				os.Unsetenv("HTTPS_PROXY")
+				if err = os.Unsetenv("HTTP_PROXY"); err != nil {
+					return err
+				}
+				if err = os.Unsetenv("HTTPS_PROXY"); err != nil {
+					return err
+				}
 			}
-			proxyV.Close()
+			if err = proxyV.Close(); err != nil {
+				return err
+			}
 			noteV, err := c.GetElement(notePanel)
 			if err != nil {
 				return err
 			}
-			noteV.Close()
+			if err = noteV.Close(); err != nil {
+				return err
+			}
 			return showNext(c, sshKeyPanel)
 		},
 		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
-			proxyV.Close()
+			if err := proxyV.Close(); err != nil {
+				return err
+			}
 			c.CloseElement(notePanel)
 			return showNext(c, ntpServersPanel)
 		},
@@ -2300,7 +2354,9 @@ func addCloudInitPanel(c *Console) error {
 		return c.setContentByName(titlePanel, "Optional: remote Harvester config")
 	}
 	gotoNextPage := func() error {
-		cloudInitV.Close()
+		if err := cloudInitV.Close(); err != nil {
+			return err
+		}
 		return showNext(c, confirmInstallPanel)
 	}
 	cloudInitV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
@@ -2315,8 +2371,12 @@ func addCloudInitPanel(c *Console) error {
 				if err != nil {
 					return err
 				}
-				asyncTaskV.Close()
-				asyncTaskV.Show()
+				if err = asyncTaskV.Close(); err != nil {
+					return err
+				}
+				if err = asyncTaskV.Show(); err != nil {
+					return err
+				}
 
 				spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking %q...", configURL))
 				spinner.Start()
@@ -2339,7 +2399,9 @@ func addCloudInitPanel(c *Console) error {
 			return gotoNextPage()
 		},
 		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
-			cloudInitV.Close()
+			if err = cloudInitV.Close(); err != nil {
+				return err
+			}
 			return showNext(c, sshKeyPanel)
 		},
 	}
@@ -2416,17 +2478,27 @@ func addConfirmInstallPanel(c *Console) error {
 				return err
 			}
 			if confirmed == "no" {
-				confirmV.Close()
-				c.setContentByName(titlePanel, "")
-				c.setContentByName(footerPanel, "")
-				go util.SleepAndReboot()
+				if err = confirmV.Close(); err != nil {
+					return err
+				}
+				if err = c.setContentByName(titlePanel, ""); err != nil {
+					return err
+				}
+				if err = c.setContentByName(footerPanel, ""); err != nil {
+					return err
+				}
+				go util.SleepAndReboot() //nolint:errcheck
 				return c.setContentByName(notePanel, "Installation halted. Rebooting system in 5 seconds")
 			}
-			confirmV.Close()
+			if err = confirmV.Close(); err != nil {
+				return err
+			}
 			return showNext(c, installPanel)
 		},
 		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
-			confirmV.Close()
+			if err = confirmV.Close(); err != nil {
+				return err
+			}
 			if installModeOnly {
 				return showNext(c, passwordConfirmPanel, passwordPanel)
 			}
@@ -2462,14 +2534,18 @@ func addConfirmUpgradePanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			confirmV.Close()
+			if err = confirmV.Close(); err != nil {
+				return err
+			}
 			if confirmed == "no" {
 				return showNext(c, askCreatePanel)
 			}
 			return showNext(c, upgradePanel)
 		},
 		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
-			confirmV.Close()
+			if err = confirmV.Close(); err != nil {
+				return err
+			}
 			return showNext(c, askCreatePanel)
 		},
 	}
@@ -2483,7 +2559,7 @@ func addInstallPanel(c *Console) error {
 	installV.PreShow = func() error {
 		go func() {
 			// in alreadyInstalled mode and auto configuration, the network is not available
-			if alreadyInstalled && c.config.Automatic == true && c.config.ManagementInterface.Method == "dhcp" {
+			if alreadyInstalled && c.config.Automatic && c.config.ManagementInterface.Method == "dhcp" {
 				configureInstallModeDHCP(c)
 			}
 
@@ -2653,7 +2729,7 @@ func addUpgradePanel(c *Console) error {
 	maxX, maxY := c.Gui.Size()
 	upgradeV := widgets.NewPanel(c.Gui, upgradePanel)
 	upgradeV.PreShow = func() error {
-		go doUpgrade(c.Gui)
+		go doUpgrade(c.Gui) //nolint:errcheck
 		return c.setContentByName(footerPanel, "")
 	}
 	upgradeV.Title = " Upgrading Harvester "
@@ -2786,8 +2862,12 @@ func addVIPPanel(c *Console) error {
 			return showNext(c, vipPanel, vipHwAddrNotePanel, vipHwAddrPanel)
 		}
 
-		hwAddrV.Close()
-		hwAddrNoteV.Close()
+		if err = hwAddrV.Close(); err != nil {
+			return err
+		}
+		if err = hwAddrNoteV.Close(); err != nil {
+			return err
+		}
 		return showNext(c, vipPanel)
 	}
 	gotoVipParentPanel := func(_ *gocui.Gui, _ *gocui.View) error {
@@ -2871,12 +2951,16 @@ func addNTPServersPanel(c *Console) error {
 	}
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		userInputData.HasCheckedNTPServers = false
-		closeThisPage()
+		if err := closeThisPage(); err != nil {
+			return err
+		}
 		return showNext(c, passwordConfirmPanel, passwordPanel)
 	}
 	gotoNextPage := func() error {
 		userInputData.HasCheckedNTPServers = false
-		closeThisPage()
+		if err := closeThisPage(); err != nil {
+			return err
+		}
 		return showNext(c, proxyPanel)
 	}
 	gotoSpinnerErrorPage := func(g *gocui.Gui, spinner *Spinner, msg string) {
@@ -2895,7 +2979,7 @@ func addNTPServersPanel(c *Console) error {
 			}
 
 			// When input servers can't be reached and users don't want to change it, we continue the process.
-			if userInputData.NTPServers == ntpServers && userInputData.HasCheckedNTPServers == true {
+			if userInputData.NTPServers == ntpServers && userInputData.HasCheckedNTPServers {
 				return gotoNextPage()
 			}
 			// reset HasCheckedNTPServers if users change input
@@ -2906,17 +2990,21 @@ func addNTPServersPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			asyncTaskV.Close()
+			if err = asyncTaskV.Close(); err != nil {
+				return err
+			}
 
 			// focus on task panel to prevent input
-			asyncTaskV.Show()
+			if err = asyncTaskV.Show(); err != nil {
+				return err
+			}
 
 			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Checking NTP Server: %q...", ntpServers))
 			spinner.Start()
 
 			go func(g *gocui.Gui) {
 				if strings.TrimSpace(ntpServers) != ntpServers {
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("There is space in input."))
+					gotoSpinnerErrorPage(g, spinner, "There is space in input.")
 					return
 				}
 
@@ -2926,7 +3014,7 @@ func addNTPServersPanel(c *Console) error {
 				c.config.OS.NTPServers = ntpServerList
 
 				if ntpServers == "" {
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Empty NTP Server is not recommended. Press Enter again to use current configuration anyway."))
+					gotoSpinnerErrorPage(g, spinner, "Empty NTP Server is not recommended. Press Enter again to use current configuration anyway.")
 					return
 				}
 
@@ -2985,11 +3073,15 @@ func addDNSServersPanel(c *Console) error {
 		return dnsServersV.Close()
 	}
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
-		closeThisPage()
+		if err := closeThisPage(); err != nil {
+			return err
+		}
 		return showHostnamePage(c)
 	}
 	gotoNextPage := func() error {
-		closeThisPage()
+		if err := closeThisPage(); err != nil {
+			return err
+		}
 		if c.config.Install.Mode == config.ModeCreate {
 			return showNext(c, vipTextPanel, askVipMethodPanel)
 		}
@@ -3009,7 +3101,9 @@ func addDNSServersPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
-			asyncTaskV.Close()
+			if err = asyncTaskV.Close(); err != nil {
+				return err
+			}
 
 			// get dns servers
 			dnsServers, err := dnsServersV.GetData()
@@ -3020,7 +3114,9 @@ func addDNSServersPanel(c *Console) error {
 			userInputData.DNSServers = dnsServers
 
 			// focus on task panel to prevent input
-			asyncTaskV.Show()
+			if err = asyncTaskV.Show(); err != nil {
+				return err
+			}
 
 			spinner := NewSpinner(c.Gui, spinnerPanel, fmt.Sprintf("Setup DNS Servers: %q...", dnsServers))
 			spinner.Start()
@@ -3136,7 +3232,9 @@ func mergeCloudInit(c *config.HarvesterConfig) error {
 		return err
 	}
 	if cloudConfig.Install.Automatic {
-		c.Merge(cloudConfig)
+		if err = c.Merge(cloudConfig); err != nil {
+			return err
+		}
 		if cloudConfig.OS.Hostname != "" {
 			c.OS.Hostname = cloudConfig.OS.Hostname
 		}

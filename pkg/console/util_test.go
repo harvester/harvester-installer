@@ -41,7 +41,7 @@ func TestGetSSHKeysFromURL(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				fmt.Fprintln(w, testCase.httpResp)
+				fmt.Fprintln(w, testCase.httpResp) //nolint:errcheck
 			}))
 			defer ts.Close()
 
@@ -210,7 +210,7 @@ func startMockNTPServers(quit chan interface{}) ([]string, error) {
 		ntpServers = append(ntpServers, listener.LocalAddr().String())
 
 		go func(listener net.PacketConn) {
-			defer listener.Close()
+			defer listener.Close() //nolint:errcheck
 
 			for {
 				req := make([]byte, 48)
@@ -224,7 +224,7 @@ func startMockNTPServers(quit chan interface{}) ([]string, error) {
 					}
 				}
 				go func(listener net.PacketConn, addr net.Addr) {
-					listener.WriteTo(make([]byte, 48), addr)
+					listener.WriteTo(make([]byte, 48), addr) //nolint:errcheck,gosec
 				}(listener, addr)
 			}
 

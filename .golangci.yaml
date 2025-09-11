@@ -1,27 +1,43 @@
+version: 2
 linters:
   disable-all: true
   enable:
-    - goimports
-    - gofmt
-    - misspell
-    - revive
+    - errcheck
+    - govet
     - gosec
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
     - prealloc
-issues:
+  formatters:
+    enable:
+      - gofmt
+  settings:
+    gosec:
+      # https://github.com/securego/gosec#available-rules
+      excludes:
+        - G101 # Look for hard coded credentials
+        - G204 # Audit the use of command execution
+        - G402 # TLS InsecureSkipVerify set true
   exclude-files:
     - /zz_generated_
     - _generated
   exclude-dirs:
     - generated
+  executions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - staticcheck
+        text: "QF1008:" # could remove embedded field from selector (staticcheck)
+
 run:
   timeout: 5m
   tests: true
   build-tags:
     - test
-linters-settings:
-  gosec:
-    # https://github.com/securego/gosec#available-rules
-    excludes:
-      - G101 # Look for hard coded credentials
-      - G204 # Audit the use of command execution
-      - G402 # TLS InsecureSkipVerify set true

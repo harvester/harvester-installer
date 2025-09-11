@@ -30,27 +30,27 @@ func TestCalcCosPersistentPartSize(t *testing.T) {
 		{
 			diskSize:      250,
 			partitionSize: "240Gi",
-			err:           "Partition size is too large. Maximum 176Gi is allowed",
+			err:           "partition size is too large. Maximum 176Gi is allowed",
 		},
 		{
 			diskSize:      150,
 			partitionSize: "100Gi",
-			err:           "Installation disk size is too small. Minimum 250Gi is required",
+			err:           "installation disk size is too small. Minimum 250Gi is required",
 		},
 		{
 			diskSize:      300,
 			partitionSize: "153600Ki",
-			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
+			err:           "partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
 		},
 		{
 			diskSize:      2000,
 			partitionSize: "1.5Ti",
-			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
+			err:           "partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
 		},
 		{
 			diskSize:      500,
 			partitionSize: "abcd",
-			err:           "Partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
+			err:           "partition size must end with 'Mi' or 'Gi'. Decimals and negatives are not allowed",
 		},
 	}
 

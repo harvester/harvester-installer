@@ -1,9 +1,7 @@
 package console
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -83,11 +81,11 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 		return nil, err
 	}
 
-	tempFile, err := ioutil.TempFile("/tmp", "live.XXXXXXXX")
+	tempFile, err := os.CreateTemp("/tmp", "live.XXXXXXXX")
 	if err != nil {
 		return nil, err
 	}
-	defer tempFile.Close()
+	defer tempFile.Close() //nolint:errcheck
 
 	bytes, err := yaml.Marshal(conf)
 	if err != nil {
@@ -96,7 +94,7 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 	if _, err := tempFile.Write(bytes); err != nil {
 		return nil, err
 	}
-	defer os.Remove(tempFile.Name())
+	defer os.Remove(tempFile.Name()) //nolint:errcheck
 
 	cmd := exec.Command("/usr/bin/yip", "-s", "live", tempFile.Name())
 	cmd.Env = os.Environ()
@@ -172,32 +170,6 @@ func getNICState(name string) int {
 		return NICStateLowerDown
 	}
 	return NICStateUP
-}
-
-type networkHardwareInfo struct {
-	Name        string `json:"logicalname"`
-	Vendor      string `json:"vendor"`
-	Product     string `json:"product"`
-	Description string `json:"description"`
-}
-
-func listNetworkHardware() (map[string]networkHardwareInfo, error) {
-	out, err := exec.Command("/bin/sh", "-c", "lshw -c network -json").CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-
-	m := make(map[string]networkHardwareInfo)
-	var networkHardwareList []networkHardwareInfo
-	if err := json.Unmarshal(out, &networkHardwareList); err != nil {
-		return nil, err
-	}
-
-	for _, networkHardware := range networkHardwareList {
-		m[networkHardware.Name] = networkHardware
-	}
-
-	return m, nil
 }
 
 func getManagementInterfaceName(mgmtInterface config.Network) string {
