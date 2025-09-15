@@ -227,9 +227,6 @@ preload_rke2_images()
         done
       }
 
-      # update the nameserver
-      netconfig update
-
       inst_tmp=$(mktemp -d -p /usr/local)
       trap "rm -rf $inst_tmp" exit
 
@@ -484,12 +481,12 @@ save_installation_log()
     fi
 }
 
-save_wicked_state()
+save_nm_state()
 {
-    # Save wicked state so we could keep the DHCP IP
-    local wicked_state="${TARGET}/usr/local/.state/var-lib-wicked.bind"
-    mkdir -p ${wicked_state}
-    cp -r /var/lib/wicked/. ${wicked_state}
+    # Save NetworkManager state [so we could keep the DHCP IP?!?]
+    local nm_state="${TARGET}/usr/local/.state/var-lib-NetworkManager.bind"
+    mkdir -p ${nm_state}
+    cp -r /var/lib/NetworkManager/. ${nm_state}
 }
 
 do_data_disk_format()
@@ -551,7 +548,7 @@ do_mount
 sparsify_passive_img
 get_iso  # For PXE Boot
 save_configs
-save_wicked_state
+save_nm_state
 do_preload
 
 update_grub_settings

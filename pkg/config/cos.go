@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -24,9 +25,7 @@ const (
 	timeWaitSyncService  = "systemd-time-wait-sync"
 	rancherdBootstrapDir = "/etc/rancher/rancherd/config.yaml.d/"
 
-	networkConfigDirectory = "/etc/sysconfig/network/"
-	ifcfgGlobPattern       = networkConfigDirectory + "ifcfg-*"
-	ifrouteGlobPattern     = networkConfigDirectory + "ifroute-*"
+	nmConnectionGlobPattern = "/etc/NetworkManager/system-connections/*nmconnection"
 
 	bootstrapConfigCount                           = 6
 	defaultReplicaCount                            = 3
@@ -199,7 +198,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
 		}
 		if len(cfg.OS.DNSNameservers) > 0 {
-			initramfs.Commands = append(initramfs.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers))
+			afterNetwork.Commands = append(afterNetwork.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers, cfg.ManagementInterface.VlanID))
 		}
 
 		_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
@@ -475,15 +474,12 @@ func RestoreOriginalNetworkConfig() error {
 		return nil
 	}
 
-	if err := remove(ifrouteGlobPattern); err != nil {
-		return err
-	}
-	if err := remove(ifcfgGlobPattern); err != nil {
+	if err := remove(nmConnectionGlobPattern); err != nil {
 		return err
 	}
 
 	for name, bytes := range originalNetworkConfigs {
-		if err := os.WriteFile(fmt.Sprintf("/etc/sysconfig/network/%s", name), bytes, os.FileMode(0600)); err != nil {
+		if err := os.WriteFile(name, bytes, os.FileMode(0600)); err != nil {
 			return err
 		}
 	}
@@ -491,10 +487,6 @@ func RestoreOriginalNetworkConfig() error {
 }
 
 // SaveOriginalNetworkConfig saves the current state of network configurations.
-// Namely
-// - all `/etc/sysconfig/network/ifroute-*` files, and
-// - all `/etc/sysconfig/network/ifcfg-*` files
-//
 // It can only be invoked once for the whole lifetime of this program.
 func SaveOriginalNetworkConfig() error {
 	var err error
@@ -510,25 +502,21 @@ func SaveOriginalNetworkConfig() error {
 				if err != nil {
 					return err
 				}
-				originalNetworkConfigs[filepath.Base(path)] = bytes
+				originalNetworkConfigs[path] = bytes
 
 			}
 			return nil
 		}
 
-		if err = save(ifrouteGlobPattern); err != nil {
-			return
-		}
-		err = save(ifcfgGlobPattern)
+		err = save(nmConnectionGlobPattern)
 	})
 
 	return err
 }
 
 // UpdateManagementInterfaceConfig updates a cOS config stage to include steps that:
-// - generates wicked interface files (`/etc/sysconfig/network/ifcfg-*` and `ifroute-*`)
-// - manipulates nameservers in `/etc/resolv.conf`.
-// - call `wicked ifreload all` if `run` flag is true.
+// - generates NetworkManager connection profiles (`/etc/NetworkManager/system-connections/*.nmconnection`)
+// - restart networking and wait for connection if `run` flag is true
 func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool) (string, error) {
 	if len(mgmtInterface.Interfaces) == 0 {
 		return "", errors.New("no slave defined for management network bond")
@@ -540,17 +528,16 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 		return "", fmt.Errorf("unsupported network method %s", mgmtInterface.Method)
 	}
 
-	if len(mgmtInterface.Interfaces) > 0 {
-		bondMgmt := Network{
-			Interfaces:  mgmtInterface.Interfaces,
-			Method:      NetworkMethodNone,
-			BondOptions: mgmtInterface.BondOptions,
-			MTU:         mgmtInterface.MTU,
-			VlanID:      mgmtInterface.VlanID,
-		}
-		if err := updateBond(stage, MgmtBondInterfaceName, &bondMgmt); err != nil {
-			return "", err
-		}
+	bondMgmt := Network{
+		Interfaces:  mgmtInterface.Interfaces,
+		Method:      NetworkMethodNone,
+		BondOptions: mgmtInterface.BondOptions,
+		MTU:         mgmtInterface.MTU,
+		VlanID:      mgmtInterface.VlanID,
+	}
+
+	if err := updateBond(stage, MgmtBondInterfaceName, &bondMgmt); err != nil {
+		return "", err
 	}
 
 	if err := updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
@@ -562,25 +549,21 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 		name = fmt.Sprintf("%s.%d", name, mgmtInterface.VlanID)
 	}
 
-	switch mgmtInterface.Method {
-	case NetworkMethodStatic:
-		// default gateway for static mode
-		stage.Files = append(stage.Files, yipSchema.File{
-			Path:        fmt.Sprintf("/etc/sysconfig/network/ifroute-%s", name),
-			Content:     fmt.Sprintf("default %s - %s\n", mgmtInterface.Gateway, name),
-			Permissions: 0600,
-			Owner:       0,
-			Group:       0,
-		})
-	case NetworkMethodDHCP, NetworkMethodNone:
-		stage.Commands = append(stage.Commands, fmt.Sprintf("rm -f /etc/sysconfig/network/ifroute-%s", name))
-	}
-
 	if run {
-		stage.Commands = append(stage.Commands, "wicked ifreload all")
-
-		// in case wicked config is not changed and netconfig is not called
-		stage.Commands = append(stage.Commands, "netconfig update")
+		// We need to turn networking off first, in order to bring down any
+		// existing interfaces, before reloading the updated connections.
+		// Then we can start networking again.  If we don't turn networking
+		// off first, and only reload connections, then it's possible if the
+		// user selected a static IP in the installer, then went back and
+		// changed to DHCP, that the static IP would still be up.
+		stage.Commands = append(stage.Commands, "nmcli networking off")
+		stage.Commands = append(stage.Commands, "nmcli connection reload")
+		stage.Commands = append(stage.Commands, "nmcli networking on")
+		// This next command waits up to 30 seconds to ensure there's
+		// a connection.  Without this, it's possible that a slow DHCP
+		// server won't return in time, and the installer will subsequently
+		// fail the check for a default route.
+		stage.Commands = append(stage.Commands, "nm-online -x")
 	}
 
 	return name, nil
@@ -597,40 +580,21 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 		}
 	}
 
-	// setup post up script
-	stage.Directories = append(stage.Directories, yipSchema.Directory{
-		Path:        "/etc/wicked/scripts",
-		Permissions: 0644,
-		Owner:       0,
-		Group:       0,
-	})
-
-	mgmtData := map[string]interface{}{
-		"VlanID":   network.VlanID,
-		"IntfName": MgmtInterfaceName,
+	bondData := map[string]interface{}{
+		"Bond":       network,
+		"BondName":   MgmtBondInterfaceName,
+		"BridgeName": MgmtInterfaceName,
 	}
 
-	postUpScript, err := render("wicked-setup-bond.sh", mgmtData)
-	if err != nil {
-		return err
-	}
-	stage.Files = append(stage.Files, yipSchema.File{
-		Path:        "/etc/wicked/scripts/setup_bond.sh",
-		Content:     postUpScript,
-		Permissions: 0755,
-		Owner:       0,
-		Group:       0,
-	})
-
-	ifcfg, err := render("wicked-ifcfg-bond-master", network)
+	nmcon, err := render("nm-bond-master.nmconnection", bondData)
 	if err != nil {
 		return err
 	}
 
 	// bond master
 	stage.Files = append(stage.Files, yipSchema.File{
-		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", name),
-		Content:     ifcfg,
+		Path:        "/etc/NetworkManager/system-connections/bond-mgmt.nmconnection",
+		Content:     nmcon,
 		Permissions: 0600,
 		Owner:       0,
 		Group:       0,
@@ -638,13 +602,17 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 
 	// bond slaves
 	for _, iface := range network.Interfaces {
-		ifcfg, err := render("wicked-ifcfg-bond-slave", iface)
+		ifaceData := map[string]interface{}{
+			"Iface":    iface,
+			"BondName": MgmtBondInterfaceName,
+		}
+		nmcon, err := render("nm-bond-slave.nmconnection", ifaceData)
 		if err != nil {
 			return err
 		}
 		stage.Files = append(stage.Files, yipSchema.File{
-			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", iface.Name),
-			Content:     ifcfg,
+			Path:        fmt.Sprintf("/etc/NetworkManager/system-connections/bond-slave-%s.nmconnection", iface.Name),
+			Content:     nmcon,
 			Permissions: 0600,
 			Owner:       0,
 			Group:       0,
@@ -660,31 +628,6 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 	// pvid is always 1, if vlan id is 1, it means untagged vlan.
 	needVlanInterface := mgmtNetwork.VlanID >= 2 && mgmtNetwork.VlanID <= 4094
 
-	// setup pre up script
-	stage.Directories = append(stage.Directories, yipSchema.Directory{
-		Path:        "/etc/wicked/scripts",
-		Permissions: 0644,
-		Owner:       0,
-		Group:       0,
-	})
-
-	mgmtData := map[string]interface{}{
-		"VlanID":   mgmtNetwork.VlanID,
-		"IntfName": MgmtBondInterfaceName,
-	}
-
-	preUpScript, err := render("wicked-setup-bridge.sh", mgmtData)
-	if err != nil {
-		return err
-	}
-	stage.Files = append(stage.Files, yipSchema.File{
-		Path:        "/etc/wicked/scripts/setup_bridge.sh",
-		Content:     preUpScript,
-		Permissions: 0755,
-		Owner:       0,
-		Group:       0,
-	})
-
 	bridgeMgmt := Network{
 		Interfaces:   mgmtNetwork.Interfaces,
 		Method:       mgmtNetwork.Method,
@@ -693,25 +636,37 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 		Gateway:      mgmtNetwork.Gateway,
 		DefaultRoute: !needVlanInterface,
 		MTU:          mgmtNetwork.MTU,
+		VlanID:       mgmtNetwork.VlanID,
 	}
+
+	maskToCIDR := func(mask string) (cidr string) {
+		// If set, mask is guaranteed to be valid at this point
+		if mask != "" {
+			ones, _ := net.IPMask(net.ParseIP(mask).To4()).Size()
+			cidr = strconv.Itoa(ones)
+		}
+		return
+	}
+
+	// NetworkManager config needs CIDRs
+	bridgeMgmt.SubnetMask = maskToCIDR(bridgeMgmt.SubnetMask)
 
 	if needVlanInterface {
 		bridgeMgmt.Method = NetworkMethodNone
 	}
-
 	// add bridge
 	bridgeData := map[string]interface{}{
-		"Bridge": bridgeMgmt,
-		"Bond":   MgmtBondInterfaceName,
+		"Bridge":     bridgeMgmt,
+		"BridgeName": MgmtInterfaceName,
 	}
-	var ifcfg string
-	ifcfg, err = render("wicked-ifcfg-bridge", bridgeData)
+	var nmcon string
+	nmcon, err := render("nm-bridge.nmconnection", bridgeData)
 	if err != nil {
 		return err
 	}
 	stage.Files = append(stage.Files, yipSchema.File{
-		Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s", name),
-		Content:     ifcfg,
+		Path:        "/etc/NetworkManager/system-connections/bridge-mgmt.nmconnection",
+		Content:     nmcon,
 		Permissions: 0600,
 		Owner:       0,
 		Group:       0,
@@ -719,18 +674,21 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 
 	// add vlan interface
 	if needVlanInterface {
-		mgmtNetwork.DefaultRoute = true
+		vlanMgmt := *mgmtNetwork // Copy mgmtNetwork so we don't mess with it
+		vlanMgmt.DefaultRoute = true
+		vlanMgmt.SubnetMask = maskToCIDR(vlanMgmt.SubnetMask)
+
 		vlanData := map[string]interface{}{
 			"BridgeName": name,
-			"Vlan":       mgmtNetwork,
+			"Vlan":       vlanMgmt,
 		}
-		ifcfg, err = render("wicked-ifcfg-vlan", vlanData)
+		nmcon, err = render("nm-vlan.nmconnection", vlanData)
 		if err != nil {
 			return err
 		}
 		stage.Files = append(stage.Files, yipSchema.File{
-			Path:        fmt.Sprintf("/etc/sysconfig/network/ifcfg-%s.%d", name, mgmtNetwork.VlanID),
-			Content:     ifcfg,
+			Path:        "/etc/NetworkManager/system-connections/vlan-mgmt.nmconnection",
+			Content:     nmcon,
 			Permissions: 0600,
 			Owner:       0,
 			Group:       0,
@@ -740,8 +698,15 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 	return nil
 }
 
-func getAddStaticDNSServersCmd(servers []string) string {
-	return fmt.Sprintf(`sed -i 's/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS="%s"/' /etc/sysconfig/network/config`, strings.Join(servers, " "))
+func getAddStaticDNSServersCmd(servers []string, vlanId int) string {
+	connection := "bridge-mgmt"
+	device := MgmtInterfaceName
+	if vlanId > 1 {
+		connection = "vlan-mgmt"
+		device = fmt.Sprintf("%s.%d", device, vlanId)
+	}
+	return fmt.Sprintf(`nmcli con modify %s ipv4.dns %s && nmcli device reapply %s`,
+		connection, strings.Join(servers, ","), device)
 }
 
 func (c *HarvesterConfig) ToCosInstallEnv() ([]string, error) {

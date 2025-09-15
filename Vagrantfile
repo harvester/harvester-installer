@@ -82,7 +82,9 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", inline: <<-SHELL
     zypper ar --no-gpgcheck https://download.opensuse.org/repositories/isv:/Rancher:/Harvester:/ExtraPackages:/Dev/15.4/isv:Rancher:Harvester:ExtraPackages:Dev.repo
     zypper --gpg-auto-import-keys refresh
-    zypper --non-interactive in yip dmidecode open-iscsi
+    zypper --non-interactive in yip dmidecode open-iscsi NetworkManager
+    zypper --non-interactive rm -u wicked wicked-service
+    systemctl enable --now NetworkManager
     echo -e '#!/bin/sh\necho "fake $0"' > /usr/local/bin/fake
     chmod a+x /usr/local/bin/fake
     for f in /usr/sbin/harv-install /usr/sbin/cos-installer-shutdown ; do

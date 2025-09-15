@@ -443,7 +443,7 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, timeWaitSyncService)
 	}
 	if len(config.OS.DNSNameservers) > 0 {
-		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
+		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers, config.ManagementInterface.VlanID))
 	}
 	err := initRancherdStage(config, &runtimeConfig)
 	if err != nil {

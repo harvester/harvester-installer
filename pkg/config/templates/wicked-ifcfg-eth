@@ -1,9 +1,0 @@
-STARTMODE='onboot'
-BOOTPROTO='{{ .Method }}'
-{{ if eq .Method "static" -}}
-IPADDR={{ .IP }}
-NETMASK={{ .SubnetMask }}
-{{- end }}
-{{ if gt .MTU 0 -}}
-MTU={{ .MTU }}
-{{- end }}
