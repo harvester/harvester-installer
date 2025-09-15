@@ -325,39 +325,73 @@ func TestNetworkRendering_MTU(t *testing.T) {
 	testCases := []struct {
 		name         string
 		templateName string
-		network      Network
+		network      interface{}
 		assertion    func(t *testing.T, result string)
 	}{
 		{
 			name:         "MTU = 0 will not set MTU for bond master",
-			templateName: "wicked-ifcfg-bond-master",
-			network:      Network{MTU: 0},
+			templateName: "nm-bond-master.nmconnection",
+			network: map[string]interface{}{
+				"Bond":     Network{MTU: 0},
+				"BondName": MgmtBondInterfaceName,
+			},
 			assertion: func(t *testing.T, result string) {
-				assert.NotContains(t, result, "MTU=")
+				assert.NotContains(t, result, "mtu=")
 			},
 		},
 		{
 			name:         "MTU != 0  will set the MTU for bond master",
-			templateName: "wicked-ifcfg-bond-master",
-			network:      Network{MTU: 1234},
+			templateName: "nm-bond-master.nmconnection",
+			network: map[string]interface{}{
+				"Bond":     Network{MTU: 1234},
+				"BondName": MgmtBondInterfaceName,
+			},
 			assertion: func(t *testing.T, result string) {
-				assert.Contains(t, result, "MTU=1234")
+				assert.Contains(t, result, "mtu=1234")
 			},
 		},
 		{
-			name:         "MTU = 0 will not set MTU for eth",
-			templateName: "wicked-ifcfg-eth",
-			network:      Network{MTU: 0},
+			name:         "MTU = 0 will not set MTU for bridge",
+			templateName: "nm-bridge.nmconnection",
+			network: map[string]interface{}{
+				"Bridge":     Network{MTU: 0},
+				"BridgeName": MgmtInterfaceName,
+			},
 			assertion: func(t *testing.T, result string) {
-				assert.NotContains(t, result, "MTU=")
+				assert.NotContains(t, result, "mtu=")
 			},
 		},
 		{
-			name:         "MTU != 0  will set the MTU for eth",
-			templateName: "wicked-ifcfg-eth",
-			network:      Network{MTU: 2345},
+			name:         "MTU != 0  will set the MTU for bridge",
+			templateName: "nm-bridge.nmconnection",
+			network: map[string]interface{}{
+				"Bridge":     Network{MTU: 2345},
+				"BridgeName": MgmtInterfaceName,
+			},
 			assertion: func(t *testing.T, result string) {
-				assert.Contains(t, result, "MTU=2345")
+				assert.Contains(t, result, "mtu=2345")
+			},
+		},
+		{
+			name:         "MTU = 0 will not set MTU for vlan",
+			templateName: "nm-vlan.nmconnection",
+			network: map[string]interface{}{
+				"BridgeName": MgmtInterfaceName,
+				"Vlan":       Network{MTU: 0},
+			},
+			assertion: func(t *testing.T, result string) {
+				assert.NotContains(t, result, "mtu=")
+			},
+		},
+		{
+			name:         "MTU != 0  will set the MTU for vlan",
+			templateName: "nm-vlan.nmconnection",
+			network: map[string]interface{}{
+				"BridgeName": MgmtInterfaceName,
+				"Vlan":       Network{MTU: 3456},
+			},
+			assertion: func(t *testing.T, result string) {
+				assert.Contains(t, result, "mtu=3456")
 			},
 		},
 	}

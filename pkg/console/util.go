@@ -211,15 +211,22 @@ func enableNTPServers(ntpServerList []string) error {
 	return nil
 }
 
-func updateDNSServersAndReloadNetConfig(dnsServerList []string) error {
-	dnsServers := strings.Join(dnsServerList, " ")
-	output, err := exec.Command("sed", "-i", fmt.Sprintf(`s/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS="%s"/`, dnsServers), "/etc/sysconfig/network/config").CombinedOutput()
+// TODO: consolidate with getAddStaticDNSServersCmd()
+func updateDNSServersAndReloadNetConfig(dnsServerList []string, vlanId int) error {
+	connection := "bridge-mgmt"
+	device := config.MgmtInterfaceName
+	if vlanId > 1 {
+		connection = "vlan-mgmt"
+		device = fmt.Sprintf("%s.%d", device, vlanId)
+	}
+	dnsServers := strings.Join(dnsServerList, ",")
+	output, err := exec.Command("nmcli", "con", "modify", connection, "ipv4.dns", dnsServers).CombinedOutput()
 	if err != nil {
 		logrus.Error(err, string(output))
 		return err
 	}
 
-	output, err = exec.Command("netconfig", "update", "-m", "dns").CombinedOutput()
+	output, err = exec.Command("nmcli", "device", "reapply", device).CombinedOutput()
 	if err != nil {
 		logrus.Error(err, string(output))
 		return err

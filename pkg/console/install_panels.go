@@ -3139,7 +3139,7 @@ func addDNSServersPanel(c *Console) error {
 					}
 
 					// setup dns
-					if err = updateDNSServersAndReloadNetConfig(dnsServerList); err != nil {
+					if err = updateDNSServersAndReloadNetConfig(dnsServerList, mgmtNetwork.VlanID); err != nil {
 						gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to update DNS servers: %v.", err))
 						return
 					}
