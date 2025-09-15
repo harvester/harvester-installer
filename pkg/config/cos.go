@@ -611,7 +611,7 @@ func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
 
 	mgmtData := map[string]interface{}{
 		"VlanID":   network.VlanID,
-		"IntfName": MgmtBondInterfaceName,
+		"IntfName": MgmtInterfaceName,
 	}
 
 	postUpScript, err := render("wicked-setup-bond.sh", mgmtData)
@@ -674,7 +674,7 @@ func updateBridge(stage *yipSchema.Stage, name string, mgmtNetwork *Network) err
 
 	mgmtData := map[string]interface{}{
 		"VlanID":   mgmtNetwork.VlanID,
-		"IntfName": MgmtInterfaceName,
+		"IntfName": MgmtBondInterfaceName,
 	}
 
 	preUpScript, err := render("wicked-setup-bridge.sh", mgmtData)
