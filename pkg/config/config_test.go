@@ -633,44 +633,45 @@ func TestCalculateCPUReservedInMilliCPU(t *testing.T) {
 		assert.Equal(t, tc.reservedMilliCores, calculateCPUReservedInMilliCPU(tc.coreNum, tc.maxPods))
 	}
 }
-func Test_MultipathConfigOption1(t *testing.T) {
+func Test_MultipathConfigOption_Case1(t *testing.T) {
 	assert := require.New(t)
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: []DiskConfig{
-			{
-				Vendor:  "DELL",
-				Product: "DISK1",
+		MultiPathConfig: MultiPathConfig{
+			Exceptions: []DiskConfig{
+				{
+					Vendor:  "DELL",
+					Product: "DISK1",
+				},
 			},
 		},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
-	assert.NoError(err, "expected no error while parsing multipath config")
-	assert.NotNil(option, "expected parsed option to not be nil")
-
-	content, err := option.Render()
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
 	assert.NoError(err, "expected no error while rendering multipath config")
 	t.Log("rendered multipath config:")
 	t.Log(content)
 
 	expected := `blacklist {
+}
+blacklist_exceptions {
     device {
-        vendor "!DELL"
-        product "!DISK1"
+        vendor "DELL"
+        product "DISK1"
     }
-}`
+}
+`
 
 	assert.Equal(expected, content, "rendered multipath config should match expected output")
 }
 
-func Test_MultipathConfigOption2_Case1(t *testing.T) {
+func Test_MultipathConfigOption_Case2(t *testing.T) {
 	assert := require.New(t)
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: MultiPathOption2{
+		MultiPathConfig: MultiPathConfig{
 			BlackListWwid: ".*",
 			Blacklist:     []DiskConfig{},
 			ExceptionWwid: "^0QEMU_QEMU_HARDDISK_disk[0-9]+",
@@ -683,11 +684,7 @@ func Test_MultipathConfigOption2_Case1(t *testing.T) {
 		},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
-	assert.NoError(err, "expected no error while parsing multipath config")
-	assert.NotNil(option, "expected parsed option to not be nil")
-
-	content, err := option.Render()
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
 	assert.NoError(err, "expected no error while rendering multipath config with WWID and exceptions")
 
 	t.Log("rendered multipath config with WWID and exceptions:")
@@ -708,12 +705,12 @@ blacklist_exceptions {
 	assert.Equal(expected, content, "rendered multipath config should match expected output")
 }
 
-func Test_MultipathConfigOption2_Case2(t *testing.T) {
+func Test_MultipathConfigOption_Case3(t *testing.T) {
 	assert := require.New(t)
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: MultiPathOption2{
+		MultiPathConfig: MultiPathConfig{
 			BlackListWwid: ".*",
 			Blacklist: []DiskConfig{
 				{
@@ -731,11 +728,7 @@ func Test_MultipathConfigOption2_Case2(t *testing.T) {
 		},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
-	assert.NoError(err, "expected no error while parsing multipath config")
-	assert.NotNil(option, "expected parsed option to not be nil")
-
-	content, err := option.Render()
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
 	assert.NoError(err, "expected no error while rendering multipath config with WWID and exceptions")
 
 	t.Log("rendered multipath config with WWID and exceptions:")
@@ -760,96 +753,41 @@ blacklist_exceptions {
 	assert.Equal(expected, content, "rendered multipath config should match expected output")
 }
 
-func Test_MultipathConfigOption1_JsonFormat(t *testing.T) {
+func Test_MultipathConfigOption_Case4(t *testing.T) {
 	assert := require.New(t)
 	config := NewHarvesterConfig()
-
-	// Test with JSON string representing []DiskConfig
-	diskConfigsJSON := `[{"vendor":"HP","product":"STORAGE1"},{"vendor":"IBM","product":"STORAGE2"}]`
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled:         true,
-		MultiPathConfig: diskConfigsJSON,
+		MultiPathConfig: MultiPathConfig{},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
-	assert.NoError(err, "expected no error while parsing multipath config from JSON string")
-	assert.NotNil(option, "expected parsed option to not be nil")
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	assert.NoError(err, "expected no error while rendering empty multipath config")
 
-	content, err := option.Render()
-	assert.NoError(err, "expected no error while rendering multipath config from JSON string")
-	t.Log("rendered multipath config from JSON string:")
+	t.Log("rendered empty multipath config:")
 	t.Log(content)
 
 	expected := `blacklist {
-    device {
-        vendor "!HP"
-        product "!STORAGE1"
-    }
-    device {
-        vendor "!IBM"
-        product "!STORAGE2"
-    }
-}`
-
-	assert.Equal(expected, content, "rendered multipath config should match expected output")
-}
-
-func Test_MultipathConfigOption2_JsonFormat(t *testing.T) {
-	assert := require.New(t)
-	config := NewHarvesterConfig()
-
-	// Test with JSON string representing MultiPathOption2
-	multipathConfigJSON := `{
-		"blackListWwid": "^scsi-36.*",
-		"blacklist": [{"vendor":"VMware","product":"Virtual"}],
-		"exceptionWwid": "^scsi-SATA.*",
-		"exceptions": [{"vendor":"NETAPP","product":"LUN"}]
-	}`
-	config.OS.ExternalStorage = ExternalStorageConfig{
-		Enabled:         true,
-		MultiPathConfig: multipathConfigJSON,
-	}
-
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
-	assert.NoError(err, "expected no error while parsing multipath config from JSON string")
-	assert.NotNil(option, "expected parsed option to not be nil")
-
-	content, err := option.Render()
-	assert.NoError(err, "expected no error while rendering multipath config from JSON string")
-	t.Log("rendered multipath config from JSON string:")
-	t.Log(content)
-
-	expected := `blacklist {
-    wwid "^scsi-36.*"
-    device {
-        vendor "VMware"
-        product "Virtual"
-    }
-}
-blacklist_exceptions {
-    wwid "^scsi-SATA.*"
-    device {
-        vendor "NETAPP"
-        product "LUN"
-    }
 }
 `
 
-	assert.Equal(expected, content, "rendered multipath config should match expected output")
+	assert.Equal(expected, content, "rendered empty multipath config should only contain empty blacklist section")
 }
 
 func Test_ToCosInstallEnv(t *testing.T) {
 	hvConfig := NewHarvesterConfig()
 	hvConfig.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: []DiskConfig{
-			{
-				Vendor:  "DELL",
-				Product: "DISK1",
-			},
-			{
-				Vendor:  "HPE",
-				Product: "DISK2",
+		MultiPathConfig: MultiPathConfig{
+			Exceptions: []DiskConfig{
+				{
+					Vendor:  "DELL",
+					Product: "DISK1",
+				},
+				{
+					Vendor:  "HPE",
+					Product: "DISK2",
+				},
 			},
 		},
 	}

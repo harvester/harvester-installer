@@ -1,8 +1,0 @@
-blacklist {
-{{- range $val := . }}
-    device {
-        vendor "!{{ $val.Vendor }}"
-        product "!{{ $val.Product }}"
-    }
-{{- end }}
-}
