@@ -32,6 +32,8 @@ source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/lib/iso
 
 BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
+# TODO: REVERT THIS
+BASE_OS_IMAGE="tserong/harvester-os:wip-networkmanager"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
