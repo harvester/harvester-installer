@@ -2862,12 +2862,9 @@ func addVIPPanel(c *Console) error {
 			return showNext(c, vipPanel, vipHwAddrNotePanel, vipHwAddrPanel)
 		}
 
-		if err = hwAddrV.Close(); err != nil {
-			return err
-		}
-		if err = hwAddrNoteV.Close(); err != nil {
-			return err
-		}
+		c.CloseElement(vipHwAddrPanel)
+		c.CloseElement(vipHwAddrNotePanel)
+
 		return showNext(c, vipPanel)
 	}
 	gotoVipParentPanel := func(_ *gocui.Gui, _ *gocui.View) error {
