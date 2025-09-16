@@ -672,9 +672,9 @@ func Test_MultipathConfigOption_Case2(t *testing.T) {
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: MultiPathConfig{
-			BlackListWwid: ".*",
+			BlackListWwid: []string{".*"},
 			Blacklist:     []DiskConfig{},
-			ExceptionWwid: "^0QEMU_QEMU_HARDDISK_disk[0-9]+",
+			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
 			Exceptions: []DiskConfig{
 				{
 					Vendor:  "DELL",
@@ -711,14 +711,14 @@ func Test_MultipathConfigOption_Case3(t *testing.T) {
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: MultiPathConfig{
-			BlackListWwid: ".*",
+			BlackListWwid: []string{".*"},
 			Blacklist: []DiskConfig{
 				{
 					Vendor:  "QEMU",
 					Product: "QEMU HARDDISK",
 				},
 			},
-			ExceptionWwid: "^0QEMU_QEMU_HARDDISK_disk[0-9]+",
+			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
 			Exceptions: []DiskConfig{
 				{
 					Vendor:  "DELL",
@@ -772,6 +772,36 @@ func Test_MultipathConfigOption_Case4(t *testing.T) {
 `
 
 	assert.Equal(expected, content, "rendered empty multipath config should only contain empty blacklist section")
+}
+
+func Test_MultipathConfigOption_MultipleWwids(t *testing.T) {
+	assert := require.New(t)
+	config := NewHarvesterConfig()
+	config.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: MultiPathConfig{
+			BlackListWwid: []string{".*", "^36[0-9a-f]{30}"},
+			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+", "^36001405[0-9a-f]{24}"},
+		},
+	}
+
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	assert.NoError(err, "expected no error while rendering multipath config with multiple WWIDs")
+
+	t.Log("rendered multipath config with multiple WWIDs:")
+	t.Log(content)
+
+	expected := `blacklist {
+    wwid ".*"
+    wwid "^36[0-9a-f]{30}"
+}
+blacklist_exceptions {
+    wwid "^0QEMU_QEMU_HARDDISK_disk[0-9]+"
+    wwid "^36001405[0-9a-f]{24}"
+}
+`
+
+	assert.Equal(expected, content, "rendered multipath config should match expected output with multiple WWIDs")
 }
 
 func Test_ToCosInstallEnv(t *testing.T) {
