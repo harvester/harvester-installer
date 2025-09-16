@@ -1,6 +1,6 @@
 blacklist {
-{{- if .BlackListWwid }}
-    wwid "{{ .BlackListWwid }}"
+{{- range $wwid := .BlackListWwid }}
+    wwid "{{ $wwid }}"
 {{- end }}
 {{- range $val := .Blacklist }}
     device {
@@ -11,8 +11,8 @@ blacklist {
 }
 {{- if or .Exceptions .ExceptionWwid }}
 blacklist_exceptions {
-{{- if .ExceptionWwid }}
-    wwid "{{ .ExceptionWwid }}"
+{{- range $wwid := .ExceptionWwid }}
+    wwid "{{ $wwid }}"
 {{- end }}
 {{- range $val := .Exceptions }}
     device {
