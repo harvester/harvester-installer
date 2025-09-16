@@ -129,6 +129,12 @@ helm pull https://github.com/harvester/charts/releases/download/kubeovn-operator
 # make chart sanity check
 tar zxvf ${CHARTS_DIR}/kubeovn-operator-${KUBEOVN_OPERATOR_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
 
+# Prepare descheduler-chart
+echo "pull descheduler: $DESCHEDULER_CHART_VERSION"
+helm pull https://github.com/kubernetes-sigs/descheduler/releases/download/descheduler-helm-chart-${DESCHEDULER_CHART_VERSION}/descheduler-${DESCHEDULER_CHART_VERSION}.tgz -d ${CHARTS_DIR}
+# make chart sanity check
+tar zxvf ${CHARTS_DIR}/descheduler-${DESCHEDULER_CHART_VERSION}.tgz >/dev/null --warning=no-timestamp
+
 # Create Helm repo index after charts are ready
 helm repo index ${CHARTS_DIR}
 
@@ -247,6 +253,9 @@ add_addon_images_to_list() {
 
   # kubeovn operator image
   add_addon_image "KUBEOVN_OPERATOR_IMAGE" ${KUBEOVN_OPERATOR_IMAGE}
+
+  # descheduler image
+  add_addon_image "DESCHEDULER_IMAGE" ${DESCHEDULER_IMAGE}
 }
 
 add_addon_images_to_list
