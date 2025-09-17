@@ -70,6 +70,10 @@ func proxyFromEnvironment(req *http.Request) (*url.URL, error) {
 }
 
 func getURL(client http.Client, url string) ([]byte, error) {
+	if filePath, hasPrefix := strings.CutPrefix(url, "file://"); hasPrefix {
+		return os.ReadFile(filePath)
+	}
+
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
