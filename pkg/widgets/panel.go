@@ -2,7 +2,6 @@ package widgets
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/jroimartin/gocui"
 )
@@ -142,19 +141,9 @@ func (p *Panel) SetContent(content string) {
 	// Need to subtract 1 from panelWidth here to match the view.Size()
 	// calculation done in gocui's view.Draw() function
 	panelWidth := p.X1 - p.X0 - 1
-	if panelWidth > 0 {
-		p.Content = ""
-		lines := strings.Split(content, "\n")
-		for i, line := range lines {
-			if i > 0 {
-				p.Content += "\n"
-			}
-			if len(line) < panelWidth {
-				p.Content += line
-			} else {
-				p.Content += wrapText(line, panelWidth)
-			}
-		}
+	panelHeight := p.Y1 - p.Y0 - 1
+	if panelWidth > 0 && panelHeight > 0 {
+		p.Content = formatContent(content, panelWidth, panelHeight, p.Wrap, true)
 	} else {
 		// Just in case we somehow get here without valid dimensions
 		p.Content = content
