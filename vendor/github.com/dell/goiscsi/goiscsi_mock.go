@@ -160,6 +160,18 @@ func (iscsi *MockISCSI) getSessions() ([]ISCSISession, error) {
 		session.IfaceIPaddress = "192.168.1.10"
 		sessions = append(sessions, session)
 	}
+
+	// Add another one to match
+	init := fmt.Sprintf("%05d", count+1)
+	session := ISCSISession{}
+	session.Target = "iqn.1992-04.com.emc:600009700bcbb70e3287017400000001"
+	session.Portal = fmt.Sprintf("192.168.1.%d", count+1)
+	session.IfaceInitiatorname = "iqn.1993-08.com.mock:01:00000000" + init
+	session.IfaceTransport = ISCSITransportNameTCP
+	session.ISCSIConnectionState = ISCSIConnectionStateINLOGIN
+	session.ISCSISessionState = ISCSISessionStateLOGGEDIN
+	session.IfaceIPaddress = "192.168.1.10"
+	sessions = append(sessions, session)
 	return sessions, nil
 }
 
@@ -247,6 +259,21 @@ func (iscsi *MockISCSI) CreateOrUpdateNode(target ISCSITarget, options map[strin
 // DeleteNode delete iSCSI node from iscsid database
 func (iscsi *MockISCSI) DeleteNode(target ISCSITarget) error {
 	return iscsi.deleteNode(target)
+}
+
+// GetInterfaces returns a list of iSCSI interfaces
+func (iscsi *MockISCSI) GetInterfaces() ([]ISCSIInterface, error) {
+	return []ISCSIInterface{}, nil
+}
+
+// GetInterfaceForTargetIP returns the iSCSI interfaces for target IP
+func (iscsi *MockISCSI) GetInterfaceForTargetIP(_ ...string) (map[string]string, error) {
+	return make(map[string]string, 0), nil
+}
+
+// DiscoverTargetsWithInterface runs an iSCSI discovery with intreface and returns a list of targets.
+func (iscsi *MockISCSI) DiscoverTargetsWithInterface(address, _ string, login bool) ([]ISCSITarget, error) {
+	return iscsi.discoverTargets(address, login)
 }
 
 // SetCHAPCredentials will set CHAP credentials

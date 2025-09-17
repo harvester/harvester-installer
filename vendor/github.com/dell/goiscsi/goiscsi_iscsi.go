@@ -42,6 +42,11 @@ const (
 	Timeout = 30
 )
 
+var runCommand = func(cmd *exec.Cmd) ([]byte, error) {
+	output, err := cmd.Output()
+	return output, err
+}
+
 // LinuxISCSI provides many iSCSI-specific functions.
 type LinuxISCSI struct {
 	ISCSIType
@@ -82,10 +87,15 @@ func (iscsi *LinuxISCSI) buildISCSICommand(cmd []string) []string {
 
 // DiscoverTargets runs an iSCSI discovery and returns a list of targets.
 func (iscsi *LinuxISCSI) DiscoverTargets(address string, login bool) ([]ISCSITarget, error) {
-	return iscsi.discoverTargets(address, login)
+	return iscsi.discoverTargets(address, "", login)
 }
 
-func (iscsi *LinuxISCSI) discoverTargets(address string, login bool) ([]ISCSITarget, error) {
+// DiscoverTargetsWithInterface runs an iSCSI discovery with intreface and returns a list of targets.
+func (iscsi *LinuxISCSI) DiscoverTargetsWithInterface(address, iface string, login bool) ([]ISCSITarget, error) {
+	return iscsi.discoverTargets(address, iface, login)
+}
+
+func (iscsi *LinuxISCSI) discoverTargets(address, iface string, login bool) ([]ISCSITarget, error) {
 	// iSCSI discovery is done via the iscsiadm cli
 	// iscsiadm -m discovery -t st --portal <target>
 
@@ -95,13 +105,18 @@ func (iscsi *LinuxISCSI) discoverTargets(address string, login bool) ([]ISCSITar
 		fmt.Printf("\nError invalid address %s: %v", address, err)
 		return []ISCSITarget{}, err
 	}
-	exe := iscsi.buildISCSICommand([]string{"iscsiadm", "-m", "discovery", "-t", "st", "--portal", address})
+	cmdArgs := []string{"iscsiadm", "-m", "discovery", "-t", "st", "--portal", address}
+	if len(iface) != 0 {
+		cmdArgs = append(cmdArgs, "-I", iface)
+	}
+	exe := iscsi.buildISCSICommand(cmdArgs)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(Timeout)*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, exe[0], exe[1:]...) // #nosec G204
 
-	out, err := cmd.Output()
+	out, err := runCommand(cmd)
 	if err != nil {
 		fmt.Printf("\nError discovering %s: %v", address, err)
 		return []ISCSITarget{}, err
@@ -212,7 +227,7 @@ func (iscsi *LinuxISCSI) performLogin(target ISCSITarget) error {
 
 	cmd := exec.CommandContext(ctx, exe[0], exe[1:]...) // #nosec G204
 
-	_, err = cmd.Output()
+	_, err = runCommand(cmd)
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// iscsiadm exited with an exit code != 0
@@ -263,7 +278,7 @@ func (iscsi *LinuxISCSI) performLogout(target ISCSITarget) error {
 	exe := iscsi.buildISCSICommand([]string{"iscsiadm", "-m", "node", "-T", target.Target, "--portal", target.Portal, "--logout"})
 	cmd := exec.Command(exe[0], exe[1:]...) // #nosec G204
 
-	_, err = cmd.Output()
+	_, err = runCommand(cmd)
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// iscsiadm exited with an exit code != 0
@@ -321,6 +336,86 @@ func (iscsi *LinuxISCSI) GetSessions() ([]ISCSISession, error) {
 	return iscsi.sessionParser.Parse(output), nil
 }
 
+// GetInterfaces returns a list of iSCSI interfaces
+func (iscsi *LinuxISCSI) GetInterfaces() ([]ISCSIInterface, error) {
+	// iSCSI interfaces are returned via the iscsiadm cli
+	// iscsiadm -m iface
+	exe := iscsi.buildISCSICommand([]string{"iscsiadm", "-m", "iface"})
+	cmd := exec.Command(exe[0], exe[1:]...) // #nosec G204
+	output, err := runCommand(cmd)
+	if err != nil {
+		fmt.Printf("\nError getting iscsi interfaces: %v", err)
+		return []ISCSIInterface{}, err
+	}
+
+	// Parse each line into an ISCSIInterface struct
+	interfaces := make([]ISCSIInterface, 0)
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		// one line of the output should look like:
+		// iface0 tcp,00:c0:dd:08:63:e8,192.168.1.100,eth0,iqn.2005-06.com.example:initiator
+		// iface_name transport_name,hardware_address,ip_address,net_ifacename,initiator_name
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			continue
+		}
+		ifaceName := parts[0]
+		rest := parts[1]
+
+		// Split the rest by commas
+		fields := strings.Split(rest, ",")
+		if len(fields) != 5 {
+			continue
+		}
+		iface := ISCSIInterface{
+			IfaceName:       ifaceName,
+			TransportName:   fields[0],
+			HardwareAddress: fields[1],
+			IPAddress:       fields[2],
+			NetIfaceName:    fields[3],
+			InitiatorName:   fields[4],
+		}
+		interfaces = append(interfaces, iface)
+	}
+
+	return interfaces, nil
+}
+
+// GetInterfaceForTargetIP returns the iSCSI interfaces for target IP
+func (iscsi *LinuxISCSI) GetInterfaceForTargetIP(address ...string) (map[string]string, error) {
+	ipInterface := make(map[string]string, 0)
+
+	if len(address) == 0 {
+		return ipInterface, nil
+	}
+
+	iscsiInterfaces, err := iscsi.GetInterfaces()
+	if err != nil {
+		fmt.Printf("\nError failed to get iscsi interfaces: %v", err)
+		return ipInterface, err
+	}
+
+	interfaceMap := make(map[string]string, len(iscsiInterfaces))
+	for _, iface := range iscsiInterfaces {
+		if len(iface.NetIfaceName) != 0 && iface.NetIfaceName != "<empty>" {
+			interfaceMap[iface.IfaceName] = iface.NetIfaceName
+		}
+	}
+
+	for ifaceName, netIfaceName := range interfaceMap {
+		filteredIPs, err := filterIPsForInterface(netIfaceName, address...)
+		if err != nil {
+			fmt.Printf("\nError filtering IPs: %v", err)
+			continue
+		}
+		for _, ip := range filteredIPs {
+			ipInterface[ip] = ifaceName
+		}
+
+	}
+
+	return ipInterface, nil
+}
+
 // GetNodes will query information about nodes
 func (iscsi *LinuxISCSI) GetNodes() ([]ISCSINode, error) {
 	exe := iscsi.buildISCSICommand([]string{"iscsiadm", "-m", "node", "-o", "show"})
@@ -363,7 +458,7 @@ func (iscsi *LinuxISCSI) CreateOrUpdateNode(target ISCSITarget, options map[stri
 	var commands [][]string
 
 	cmd := exec.Command(baseCmd[0], baseCmd[1:]...) // #nosec G204
-	_, err = cmd.Output()
+	_, err = runCommand(cmd)
 	if err != nil {
 		if !isNoObjsExitCode(err) {
 			return err
@@ -402,7 +497,7 @@ func (iscsi *LinuxISCSI) DeleteNode(target ISCSITarget) error {
 	exe := iscsi.buildISCSICommand(
 		[]string{"iscsiadm", "-m", "node", "-p", target.Portal, "-T", target.Target, "-o", "delete"})
 	cmd := exec.Command(exe[0], exe[1:]...) // #nosec G204
-	_, err = cmd.Output()
+	_, err = runCommand(cmd)
 	if err != nil {
 		if isNoObjsExitCode(err) {
 			return nil
