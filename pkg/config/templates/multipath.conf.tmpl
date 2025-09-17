@@ -1,8 +1,24 @@
 blacklist {
-{{ range $val := .ExternalStorage.MultiPathConfig }}
+{{- range $wwid := .BlackListWwid }}
+    wwid "{{ $wwid }}"
+{{- end }}
+{{- range $val := .Blacklist }}
     device {
-        vendor "!{{ $val.Vendor }}"
-        product "!{{ $val.Product }}"
+        vendor "{{ $val.Vendor }}"
+        product "{{ $val.Product }}"
     }
-{{ end }}
+{{- end }}
 }
+{{- if or .Exceptions .ExceptionWwid }}
+blacklist_exceptions {
+{{- range $wwid := .ExceptionWwid }}
+    wwid "{{ $wwid }}"
+{{- end }}
+{{- range $val := .Exceptions }}
+    device {
+        vendor "{{ $val.Vendor }}"
+        product "{{ $val.Product }}"
+    }
+{{- end }}
+}
+{{- end }}

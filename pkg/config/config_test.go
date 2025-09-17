@@ -601,41 +601,191 @@ func TestCalculateCPUReservedInMilliCPU(t *testing.T) {
 		assert.Equal(t, tc.reservedMilliCores, calculateCPUReservedInMilliCPU(tc.coreNum, tc.maxPods))
 	}
 }
-func Test_MultipathConfig(t *testing.T) {
+func Test_MultipathConfigOption_Case1(t *testing.T) {
 	assert := require.New(t)
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: []DiskConfig{
-			{
-				Vendor:  "DELL",
-				Product: "DISK1",
-			},
-			{
-				Vendor:  "HPE",
-				Product: "DISK2",
+		MultiPathConfig: MultiPathConfig{
+			Exceptions: []DiskConfig{
+				{
+					Vendor:  "DELL",
+					Product: "DISK1",
+				},
 			},
 		},
 	}
 
-	content, err := render("multipath.conf.tmpl", config)
-	assert.NoError(err, "expected no error while rending multipath config")
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	assert.NoError(err, "expected no error while rendering multipath config")
 	t.Log("rendered multipath config:")
 	t.Log(content)
+
+	expected := `blacklist {
+}
+blacklist_exceptions {
+    device {
+        vendor "DELL"
+        product "DISK1"
+    }
+}
+`
+
+	assert.Equal(expected, content, "rendered multipath config should match expected output")
+}
+
+func Test_MultipathConfigOption_Case2(t *testing.T) {
+	assert := require.New(t)
+	config := NewHarvesterConfig()
+	config.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: MultiPathConfig{
+			BlackListWwid: []string{".*"},
+			Blacklist:     []DiskConfig{},
+			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
+			Exceptions: []DiskConfig{
+				{
+					Vendor:  "DELL",
+					Product: "POWERVAULT",
+				},
+			},
+		},
+	}
+
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	assert.NoError(err, "expected no error while rendering multipath config with WWID and exceptions")
+
+	t.Log("rendered multipath config with WWID and exceptions:")
+	t.Log(content)
+
+	expected := `blacklist {
+    wwid ".*"
+}
+blacklist_exceptions {
+    wwid "^0QEMU_QEMU_HARDDISK_disk[0-9]+"
+    device {
+        vendor "DELL"
+        product "POWERVAULT"
+    }
+}
+`
+
+	assert.Equal(expected, content, "rendered multipath config should match expected output")
+}
+
+func Test_MultipathConfigOption_Case3(t *testing.T) {
+	assert := require.New(t)
+	config := NewHarvesterConfig()
+	config.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: MultiPathConfig{
+			BlackListWwid: []string{".*"},
+			Blacklist: []DiskConfig{
+				{
+					Vendor:  "QEMU",
+					Product: "QEMU HARDDISK",
+				},
+			},
+			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
+			Exceptions: []DiskConfig{
+				{
+					Vendor:  "DELL",
+					Product: "POWERVAULT",
+				},
+			},
+		},
+	}
+
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	assert.NoError(err, "expected no error while rendering multipath config with WWID and exceptions")
+
+	t.Log("rendered multipath config with WWID and exceptions:")
+	t.Log(content)
+
+	expected := `blacklist {
+    wwid ".*"
+    device {
+        vendor "QEMU"
+        product "QEMU HARDDISK"
+    }
+}
+blacklist_exceptions {
+    wwid "^0QEMU_QEMU_HARDDISK_disk[0-9]+"
+    device {
+        vendor "DELL"
+        product "POWERVAULT"
+    }
+}
+`
+
+	assert.Equal(expected, content, "rendered multipath config should match expected output")
+}
+
+func Test_MultipathConfigOption_Case4(t *testing.T) {
+	assert := require.New(t)
+	config := NewHarvesterConfig()
+	config.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled:         true,
+		MultiPathConfig: MultiPathConfig{},
+	}
+
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	assert.NoError(err, "expected no error while rendering empty multipath config")
+
+	t.Log("rendered empty multipath config:")
+	t.Log(content)
+
+	expected := `blacklist {
+}
+`
+
+	assert.Equal(expected, content, "rendered empty multipath config should only contain empty blacklist section")
+}
+
+func Test_MultipathConfigOption_MultipleWwids(t *testing.T) {
+	assert := require.New(t)
+	config := NewHarvesterConfig()
+	config.OS.ExternalStorage = ExternalStorageConfig{
+		Enabled: true,
+		MultiPathConfig: MultiPathConfig{
+			BlackListWwid: []string{".*", "^36[0-9a-f]{30}"},
+			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+", "^36001405[0-9a-f]{24}"},
+		},
+	}
+
+	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	assert.NoError(err, "expected no error while rendering multipath config with multiple WWIDs")
+
+	t.Log("rendered multipath config with multiple WWIDs:")
+	t.Log(content)
+
+	expected := `blacklist {
+    wwid ".*"
+    wwid "^36[0-9a-f]{30}"
+}
+blacklist_exceptions {
+    wwid "^0QEMU_QEMU_HARDDISK_disk[0-9]+"
+    wwid "^36001405[0-9a-f]{24}"
+}
+`
+
+	assert.Equal(expected, content, "rendered multipath config should match expected output with multiple WWIDs")
 }
 
 func Test_ToCosInstallEnv(t *testing.T) {
 	hvConfig := NewHarvesterConfig()
 	hvConfig.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: []DiskConfig{
-			{
-				Vendor:  "DELL",
-				Product: "DISK1",
-			},
-			{
-				Vendor:  "HPE",
-				Product: "DISK2",
+		MultiPathConfig: MultiPathConfig{
+			Exceptions: []DiskConfig{
+				{
+					Vendor:  "DELL",
+					Product: "DISK1",
+				},
+				{
+					Vendor:  "HPE",
+					Product: "DISK2",
+				},
 			},
 		},
 	}

@@ -217,8 +217,16 @@ type OS struct {
 }
 
 type ExternalStorageConfig struct {
-	Enabled         bool         `json:"enabled,omitempty"`
-	MultiPathConfig []DiskConfig `json:"multiPathConfig,omitempty"`
+	Enabled bool `json:"enabled,omitempty"`
+
+	MultiPathConfig MultiPathConfig `json:"multiPathConfig,omitempty"`
+}
+
+type MultiPathConfig struct {
+	Blacklist     []DiskConfig `json:"blacklist,omitempty"`
+	BlackListWwid []string     `json:"blackListWwid,omitempty"`
+	Exceptions    []DiskConfig `json:"exceptions,omitempty"`
+	ExceptionWwid []string     `json:"exceptionWwid,omitempty"`
 }
 
 type DiskConfig struct {
