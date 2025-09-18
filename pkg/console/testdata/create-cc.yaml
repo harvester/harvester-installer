@@ -23,11 +23,6 @@ k3os:
   ntp_servers:
   - 0.us.pool.ntp.org
   - 1.us.pool.ntp.org
-  wifi:
-  - name: home
-    passphrase: mypassword
-  - name: nothome
-    passphrase: somethingelse
   password: rancher
   token: TOKEN_VALUE
   k3sArgs:

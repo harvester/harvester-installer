@@ -182,11 +182,6 @@ type Install struct {
 	PersistentPartitionSize string               `json:"persistentPartitionSize,omitempty"`
 }
 
-type Wifi struct {
-	Name       string `json:"name,omitempty"`
-	Passphrase string `json:"passphrase,omitempty"`
-}
-
 type File struct {
 	Encoding           string `json:"encoding"`
 	Content            string `json:"content"`
@@ -205,7 +200,6 @@ type OS struct {
 	Sysctls        map[string]string `json:"sysctls,omitempty"`
 	NTPServers     []string          `json:"ntpServers,omitempty"`
 	DNSNameservers []string          `json:"dnsNameservers,omitempty"`
-	Wifi           []Wifi            `json:"wifi,omitempty"`
 	Password       string            `json:"password,omitempty"`
 	Environment    map[string]string `json:"environment,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
@@ -272,9 +266,6 @@ func (c *HarvesterConfig) sanitized() (*HarvesterConfig, error) {
 	}
 	if copied.Token != "" {
 		copied.Token = SanitizeMask
-	}
-	for i := range copied.Wifi {
-		copied.Wifi[i].Passphrase = SanitizeMask
 	}
 	return copied, nil
 }
@@ -452,14 +443,10 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		runtimeConfig.Systemctl.Enable = append(runtimeConfig.Systemctl.Enable, timeWaitSyncService)
 	}
 	if len(config.OS.DNSNameservers) > 0 {
-		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers))
+		runtimeConfig.Commands = append(runtimeConfig.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers, config.ManagementInterface.VlanID))
 	}
 	err := initRancherdStage(config, &runtimeConfig)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := UpdateWifiConfig(&runtimeConfig, config.OS.Wifi, true); err != nil {
 		return nil, err
 	}
 

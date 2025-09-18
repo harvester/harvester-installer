@@ -96,7 +96,7 @@ func Test_GenerateRancherdConfig(t *testing.T) {
 	yipConfig, err := GenerateRancherdConfig(conf)
 	assert.NoError(t, err)
 	assert.Equal(t, yipConfig.Stages["live"][0].TimeSyncd["NTP"], strings.Join(conf.OS.NTPServers, " "))
-	assert.Contains(t, yipConfig.Stages["live"][0].Commands, "wicked ifreload all")
+	assert.Contains(t, yipConfig.Stages["live"][0].Commands, "nmcli connection reload")
 }
 
 func TestConvertToCos_VerifyNetworkCreateMode(t *testing.T) {
@@ -104,13 +104,27 @@ func TestConvertToCos_VerifyNetworkCreateMode(t *testing.T) {
 	assert.NoError(t, err)
 	yipConfig, err := ConvertToCOS(conf)
 	assert.NoError(t, err)
-	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "sed -i 's/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS=\"8.8.8.8 1.1.1.1\"/' /etc/sysconfig/network/config")
-	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /etc/sysconfig/network/ifroute-mgmt-br")
+	assert.Contains(t, yipConfig.Stages["network"][0].Commands, "nmcli con modify bridge-mgmt ipv4.dns 8.8.8.8,1.1.1.1 && nmcli device reapply mgmt-br")
 	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/rancher/rancherd/config.yaml"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-mgmt-bo"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-mgmt-br"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens0"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens3"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-mgmt.nmconnection"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bridge-mgmt.nmconnection"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens0.nmconnection"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens3.nmconnection"))
+
+}
+
+func TestConvertToCos_VerifyNetworkCreateModeVlan(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	conf.ManagementInterface.VlanID = 2
+	assert.NoError(t, err)
+	yipConfig, err := ConvertToCOS(conf)
+	assert.NoError(t, err)
+	assert.Contains(t, yipConfig.Stages["network"][0].Commands, "nmcli con modify vlan-mgmt ipv4.dns 8.8.8.8,1.1.1.1 && nmcli device reapply mgmt-br.2")
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/rancher/rancherd/config.yaml"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-mgmt.nmconnection"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bridge-mgmt.nmconnection"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens0.nmconnection"))
+	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens3.nmconnection"))
 
 }
 
@@ -120,10 +134,9 @@ func TestConvertToCos_VerifyNetworkInstallMode(t *testing.T) {
 	conf.Mode = ModeInstall
 	yipConfig, err := ConvertToCOS(conf)
 	assert.NoError(t, err)
-	assert.NotContains(t, yipConfig.Stages["initramfs"][0].Commands, "sed -i 's/^NETCONFIG_DNS_STATIC_SERVERS.*/NETCONFIG_DNS_STATIC_SERVERS=\"8.8.8.8 1.1.1.1\"/' /etc/sysconfig/network/config")
-	assert.NotContains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /etc/sysconfig/network/ifroute-harvester-mgmt")
-	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens0"))
-	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/sysconfig/network/ifcfg-ens3"))
+	assert.NotContains(t, yipConfig.Stages["network"][0].Commands, "nmcli con modify bridge-mgmt ipv4.dns 8.8.8.8,1.1.1.1 && nmcli device reapply mgmt-br")
+	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens0.nmconnection"))
+	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens3.nmconnection"))
 }
 
 func TestConvertToCos_Remove_CPUManagerState(t *testing.T) {

@@ -54,7 +54,7 @@ func createMacvlan(name, hwAddr string) (netlink.Link, error) {
 }
 
 func deleteMacvlan(l netlink.Link) error {
-	// It's necessary to set macvlan down at first to notify the wicked to clear the related files automatically.
+	// It's necessary to set macvlan down at first to notify the network stack to clear the related files automatically.
 	if err := netlink.LinkSetDown(l); err != nil {
 		return errors.Wrapf(err, "failed to set %s down", err)
 	}

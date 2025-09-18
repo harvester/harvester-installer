@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	yipSchema "github.com/rancher/yip/pkg/schema"
@@ -54,17 +55,35 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 	// the system hostname will be set to the one provided by the server.
 	// Later, on the hostname page, we can default the hostname field to
 	// the current system hostname.
+	//
+	// In order for this to work with NetworkManager, we first have to clear
+	// the currently set hostname (which will be "rancher" in the installer,
+	// after clearing it will be "localhost").  If we don't do this,
+	// NetworkManager will _not_ apply the hostname that comes from the DHCP
+	// server.
 
-	dhclientSetHostname := "no"
-	if hostname == "" {
-		dhclientSetHostname = "yes"
+	getHostname := func() (string, error) {
+		output, err := exec.Command("hostnamectl", "hostname").CombinedOutput()
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(output)), nil
 	}
-	output, err := exec.Command("sed", "-i",
-		fmt.Sprintf(`s/^DHCLIENT_SET_HOSTNAME=.*/DHCLIENT_SET_HOSTNAME="%s"/`, dhclientSetHostname),
-		"/etc/sysconfig/network/dhcp").CombinedOutput()
+
+	setHostname := func(hostname string) error {
+		_, err := exec.Command("hostnamectl", "hostname", hostname).CombinedOutput()
+		return err
+	}
+
+	previousHostname, err := getHostname()
 	if err != nil {
-		logrus.Error(err, string(output))
-		return output, err
+		logrus.Warnf("Failed to get hostname: %v", err)
+	}
+	if hostname == "" {
+		err = setHostname("")
+		if err != nil {
+			logrus.Warnf("Failed to clear hostname: %v", err)
+		}
 	}
 
 	conf := &yipSchema.YipConfig{
@@ -107,6 +126,20 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 	if err := upAllLinks(); err != nil {
 		logrus.Errorf("failed to bring all link up: %s", err.Error())
 	}
+
+	if hostname == "" && previousHostname != "" {
+		currentHostname, err := getHostname()
+		if err != nil {
+			logrus.Errorf("Failed to get hostname: %v", err)
+		} else if currentHostname == "localhost" {
+			// Restore the system hostname to what it was before, provided
+			// we haven't got a new hostname from the DHCP server.
+			if err = setHostname(previousHostname); err != nil {
+				logrus.Errorf("Failed to restore hostname %s: %v", previousHostname, err)
+			}
+		}
+	}
+
 	return bytes, err
 }
 
