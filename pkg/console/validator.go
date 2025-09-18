@@ -122,10 +122,11 @@ func checkDevice(cfg *config.HarvesterConfig) error {
 		}
 	}
 
-	options, err := getDiskOptions()
-	if err != nil {
+	// Check against the latest refreshed disk options cache
+	if err := diskOptionsCache.refresh(); err != nil {
 		return err
 	}
+	options := diskOptionsCache.getAllValidDiskOptions()
 
 	deviceFound := false
 	for _, option := range options {
