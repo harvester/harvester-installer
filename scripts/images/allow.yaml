@@ -27,3 +27,4 @@ rancher:
   - docker.io/rancher/mirrored-banzaicloud-logging-operator
   - docker.io/rancher/mirrored-fluent-fluent-bit
   - docker.io/rancher/mirrored-jimmidyson-configmap-reload
+  - docker.io/rancher/kuberlr-kubectl
