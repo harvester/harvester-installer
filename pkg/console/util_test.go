@@ -1,11 +1,14 @@
 package console
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +16,27 @@ import (
 
 	"github.com/harvester/harvester-installer/pkg/util"
 )
+
+func TestGetURL_FileScheme(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "sample.txt")
+	want := []byte("hello from disk")
+
+	if err := os.WriteFile(filePath, want, 0o600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	got, err := getURL(http.Client{}, "file://"+filePath)
+	if err != nil {
+		t.Fatalf("getURL returned error: %v", err)
+	}
+
+	if !bytes.Equal(got, want) {
+		t.Fatalf("unexpected body:\n got: %q\nwant: %q", got, want)
+	}
+}
 
 func TestGetSSHKeysFromURL(t *testing.T) {
 	testCases := []struct {
