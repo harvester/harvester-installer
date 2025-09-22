@@ -6,12 +6,15 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/util"
+	"github.com/harvester/harvester-installer/pkg/widgets"
 )
 
 func TestGetSSHKeysFromURL(t *testing.T) {
@@ -1086,39 +1089,168 @@ const (
       }
    ]
 }`
+
+	noValidDisks = `{
+   "blockdevices": [
+      {
+         "name": "loop0",
+         "size": "946.7M",
+         "type": "loop",
+         "wwn": null,
+         "serial": null,
+         "label": null
+      },{
+         "name": "sr0",
+         "size": "1.4G",
+         "type": "rom",
+         "wwn": null,
+         "serial": "QM00001",
+         "label": null
+      }
+   ]
+}`
 )
 
-func Test_identifyUniqueDisksWithSerialNumber(t *testing.T) {
-	assert := require.New(t)
-	result, err := identifyUniqueDisks([]byte(sampleSerialDiskOutput))
-	assert.NoError(err, "expected no error while parsing disk data")
-	assert.Len(result, 1, "expected to find 1 disk only")
+func Test_getAllValidDiskOptions(t *testing.T) {
+	defer func() { run = runCommand }()
+
+	testCases := []struct {
+		name                        string
+		mockedRunCommandOutput      []byte
+		expectedAllValidDiskOptions []widgets.Option
+	}{
+		{
+			name: "Disks with serial number",
+			mockedRunCommandOutput: []byte(sampleSerialDiskOutput),
+			expectedAllValidDiskOptions: []widgets.Option{
+				{
+					Value: "/dev/sda",
+					Text: "sda 250G",
+				},
+			},
+		},
+		{
+			name: "Disks with existing data",
+			mockedRunCommandOutput: []byte(reinstallDisks),
+			expectedAllValidDiskOptions: []widgets.Option{
+				{
+					Value: "/dev/sda",
+					Text: "sda 10G",
+				},
+				{
+					Value: "/dev/vda",
+					Text: "vda 250G",
+				},
+			},
+		},
+		{
+			name: "Disks on existing installs",
+			mockedRunCommandOutput: []byte(preInstalledMultiPath),
+			expectedAllValidDiskOptions: []widgets.Option{
+				{
+					Value: "/dev/sda",
+					Text: "sda 250G",
+				},
+			},
+		},
+		{
+			name: "RAID disks",
+			mockedRunCommandOutput: []byte(raidDisks),
+			expectedAllValidDiskOptions: []widgets.Option{
+				{
+					Value: "/dev/sda",
+					Text: "sda 447.1G",
+				},
+				{
+					Value: "/dev/sdb",
+					Text: "sdb 447.1G",
+				},
+			},
+		},
+		{
+			name: "No Valid Disks",
+			mockedRunCommandOutput: []byte(noValidDisks),
+			expectedAllValidDiskOptions: []widgets.Option(nil),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			run = func(_ *exec.Cmd) ([]byte, error) {
+				return []byte(tc.mockedRunCommandOutput), nil
+			}
+
+			assert := require.New(t)
+			doc := NewDiskOptionsCache()
+			err := doc.refresh()
+			assert.NoError(err, "expected no error while fetching")
+			actualAllValidDiskOptions := doc.getAllValidDiskOptions()
+			assert.NoError(err, "expected no error while getting all valid disk options")
+			assert.Equal(tc.expectedAllValidDiskOptions, actualAllValidDiskOptions)
+		})
+	}
 }
 
-func Test_identifyUniqueDisksWithExistingData(t *testing.T) {
+func Test_getDataDisksOptions(t *testing.T) {
+	defer func() { run = runCommand }()
+
+	run = func(_ *exec.Cmd) ([]byte, error) {
+		return []byte(raidDisks), nil
+	}
+
 	assert := require.New(t)
-	result, err := identifyUniqueDisks([]byte(reinstallDisks))
-	assert.NoError(err, "expected no error while parsing disk data")
-	assert.Len(result, 2, "expected to find 2 disks only")
+	doc := NewDiskOptionsCache()
+	err := doc.refresh()
+	assert.NoError(err, "expected no error while fetching")
+
+	hvstConfig := config.NewHarvesterConfig()
+
+	// Set the first disk option as installation disk
+	hvstConfig.Install.Device = doc.getAllValidDiskOptions()[0].Value
+	assert.Equal(
+		[]widgets.Option{
+			widgets.Option{Value: "/dev/sda", Text: "Use the installation disk (sda 447.1G)"},
+			widgets.Option{Value: "/dev/sdb", Text: "sdb 447.1G"},
+		},
+		doc.getDataDiskOptions(hvstConfig),
+		)
+
+	// Change the installation disk to the second disk option
+	hvstConfig.Install.Device = doc.getAllValidDiskOptions()[1].Value
+	assert.Equal(
+		[]widgets.Option{
+			widgets.Option{Value: "/dev/sdb", Text: "Use the installation disk (sdb 447.1G)"},
+			widgets.Option{Value: "/dev/sda", Text: "sda 447.1G"},
+		},
+		doc.getDataDiskOptions(hvstConfig),
+		)
 }
 
-func Test_identifyUniqueDisksOnExistingInstalls(t *testing.T) {
-	assert := require.New(t)
-	result, err := identifyUniqueDisks([]byte(preInstalledMultiPath))
-	assert.NoError(err, "expected no error while parsing disk data")
-	assert.Len(result, 1, "expected to find 1 disk only")
-}
+func Test_getWipeDisksOptions(t *testing.T) {
+	defer func() { run = runCommand }()
 
-func Test_identifyUniqueDisks(t *testing.T) {
-	assert := require.New(t)
-	out, err := identifyUniqueDisks([]byte(raidDisks))
-	assert.NoError(err, "expected no error while parsing disk data")
-	t.Log(out)
-}
+	run = func(_ *exec.Cmd) ([]byte, error) {
+		return []byte(existingHarvesterInstalls), nil
+	}
 
-func Test_identifyUniqueDisksWithHarvesterInstall(t *testing.T) {
 	assert := require.New(t)
-	results, err := filterHarvesterInstallDisks([]byte(existingHarvesterInstalls))
-	assert.NoError(err, "expected no error while parsing disk data")
-	assert.Len(results, 1, "expected to find 1 disk from sample data")
+	doc := NewDiskOptionsCache()
+	err := doc.refresh()
+	assert.NoError(err, "expected no error while fetching")
+
+	hvstConfig := config.NewHarvesterConfig()
+	assert.Equal(
+		[]widgets.Option{
+			widgets.Option{Value: "/dev/sdc", Text: "sdc 250G"},
+		},
+		doc.getWipeDisksOptions(hvstConfig),
+		)
+
+	hvstConfig.Install.Device = "/dev/sdc"
+	hvstConfig.Install.DataDisk = ""
+	assert.Equal([]widgets.Option(nil), doc.getWipeDisksOptions(hvstConfig), "expected to skip installation disk")
+
+	hvstConfig.Install.Device = ""
+	hvstConfig.Install.DataDisk = "/dev/sdc"
+	assert.Equal([]widgets.Option(nil), doc.getWipeDisksOptions(hvstConfig), "expected to skip data disk")
 }
