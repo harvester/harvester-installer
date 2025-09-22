@@ -197,11 +197,12 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, ntpdService)
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
 		}
+
 		if len(cfg.OS.DNSNameservers) > 0 {
 			afterNetwork.Commands = append(afterNetwork.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers, cfg.ManagementInterface.VlanID))
 		}
 
-		_, err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
+		err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
 		if err != nil {
 			return nil, err
 		}
@@ -517,15 +518,15 @@ func SaveOriginalNetworkConfig() error {
 // UpdateManagementInterfaceConfig updates a cOS config stage to include steps that:
 // - generates NetworkManager connection profiles (`/etc/NetworkManager/system-connections/*.nmconnection`)
 // - restart networking and wait for connection if `run` flag is true
-func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool) (string, error) {
+func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Network, run bool) error {
 	if len(mgmtInterface.Interfaces) == 0 {
-		return "", errors.New("no slave defined for management network bond")
+		return errors.New("no slave defined for management network bond")
 	}
 
 	switch mgmtInterface.Method {
 	case NetworkMethodDHCP, NetworkMethodStatic, NetworkMethodNone:
 	default:
-		return "", fmt.Errorf("unsupported network method %s", mgmtInterface.Method)
+		return fmt.Errorf("unsupported network method %s", mgmtInterface.Method)
 	}
 
 	bondMgmt := Network{
@@ -537,16 +538,11 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 	}
 
 	if err := updateBond(stage, MgmtBondInterfaceName, &bondMgmt); err != nil {
-		return "", err
+		return err
 	}
 
 	if err := updateBridge(stage, MgmtInterfaceName, &mgmtInterface); err != nil {
-		return "", err
-	}
-
-	name := MgmtInterfaceName
-	if mgmtInterface.VlanID >= 2 && mgmtInterface.VlanID <= 4094 {
-		name = fmt.Sprintf("%s.%d", name, mgmtInterface.VlanID)
+		return err
 	}
 
 	if run {
@@ -566,7 +562,7 @@ func UpdateManagementInterfaceConfig(stage *yipSchema.Stage, mgmtInterface Netwo
 		stage.Commands = append(stage.Commands, "nm-online -x")
 	}
 
-	return name, nil
+	return nil
 }
 
 func updateBond(stage *yipSchema.Stage, name string, network *Network) error {
