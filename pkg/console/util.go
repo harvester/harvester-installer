@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -554,10 +555,7 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 	// when WipeAllDisks is enabled then find all non installation disks with COS_ prefixed labels
 	// and add them to a list for wiping
 	if hvstConfig.Install.WipeAllDisks {
-		diskOpts, err := getWipeDisksOptions(hvstConfig)
-		if err != nil {
-			return err
-		}
+		diskOpts := diskOptionsCache.getWipeDisksOptions(hvstConfig)
 		for _, opt := range diskOpts {
 			hvstConfig.Install.WipeDisksList = append(hvstConfig.Install.WipeDisksList, opt.Value)
 		}
@@ -1040,22 +1038,92 @@ const (
 	diskType = "disk"
 )
 
-// identifyUniqueDisks parses the json output of lsblk and identifies
-// unique disks by comparing their serial number info and wwn details
-func identifyUniqueDisks(output []byte) ([]string, error) {
+var (
+	// So that we can fake this stuff up for unit tests
+	run = runCommand
+)
+
+type DiskOptionsCache struct {
+	diskOptions              []widgets.Option
+	hvstInstalledDiskOptions []widgets.Option
+}
+
+func NewDiskOptionsCache() *DiskOptionsCache {
+	return &DiskOptionsCache{}
+}
+
+func (d *DiskOptionsCache) refresh() error {
+	output, err := run(exec.Command("/bin/sh", "-c", `lsblk -J -o NAME,SIZE,TYPE,WWN,SERIAL,LABEL`))
+
+	if err != nil {
+		return err
+	}
 
 	resultMap, err := filterUniqueDisks(output)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	returnDisks := make([]string, 0, len(resultMap))
-	// generate list of disks
-	for _, v := range resultMap {
-		returnDisks = append(returnDisks, generateDiskEntry(v))
+	disks := make([]string, 0, len(resultMap))
+	hvstInstalledDisks := make([]string, 0)
+	for _, device := range resultMap {
+		disks = append(disks, generateDiskEntry(device))
+		if deviceContainsCOSPartition(device) {
+			hvstInstalledDisks = append(hvstInstalledDisks, generateDiskEntry(device))
+		}
 	}
 
-	return returnDisks, nil
+	// ordered result makes the stable item list on the downstream DropDown widget
+	sort.Strings(disks)
+	sort.Strings(hvstInstalledDisks)
+
+	d.diskOptions = generateDiskWidgetOptions(disks)
+	d.hvstInstalledDiskOptions = generateDiskWidgetOptions(hvstInstalledDisks)
+
+	return nil
+}
+
+func (d *DiskOptionsCache) getAllValidDiskOptions() []widgets.Option {
+	return d.diskOptions
+}
+
+func (d *DiskOptionsCache) getDataDiskOptions(hvstConfig *config.HarvesterConfig) []widgets.Option {
+	// Show the OS disk as "Use the installation disk (<Disk Name>)"
+
+	const newTextTemplate = "Use the installation disk (%s)"
+	deviceForOS := hvstConfig.Install.Device
+	diskOpts := make([]widgets.Option, len(d.diskOptions))
+	copy(diskOpts, d.diskOptions)
+	if deviceForOS == "" {
+		diskOpts[0].Text = fmt.Sprintf(newTextTemplate, diskOpts[0].Text)
+		return diskOpts
+	}
+
+	for i, diskOpt := range diskOpts {
+		if diskOpt.Value == deviceForOS {
+			osDiskOpt := widgets.Option{
+				Text:  fmt.Sprintf(newTextTemplate, diskOpt.Text),
+				Value: diskOpt.Value,
+			}
+			diskOpts = append(diskOpts[:i], diskOpts[i+1:]...)
+			diskOpts = append([]widgets.Option{osDiskOpt}, diskOpts...)
+			return diskOpts
+		}
+	}
+	logrus.Warnf("device '%s' not found in disk options", deviceForOS)
+	return nil
+}
+
+func (d *DiskOptionsCache) getWipeDisksOptions(hvstConfig *config.HarvesterConfig) []widgets.Option {
+	// filter disks to ignore disks which may be used as base install device
+	// or an additional data disk, and rest can be used for generation of option
+	var filterDisks []widgets.Option
+	for _, v := range d.hvstInstalledDiskOptions {
+		if v.Value != hvstConfig.Device && v.Value != hvstConfig.DataDisk {
+			filterDisks = append(filterDisks, v)
+		}
+	}
+	return filterDisks
 }
 
 // filterUniqueDisks will dedup results of disk output to generate a map[disName]Device of unique devices
@@ -1104,70 +1172,6 @@ func filterUniqueDisks(output []byte) (map[string]Device, error) {
 	return resultMap, nil
 }
 
-// getDiskOptions identifies disks that can be used for installation
-func getDiskOptions() ([]widgets.Option, error) {
-	output, err := exec.Command("/bin/sh", "-c", `lsblk -J -o NAME,SIZE,TYPE,WWN,SERIAL,LABEL`).CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-
-	var disks []string
-	disks, err = identifyUniqueDisks(output)
-	if err != nil {
-		return nil, err
-	}
-
-	return generateDiskWidgetOptions(disks), nil
-}
-
-// getWipeDiskOptions iterates over all disks and filters out disks which are being used for install device
-// or dataDisk as they will already be wiped as part of the installation process
-func getWipeDisksOptions(hvstConfig *config.HarvesterConfig) ([]widgets.Option, error) {
-	disks, err := identifyUniqueDisksWithHarvesterInstall()
-	if err != nil {
-		return nil, err
-	}
-
-	options := generateDiskWidgetOptions(disks)
-	// filter disks to ignore disks which may be used as base install device
-	// or an additional data disk, and rest can be used for generation of option
-	var filterDisks []widgets.Option
-	for _, v := range options {
-		if v.Value != hvstConfig.Device && v.Value != hvstConfig.DataDisk {
-			filterDisks = append(filterDisks, v)
-		}
-	}
-	return filterDisks, nil
-}
-
-// identifyUniqueDisksWithHarvesterInstall will identify disks which may already be in use with old Harvester
-// installs. This is done by check if a label with prefix COS exists on any of the partitions
-// and only those disks are returned for getWipeDiskOptions
-
-func identifyUniqueDisksWithHarvesterInstall() ([]string, error) {
-	output, err := exec.Command("/bin/sh", "-c", `lsblk -J -o NAME,SIZE,TYPE,WWN,SERIAL,LABEL`).CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-
-	return filterHarvesterInstallDisks(output)
-}
-
-func filterHarvesterInstallDisks(output []byte) ([]string, error) {
-	var returnedDisks []string
-
-	resultMap, err := filterUniqueDisks(output)
-	if err != nil {
-		return nil, fmt.Errorf("error filtering unique harvester install disks: %w", err)
-	}
-	for _, device := range resultMap {
-		if deviceContainsCOSPartition(device) {
-			returnedDisks = append(returnedDisks, generateDiskEntry(device))
-		}
-	}
-	return returnedDisks, nil
-}
-
 func deviceContainsCOSPartition(disk Device) bool {
 	for _, partition := range disk.Children {
 		if partition.DiskType == MpathType {
@@ -1196,17 +1200,20 @@ func generateDiskWidgetOptions(lines []string) []widgets.Option {
 
 func executeWipeDisks(ctx context.Context, name string) error {
 	cmd := exec.CommandContext(ctx, "/usr/sbin/sgdisk", "-Z", name)
-	if err := runCommand(cmd); err != nil {
+	if _, err := runCommand(cmd); err != nil {
 		return err
 	}
 	cmd = exec.CommandContext(ctx, "/usr/sbin/partprobe", "-s", name)
-	return runCommand(cmd)
+	if _, err := runCommand(cmd); err != nil {
+		return err
+	}
+	return nil
 }
 
-func runCommand(cmd *exec.Cmd) error {
+func runCommand(cmd *exec.Cmd) ([]byte, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		logrus.Error(string(output))
 	}
-	return err
+	return output, err
 }
