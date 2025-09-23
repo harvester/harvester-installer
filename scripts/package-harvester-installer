@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
+SCRIPTS_DIR="${TOP_DIR}/scripts"
+DIST_INSTALLER_DIR="${TOP_DIR}/dist/harvester-installer"
+PACKAGE_HARVESTER_INSTALLER_DIR="${TOP_DIR}/package/harvester-installer"
+
+source ${SCRIPTS_DIR}/version
+
+# for image publish in CI
+rm -rf ${DIST_INSTALLER_DIR} && mkdir -p ${DIST_INSTALLER_DIR}
+cp -r ${PACKAGE_HARVESTER_INSTALLER_DIR}/* ${DIST_INSTALLER_DIR}
+
+cd ${PACKAGE_HARVESTER_INSTALLER_DIR}
+
+INSTALLER_IMAGE=rancher/harvester-installer:${VERSION}
+docker build -t ${INSTALLER_IMAGE} .

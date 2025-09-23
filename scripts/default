@@ -7,4 +7,5 @@ cd $(dirname $0)
 ./test
 ./build-bundle
 ./package-harvester-repo
+./package-harvester-installer
 ./package-harvester-os
