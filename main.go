@@ -5,6 +5,9 @@ import (
 	"log"
 	"os"
 
+	"gopkg.in/yaml.v3"
+
+	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/console"
 	"github.com/harvester/harvester-installer/pkg/version"
 	"github.com/urfave/cli/v3"
@@ -18,10 +21,53 @@ func main() {
 		UsageText: `harvester-installer [global options] [command [command options]]
 
 Executes the Harvester installer if no command is specified.`,
+
 		Action: func(context.Context, *cli.Command) error {
 			return console.RunConsole()
 		},
-		Commands: []*cli.Command{},
+
+		Commands: []*cli.Command{
+			{
+				Name:  "generate-network-yaml",
+				Usage: "Generate /oem YAML file for network configuration",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "config",
+						Value: "/oem/harvester.config",
+						Usage: "Harvester config file",
+					},
+					&cli.StringFlag{
+						Name:  "cloud-init",
+						Value: "/oem/91_networkmanager.yaml",
+						Usage: "YAML file to generate",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					data, err := os.ReadFile(cmd.String("config"))
+					if err != nil {
+						return err
+					}
+					harvesterCfg, err := config.LoadHarvesterConfig(data)
+					if err != nil {
+						return err
+					}
+					cosConfig, err := config.ConvertNetworkToCOS(harvesterCfg)
+					if err != nil {
+						return err
+					}
+					bytes, err := yaml.Marshal(cosConfig)
+					if err != nil {
+						return err
+					}
+					err = os.WriteFile(cmd.String("cloud-init"), bytes, 0600)
+					if err != nil {
+						return err
+					}
+					log.Printf("Generated %s from %s\n", cmd.String("cloud-init"), cmd.String("config"))
+					return nil
+				},
+			},
+		},
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
