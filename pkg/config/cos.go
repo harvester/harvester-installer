@@ -198,11 +198,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 			initramfs.Systemctl.Enable = append(initramfs.Systemctl.Enable, timeWaitSyncService)
 		}
 
-		if len(cfg.OS.DNSNameservers) > 0 {
-			afterNetwork.Commands = append(afterNetwork.Commands, getAddStaticDNSServersCmd(cfg.OS.DNSNameservers, cfg.ManagementInterface.VlanID))
-		}
-
-		err = UpdateManagementInterfaceConfig(&initramfs, cfg.ManagementInterface, false)
+		err = convertNetworkConfigToStages(cfg, &initramfs, &afterNetwork)
 		if err != nil {
 			return nil, err
 		}
@@ -232,6 +228,27 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	}
 
 	return cosConfig, nil
+}
+
+// ConvertToCOS converts only the network bits of HarvesterConfig to cOS
+// configuration, to be used when migrating from wicked to NetworkManager
+func ConvertNetworkToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
+	cosConfig := &yipSchema.YipConfig{
+		Name: "Harvester Network Configuration",
+		Stages: map[string][]yipSchema.Stage{
+			"initramfs": {yipSchema.Stage{}},
+			"network":   {yipSchema.Stage{}},
+		},
+	}
+	err := convertNetworkConfigToStages(config, &cosConfig.Stages["initramfs"][0], &cosConfig.Stages["network"][0])
+	return cosConfig, err
+}
+
+func convertNetworkConfigToStages(config *HarvesterConfig, initramfs *yipSchema.Stage, network *yipSchema.Stage) error {
+	if len(config.OS.DNSNameservers) > 0 {
+		network.Commands = append(network.Commands, getAddStaticDNSServersCmd(config.OS.DNSNameservers, config.ManagementInterface.VlanID))
+	}
+	return UpdateManagementInterfaceConfig(initramfs, config.ManagementInterface, false)
 }
 
 func overwriteSSHDComponent(config *HarvesterConfig) {
