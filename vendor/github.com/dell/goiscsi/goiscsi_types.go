@@ -68,6 +68,16 @@ type ISCSISession struct {
 	PasswordIn           string
 }
 
+// ISCSIInterface represents an iSCSI interface with all its fields
+type ISCSIInterface struct {
+	IfaceName       string
+	TransportName   string
+	HardwareAddress string
+	IPAddress       string
+	NetIfaceName    string
+	InitiatorName   string
+}
+
 // ISCSINode defines an iSCSI node info
 type ISCSINode struct {
 	Target string
