@@ -223,10 +223,10 @@ type ExternalStorageConfig struct {
 }
 
 type MultiPathConfig struct {
-	Blacklist     []DiskConfig `json:"blacklist,omitempty"`
-	BlackListWwid []string     `json:"blackListWwid,omitempty"`
-	Exceptions    []DiskConfig `json:"exceptions,omitempty"`
-	ExceptionWwid []string     `json:"exceptionWwid,omitempty"`
+	Blacklist               []DiskConfig `json:"blacklist,omitempty"`
+	BlacklistWwids          []string     `json:"blacklistWwids,omitempty"`
+	BlacklistExceptions     []DiskConfig `json:"blacklistExceptions,omitempty"`
+	BlacklistExceptionWwids []string     `json:"blacklistExceptionWwids,omitempty"`
 }
 
 type DiskConfig struct {

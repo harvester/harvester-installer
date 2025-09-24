@@ -607,7 +607,7 @@ func Test_MultipathConfigOption_Case1(t *testing.T) {
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: MultiPathConfig{
-			Exceptions: []DiskConfig{
+			BlacklistExceptions: []DiskConfig{
 				{
 					Vendor:  "DELL",
 					Product: "DISK1",
@@ -640,10 +640,10 @@ func Test_MultipathConfigOption_Case2(t *testing.T) {
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: MultiPathConfig{
-			BlackListWwid: []string{".*"},
-			Blacklist:     []DiskConfig{},
-			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
-			Exceptions: []DiskConfig{
+			BlacklistWwids:          []string{".*"},
+			Blacklist:               []DiskConfig{},
+			BlacklistExceptionWwids: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
+			BlacklistExceptions: []DiskConfig{
 				{
 					Vendor:  "DELL",
 					Product: "POWERVAULT",
@@ -679,15 +679,15 @@ func Test_MultipathConfigOption_Case3(t *testing.T) {
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: MultiPathConfig{
-			BlackListWwid: []string{".*"},
+			BlacklistWwids: []string{".*"},
 			Blacklist: []DiskConfig{
 				{
 					Vendor:  "QEMU",
 					Product: "QEMU HARDDISK",
 				},
 			},
-			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
-			Exceptions: []DiskConfig{
+			BlacklistExceptionWwids: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
+			BlacklistExceptions: []DiskConfig{
 				{
 					Vendor:  "DELL",
 					Product: "POWERVAULT",
@@ -748,8 +748,8 @@ func Test_MultipathConfigOption_MultipleWwids(t *testing.T) {
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: MultiPathConfig{
-			BlackListWwid: []string{".*", "^36[0-9a-f]{30}"},
-			ExceptionWwid: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+", "^36001405[0-9a-f]{24}"},
+			BlacklistWwids:          []string{".*", "^36[0-9a-f]{30}"},
+			BlacklistExceptionWwids: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+", "^36001405[0-9a-f]{24}"},
 		},
 	}
 
@@ -777,7 +777,7 @@ func Test_ToCosInstallEnv(t *testing.T) {
 	hvConfig.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
 		MultiPathConfig: MultiPathConfig{
-			Exceptions: []DiskConfig{
+			BlacklistExceptions: []DiskConfig{
 				{
 					Vendor:  "DELL",
 					Product: "DISK1",
