@@ -1,7 +1,7 @@
 docker.io/rancher/fleet-agent:v0.13.0
 docker.io/rancher/fleet:v0.13.0
-docker.io/rancher/kubectl:v1.29.2
 docker.io/rancher/kubectl:v1.33.1
+docker.io/rancher/kubectl:v1.34.0
 docker.io/rancher/mirrored-cluster-api-controller:v1.10.2
 docker.io/rancher/mirrored-fluent-fluent-bit:3.1.8
 docker.io/rancher/mirrored-kube-logging-fluentd:v1.16-4.10-full
