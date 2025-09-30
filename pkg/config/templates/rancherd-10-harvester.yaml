@@ -186,7 +186,7 @@ resources:
           guaranteedInstanceManagerCPU: {{ .Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU }}
           {{- end }}
           {{- if .Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk }}
-          storageReservedPercentageForDefaultDisk: {{ .Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk }}
+          storageReservedPercentageForDefaultDisk: "{{ .Harvester.Longhorn.DefaultSettings.StorageReservedPercentageForDefaultDisk }}"
           {{- end }}
           detachManuallyAttachedVolumesWhenCordoned: true
           nodeDrainPolicy: "allow-if-replica-is-stopped"
