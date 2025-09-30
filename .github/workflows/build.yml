@@ -4,6 +4,8 @@ on:
     branches:
     - master
     - v*
+  tags:
+    - v*
   pull_request:
 env:
   # Fake up DRONE_BRANCH so it's picked up when dapper gets to
