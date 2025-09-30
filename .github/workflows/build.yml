@@ -47,7 +47,7 @@ jobs:
         echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_ENV"
 
     - name: Read Secrets
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
+      if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
       uses: rancher-eio/read-vault-secrets@main
       with:
         secrets: |
@@ -56,7 +56,7 @@ jobs:
           secret/data/github/repo/${{ github.repository }}/google-auth-key/credentials credential | GOOGLE_AUTH ;
 
     - name: Login to Docker Hub
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
+      if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
       uses: docker/login-action@v3
       with:
         username: ${{ env.DOCKER_USERNAME }}
@@ -89,6 +89,18 @@ jobs:
         push: true
         platforms: linux/${{ matrix.arch }}
         tags: rancher/harvester-installer:${{ env.branch }}-head-${{ matrix.arch }}
+        file: dist/harvester-installer/Dockerfile
+        sbom: true
+        provenance: mode=max
+
+    - name: docker-publish-harvester-installer-with-tag
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      uses: docker/build-push-action@v6
+      with:
+        context: dist/harvester-installer
+        push: true
+        platforms: linux/${{ matrix.arch }}
+        tags: rancher/harvester-installer:${{ github.ref_name }}-${{ matrix.arch }}
         file: dist/harvester-installer/Dockerfile
         sbom: true
         provenance: mode=max
@@ -158,7 +170,7 @@ jobs:
     name: Manifest harvester-installer image
     runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }}
     needs: build-iso
-    if: ${{ startsWith(github.ref, 'refs/heads/') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     permissions:
       contents: read
       id-token: write # for reading credential https://github.com/rancher-eio/read-vault-secrets
@@ -197,3 +209,12 @@ jobs:
         docker buildx imagetools create -t rancher/harvester-installer:${{ env.branch }}-head \
           rancher/harvester-installer:${{ env.branch }}-head-amd64 \
           rancher/harvester-installer:${{ env.branch }}-head-arm64
+
+    - name: docker-pull-harvester-installer-with-tag
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      run: |
+        docker pull --platform linux/amd64 rancher/harvester-installer:${{ github.ref_name }}-amd64
+        docker pull --platform linux/arm64 rancher/harvester-installer:${{ github.ref_name }}-arm64
+        docker buildx imagetools create -t rancher/harvester-installer:${{ github.ref_name }} \
+          rancher/harvester-installer:${{ github.ref_name }}-amd64 \
+          rancher/harvester-installer:${{ github.ref_name }}-arm64
