@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 
@@ -41,6 +42,10 @@ Executes the Harvester installer if no command is specified.`,
 						Value: "/oem/91_networkmanager.yaml",
 						Usage: "YAML file to generate",
 					},
+					&cli.BoolFlag{
+						Name:  "force",
+						Usage: "Overwrite YAML file if it already exists",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					data, err := os.ReadFile(cmd.String("config"))
@@ -59,12 +64,23 @@ Executes the Harvester installer if no command is specified.`,
 					if err != nil {
 						return err
 					}
-					err = os.WriteFile(cmd.String("cloud-init"), bytes, 0600)
-					if err != nil {
+					_, err = os.Stat(cmd.String("cloud-init"))
+					if errors.Is(err, os.ErrNotExist) || cmd.Bool("force") {
+						// Output file either doesn't exist, or we're forcing overwrite
+						err = os.WriteFile(cmd.String("cloud-init"), bytes, 0600)
+						if err != nil {
+							return err
+						}
+						log.Printf("Generated %s from %s\n", cmd.String("cloud-init"), cmd.String("config"))
+						return nil
+					} else if err == nil {
+						// File definitely exists (os.Stat was successful)
+						log.Printf("Skipped generation of %s (file already exists, specify --force to overwrite)", cmd.String("cloud-init"))
+						return nil
+					} else {
+						// File may or may not exists (some unexpected problem invoking os.Stat)
 						return err
 					}
-					log.Printf("Generated %s from %s\n", cmd.String("cloud-init"), cmd.String("config"))
-					return nil
 				},
 			},
 		},
