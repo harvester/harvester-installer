@@ -638,30 +638,29 @@ func Test_MultipathConfigOption_Case1(t *testing.T) {
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: MultiPathConfig{
-			BlacklistExceptions: []DiskConfig{
-				{
-					Vendor:  "DELL",
-					Product: "DISK1",
-				},
+		MultiPathConfig: []DiskConfig{
+			{
+				Vendor:  "DELL",
+				Product: "DISK1",
 			},
 		},
 	}
 
-	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	assert.NoError(err, "expected no error while parsing multipath config")
+	assert.NotNil(option, "expected parsed option to not be nil")
+
+	content, err := option.Render()
 	assert.NoError(err, "expected no error while rendering multipath config")
 	t.Log("rendered multipath config:")
 	t.Log(content)
 
 	expected := `blacklist {
-}
-blacklist_exceptions {
     device {
-        vendor "DELL"
-        product "DISK1"
+        vendor "!DELL"
+        product "!DISK1"
     }
-}
-`
+}`
 
 	assert.Equal(expected, content, "rendered multipath config should match expected output")
 }
@@ -671,7 +670,7 @@ func Test_MultipathConfigOption_Case2(t *testing.T) {
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: MultiPathConfig{
+		MultiPathConfig: MultiPathOption2{
 			BlacklistWwids:          []string{".*"},
 			Blacklist:               []DiskConfig{},
 			BlacklistExceptionWwids: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+"},
@@ -684,7 +683,11 @@ func Test_MultipathConfigOption_Case2(t *testing.T) {
 		},
 	}
 
-	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	assert.NoError(err, "expected no error while parsing multipath config")
+	assert.NotNil(option, "expected parsed option to not be nil")
+
+	content, err := option.Render()
 	assert.NoError(err, "expected no error while rendering multipath config with WWID and exceptions")
 
 	t.Log("rendered multipath config with WWID and exceptions:")
@@ -710,7 +713,7 @@ func Test_MultipathConfigOption_Case3(t *testing.T) {
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: MultiPathConfig{
+		MultiPathConfig: MultiPathOption2{
 			BlacklistWwids: []string{".*"},
 			Blacklist: []DiskConfig{
 				{
@@ -728,7 +731,11 @@ func Test_MultipathConfigOption_Case3(t *testing.T) {
 		},
 	}
 
-	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	assert.NoError(err, "expected no error while parsing multipath config")
+	assert.NotNil(option, "expected parsed option to not be nil")
+
+	content, err := option.Render()
 	assert.NoError(err, "expected no error while rendering multipath config with WWID and exceptions")
 
 	t.Log("rendered multipath config with WWID and exceptions:")
@@ -758,18 +765,21 @@ func Test_MultipathConfigOption_Case4(t *testing.T) {
 	config := NewHarvesterConfig()
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled:         true,
-		MultiPathConfig: MultiPathConfig{},
+		MultiPathConfig: []DiskConfig{},
 	}
 
-	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
+	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	assert.NoError(err, "expected no error while parsing multipath config")
+	assert.NotNil(option, "expected parsed option to not be nil")
+
+	content, err := option.Render()
 	assert.NoError(err, "expected no error while rendering empty multipath config")
 
 	t.Log("rendered empty multipath config:")
 	t.Log(content)
 
 	expected := `blacklist {
-}
-`
+}`
 
 	assert.Equal(expected, content, "rendered empty multipath config should only contain empty blacklist section")
 }
@@ -777,47 +787,50 @@ func Test_MultipathConfigOption_Case4(t *testing.T) {
 func Test_MultipathConfigOption_MultipleWwids(t *testing.T) {
 	assert := require.New(t)
 	config := NewHarvesterConfig()
+	// The new format supports multiple WWIDs using string arrays
 	config.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: MultiPathConfig{
-			BlacklistWwids:          []string{".*", "^36[0-9a-f]{30}"},
-			BlacklistExceptionWwids: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+", "^36001405[0-9a-f]{24}"},
+		MultiPathConfig: MultiPathOption2{
+			BlacklistWwids:          []string{".*", "wwid-test-1"},
+			BlacklistExceptionWwids: []string{"^0QEMU_QEMU_HARDDISK_disk[0-9]+", "wwid-exception-1"},
 		},
 	}
 
-	content, err := render("multipath.conf.tmpl", config.ExternalStorage.MultiPathConfig)
-	assert.NoError(err, "expected no error while rendering multipath config with multiple WWIDs")
+	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	assert.NoError(err, "expected no error while parsing multipath config")
+	assert.NotNil(option, "expected parsed option to not be nil")
 
-	t.Log("rendered multipath config with multiple WWIDs:")
+	content, err := option.Render()
+	assert.NoError(err, "expected no error while rendering multipath config with WWIDs")
+
+	t.Log("rendered multipath config with WWIDs:")
 	t.Log(content)
 
 	expected := `blacklist {
     wwid ".*"
-    wwid "^36[0-9a-f]{30}"
+    wwid "wwid-test-1"
 }
 blacklist_exceptions {
     wwid "^0QEMU_QEMU_HARDDISK_disk[0-9]+"
-    wwid "^36001405[0-9a-f]{24}"
+    wwid "wwid-exception-1"
 }
 `
 
-	assert.Equal(expected, content, "rendered multipath config should match expected output with multiple WWIDs")
+	assert.Equal(expected, content, "rendered multipath config should match expected output with WWIDs")
 }
 
 func Test_ToCosInstallEnv(t *testing.T) {
 	hvConfig := NewHarvesterConfig()
 	hvConfig.OS.ExternalStorage = ExternalStorageConfig{
 		Enabled: true,
-		MultiPathConfig: MultiPathConfig{
-			BlacklistExceptions: []DiskConfig{
-				{
-					Vendor:  "DELL",
-					Product: "DISK1",
-				},
-				{
-					Vendor:  "HPE",
-					Product: "DISK2",
-				},
+		MultiPathConfig: []DiskConfig{
+			{
+				Vendor:  "DELL",
+				Product: "DISK1",
+			},
+			{
+				Vendor:  "HPE",
+				Product: "DISK2",
 			},
 		},
 	}
@@ -827,4 +840,133 @@ func Test_ToCosInstallEnv(t *testing.T) {
 	assert.NoError(err)
 	t.Log(env)
 
+}
+
+func Test_MultipathConfigOption1_DirectFromPureYAML(t *testing.T) {
+	assert := require.New(t)
+
+	yamlContent := `
+os:
+  externalstorage:
+    enabled: true
+    multipathconfig:
+      - vendor: "HP"
+        product: "STORAGE1"
+      - vendor: "IBM"
+        product: "STORAGE2"
+      - vendor: "DELL"
+        product: "STORAGE3"
+`
+
+	config := NewHarvesterConfig()
+	err := yaml.Unmarshal([]byte(yamlContent), config)
+	assert.NoError(err, "expected no error while unmarshaling YAML")
+
+	assert.True(config.OS.ExternalStorage.Enabled, "expected external storage to be enabled")
+	assert.NotNil(config.OS.ExternalStorage.MultiPathConfig, "expected multiPathConfig to not be nil")
+
+	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	assert.NoError(err, "expected no error while parsing multipath config")
+	assert.NotNil(option, "expected parsed option to not be nil")
+
+	_, ok := option.(*MultipathOption1)
+	assert.True(ok, "expected option to be MultipathOption1 type")
+
+	content, err := option.Render()
+	assert.NoError(err, "expected no error while rendering multipath config")
+
+	t.Log("rendered multipath config from YAML (Option1):")
+	t.Log(content)
+
+	expected := `blacklist {
+    device {
+        vendor "!HP"
+        product "!STORAGE1"
+    }
+    device {
+        vendor "!IBM"
+        product "!STORAGE2"
+    }
+    device {
+        vendor "!DELL"
+        product "!STORAGE3"
+    }
+}`
+
+	assert.Equal(expected, content, "rendered multipath config should match expected output")
+}
+
+func Test_MultipathConfigOption2_DirectFromPureYAML(t *testing.T) {
+	assert := require.New(t)
+
+	yamlContent := `
+os:
+  externalstorage:
+    enabled: true
+    multipathconfig:
+      blacklist:
+        - vendor: "QEMU"
+          product: "QEMU HARDDISK"
+        - vendor: "VMware"
+          product: "Virtual"
+      blacklistwwids:
+        - ".*"
+        - "^36[0-9a-f]{30}"
+      blacklistexceptions:
+        - vendor: "DELL"
+          product: "POWERVAULT"
+        - vendor: "NETAPP"
+          product: "LUN"
+      blacklistexceptionwwids:
+        - "^0QEMU_QEMU_HARDDISK_disk[0-9]+"
+        - "^scsi-SATA.*"
+`
+
+	config := NewHarvesterConfig()
+	err := yaml.Unmarshal([]byte(yamlContent), config)
+	assert.NoError(err, "expected no error while unmarshaling YAML")
+
+	assert.True(config.OS.ExternalStorage.Enabled, "expected external storage to be enabled")
+	assert.NotNil(config.OS.ExternalStorage.MultiPathConfig, "expected multiPathConfig to not be nil")
+
+	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	assert.NoError(err, "expected no error while parsing multipath config")
+	assert.NotNil(option, "expected parsed option to not be nil")
+
+	_, ok := option.(*MultiPathOption2)
+	assert.True(ok, "expected option to be MultiPathOption2 type")
+
+	content, err := option.Render()
+	assert.NoError(err, "expected no error while rendering multipath config")
+
+	t.Log("rendered multipath config from YAML (Option2):")
+	t.Log(content)
+
+	expected := `blacklist {
+    wwid ".*"
+    wwid "^36[0-9a-f]{30}"
+    device {
+        vendor "QEMU"
+        product "QEMU HARDDISK"
+    }
+    device {
+        vendor "VMware"
+        product "Virtual"
+    }
+}
+blacklist_exceptions {
+    wwid "^0QEMU_QEMU_HARDDISK_disk[0-9]+"
+    wwid "^scsi-SATA.*"
+    device {
+        vendor "DELL"
+        product "POWERVAULT"
+    }
+    device {
+        vendor "NETAPP"
+        product "LUN"
+    }
+}
+`
+
+	assert.Equal(expected, content, "rendered multipath config should match expected output")
 }
