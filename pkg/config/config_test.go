@@ -646,8 +646,12 @@ func Test_MultipathConfigOption_Case1(t *testing.T) {
 		},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	err := config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
+
+	// Get the parsed configuration
+	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
+	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
 	content, err := option.Render()
@@ -683,8 +687,12 @@ func Test_MultipathConfigOption_Case2(t *testing.T) {
 		},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	err := config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
+
+	// Get the parsed configuration
+	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
+	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
 	content, err := option.Render()
@@ -731,8 +739,12 @@ func Test_MultipathConfigOption_Case3(t *testing.T) {
 		},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	err := config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
+
+	// Get the parsed configuration
+	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
+	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
 	content, err := option.Render()
@@ -768,8 +780,12 @@ func Test_MultipathConfigOption_Case4(t *testing.T) {
 		MultiPathConfig: []DiskConfig{},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	err := config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
+
+	// Get the parsed configuration
+	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
+	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
 	content, err := option.Render()
@@ -796,8 +812,12 @@ func Test_MultipathConfigOption_MultipleWwids(t *testing.T) {
 		},
 	}
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	err := config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
+
+	// Get the parsed configuration
+	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
+	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
 	content, err := option.Render()
@@ -865,11 +885,15 @@ os:
 	assert.True(config.OS.ExternalStorage.Enabled, "expected external storage to be enabled")
 	assert.NotNil(config.OS.ExternalStorage.MultiPathConfig, "expected multiPathConfig to not be nil")
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	err = config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
+
+	// Get the parsed configuration
+	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
+	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
-	_, ok := option.(*MultipathOption1)
+	_, ok = option.(*MultipathOption1)
 	assert.True(ok, "expected option to be MultipathOption1 type")
 
 	content, err := option.Render()
@@ -929,11 +953,15 @@ os:
 	assert.True(config.OS.ExternalStorage.Enabled, "expected external storage to be enabled")
 	assert.NotNil(config.OS.ExternalStorage.MultiPathConfig, "expected multiPathConfig to not be nil")
 
-	option, err := config.OS.ExternalStorage.ParseMultiPathConfig()
+	err = config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
+
+	// Get the parsed configuration
+	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
+	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
-	_, ok := option.(*MultiPathOption2)
+	_, ok = option.(*MultiPathOption2)
 	assert.True(ok, "expected option to be MultiPathOption2 type")
 
 	content, err := option.Render()

@@ -32,5 +32,12 @@ func LoadHarvesterConfig(yamlBytes []byte) (*HarvesterConfig, error) {
 	if err := schema.Mapper.ToInternal(data); err != nil {
 		return result, err
 	}
-	return result, convert.ToObj(data, result)
+	if err := convert.ToObj(data, result); err != nil {
+		return result, fmt.Errorf("failed to convert to HarvesterConfig: %v", err)
+	}
+	if err := result.ExternalStorage.ParseMultiPathConfig(); err != nil {
+		return result, fmt.Errorf("failed to parse external storage multi-path config: %v", err)
+	}
+
+	return result, nil
 }
