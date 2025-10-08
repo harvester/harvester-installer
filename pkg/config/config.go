@@ -257,11 +257,7 @@ func (esc *ExternalStorageConfig) ParseMultiPathConfig() (err error) {
 
 type MultiPathOption interface {
 	Render() (string, error)
-
-	GetBlacklist() []DiskConfig
-	GetBlacklistWwids() []string
-	GetBlacklistExceptionWwids() []string
-	GetBlacklistExceptions() []DiskConfig
+	GetConfig() MultiPathOption2 // use MultiPathOption2 as the unified config
 }
 
 type MultiPathOption2 struct {
@@ -275,20 +271,13 @@ func (m *MultiPathOption2) Render() (string, error) {
 	return render("multipath.conf.option2.tmpl", m)
 }
 
-func (m *MultiPathOption2) GetBlacklist() []DiskConfig {
-	return m.Blacklist
-}
-
-func (m *MultiPathOption2) GetBlacklistWwids() []string {
-	return m.BlacklistWwids
-}
-
-func (m *MultiPathOption2) GetBlacklistExceptions() []DiskConfig {
-	return m.BlacklistExceptions
-}
-
-func (m *MultiPathOption2) GetBlacklistExceptionWwids() []string {
-	return m.BlacklistExceptionWwids
+func (m *MultiPathOption2) GetConfig() MultiPathOption2 {
+	return MultiPathOption2{
+		Blacklist:               m.Blacklist,
+		BlacklistWwids:          m.BlacklistWwids,
+		BlacklistExceptions:     m.BlacklistExceptions,
+		BlacklistExceptionWwids: m.BlacklistExceptionWwids,
+	}
 }
 
 type MultipathOption1 []DiskConfig
@@ -297,20 +286,13 @@ func (m *MultipathOption1) Render() (string, error) {
 	return render("multipath.conf.option1.tmpl", m)
 }
 
-func (m *MultipathOption1) GetBlacklist() []DiskConfig {
-	return *m
-}
-
-func (m *MultipathOption1) GetBlacklistWwids() []string {
-	return nil
-}
-
-func (m *MultipathOption1) GetBlacklistExceptions() []DiskConfig {
-	return nil
-}
-
-func (m *MultipathOption1) GetBlacklistExceptionWwids() []string {
-	return nil
+func (m *MultipathOption1) GetConfig() MultiPathOption2 {
+	return MultiPathOption2{
+		Blacklist:               *m,
+		BlacklistWwids:          []string{},
+		BlacklistExceptions:     []DiskConfig{},
+		BlacklistExceptionWwids: []string{},
+	}
 }
 
 type DiskConfig struct {
