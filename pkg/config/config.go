@@ -220,9 +220,9 @@ type ExternalStorageConfig struct {
 
 // ParseMultiPathConfig parses the MultiPathConfig interface{} into appropriate types
 // Priority: 1. MultiPath struct, 2. []DiskConfig
-func (esc *ExternalStorageConfig) ParseMultiPathConfig() (option MultiPathOption, err error) {
+func (esc *ExternalStorageConfig) ParseMultiPathConfig() (err error) {
 	if esc.MultiPathConfig == nil {
-		return nil, nil
+		return nil
 	}
 
 	var jsonBytes []byte
@@ -234,25 +234,34 @@ func (esc *ExternalStorageConfig) ParseMultiPathConfig() (option MultiPathOption
 		// Convert interface{} to JSON bytes for easier parsing
 		jsonBytes, err = json.Marshal(esc.MultiPathConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal multiPathConfig: %w", err)
+			return fmt.Errorf("failed to marshal multiPathConfig: %w", err)
 		}
 	}
 
+	// Try to parse as MultiPathOption2 first
 	mp := &MultiPathOption2{}
 	if err := json.Unmarshal(jsonBytes, mp); err == nil {
-		return mp, nil
+		esc.MultiPathConfig = mp
+		return nil
 	}
 
+	// Try to parse as MultipathOption1
 	var diskConfigs MultipathOption1
 	if err := json.Unmarshal(jsonBytes, &diskConfigs); err == nil {
-		return &diskConfigs, nil
+		esc.MultiPathConfig = &diskConfigs
+		return nil
 	}
 
-	return nil, fmt.Errorf("unsupported multiPathConfig format")
+	return fmt.Errorf("unsupported multiPathConfig format")
 }
 
 type MultiPathOption interface {
 	Render() (string, error)
+
+	GetBlacklist() []DiskConfig
+	GetBlacklistWwids() []string
+	GetBlacklistExceptionWwids() []string
+	GetBlacklistExceptions() []DiskConfig
 }
 
 type MultiPathOption2 struct {
@@ -266,10 +275,42 @@ func (m *MultiPathOption2) Render() (string, error) {
 	return render("multipath.conf.option2.tmpl", m)
 }
 
+func (m *MultiPathOption2) GetBlacklist() []DiskConfig {
+	return m.Blacklist
+}
+
+func (m *MultiPathOption2) GetBlacklistWwids() []string {
+	return m.BlacklistWwids
+}
+
+func (m *MultiPathOption2) GetBlacklistExceptions() []DiskConfig {
+	return m.BlacklistExceptions
+}
+
+func (m *MultiPathOption2) GetBlacklistExceptionWwids() []string {
+	return m.BlacklistExceptionWwids
+}
+
 type MultipathOption1 []DiskConfig
 
 func (m *MultipathOption1) Render() (string, error) {
 	return render("multipath.conf.option1.tmpl", m)
+}
+
+func (m *MultipathOption1) GetBlacklist() []DiskConfig {
+	return *m
+}
+
+func (m *MultipathOption1) GetBlacklistWwids() []string {
+	return nil
+}
+
+func (m *MultipathOption1) GetBlacklistExceptions() []DiskConfig {
+	return nil
+}
+
+func (m *MultipathOption1) GetBlacklistExceptionWwids() []string {
+	return nil
 }
 
 type DiskConfig struct {
