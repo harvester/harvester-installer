@@ -867,7 +867,7 @@ func Test_MultipathConfigOption1_DirectFromPureYAML(t *testing.T) {
 
 	yamlContent := `
 os:
-  externalstorage:
+  externalstorageconfig:
     enabled: true
     multipathconfig:
       - vendor: "HP"
@@ -878,8 +878,8 @@ os:
         product: "STORAGE3"
 `
 
-	config := NewHarvesterConfig()
-	err := yaml.Unmarshal([]byte(yamlContent), config)
+	// Be careful the yaml key name, please check this https://github.com/harvester/harvester/issues/9290
+	config, err := LoadHarvesterConfig([]byte(yamlContent))
 	assert.NoError(err, "expected no error while unmarshaling YAML")
 
 	assert.True(config.OS.ExternalStorage.Enabled, "expected external storage to be enabled")
@@ -927,7 +927,7 @@ func Test_MultipathConfigOption2_DirectFromPureYAML(t *testing.T) {
 
 	yamlContent := `
 os:
-  externalstorage:
+  externalstorageconfig:
     enabled: true
     multipathconfig:
       blacklist:
@@ -948,8 +948,8 @@ os:
         - "^scsi-SATA.*"
 `
 
-	config := NewHarvesterConfig()
-	err := yaml.Unmarshal([]byte(yamlContent), config)
+	// Be careful the yaml key name, please check this https://github.com/harvester/harvester/issues/9290
+	config, err := LoadHarvesterConfig([]byte(yamlContent))
 	assert.NoError(err, "expected no error while unmarshaling YAML")
 
 	assert.True(config.OS.ExternalStorage.Enabled, "expected external storage to be enabled")
