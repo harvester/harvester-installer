@@ -13,8 +13,6 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/version"
@@ -564,5 +562,42 @@ func (c *Console) getHarvesterConfig() error {
 		return fmt.Errorf("unable to read default harvester.config file %s: %v", defaultHarvesterConfig, err)
 	}
 
-	return yaml.Unmarshal(content, c.config)
+	/*
+		Previously, we used yaml.Unmarshal to parse the Harvester configuration.
+		We have now switched to using LoadHarvesterConfig for parsing.
+		However, there is an inconsistency issue with struct tags when using LoadHarvesterConfig.
+
+		For example:
+
+		In /oem/harvester.config:
+		```
+		os:
+		  externalstorage:
+		    enabled: true
+		kubeovnoperatorchartversion: 1.13.13
+		```
+
+		With yaml.Unmarshal:
+		- the field `ExternalStorage.Enabled` resolves to true
+		- the field `KubeovnOperatorChartVersion` resolves to "1.13.13"
+
+		With LoadHarvesterConfig:
+		- the field `ExternalStorage.Enabled` resolves to false
+		- the field `KubeovnOperatorChartVersion` resolves to ""
+
+		LoadHarvesterConfig expects field names like "kubeovnChartVersion" and "externalStorageConfig".
+		This case occurs because the yaml and json tags are inconsistent in the HarvesterConfig struct.
+		However, we want the configuration to be loaded in a consistent way, so we choose LoadHarvesterConfig here.
+		Additionally, this code is only used in the Harvester console and should not affect other components.
+
+		Reference: https://github.com/harvester/harvester-installer/pull/1160
+	*/
+
+	conf, err := config.LoadHarvesterConfig(content)
+	if err != nil {
+		return fmt.Errorf("failed to load harvester config from %s: %v", defaultHarvesterConfig, err)
+	}
+	c.config = conf
+
+	return nil
 }
