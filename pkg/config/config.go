@@ -241,14 +241,14 @@ func (esc *ExternalStorageConfig) ParseMultiPathConfig() (err error) {
 	// Try to parse as MultiPathOption2 first
 	mp := &MultiPathOption2{}
 	if err := json.Unmarshal(jsonBytes, mp); err == nil {
-		esc.MultiPathConfig = mp
+		esc.MultiPathConfig = *mp
 		return nil
 	}
 
 	// Try to parse as MultipathOption1
 	var diskConfigs MultipathOption1
 	if err := json.Unmarshal(jsonBytes, &diskConfigs); err == nil {
-		esc.MultiPathConfig = &diskConfigs
+		esc.MultiPathConfig = diskConfigs
 		return nil
 	}
 
@@ -267,11 +267,11 @@ type MultiPathOption2 struct {
 	BlacklistExceptionWwids []string     `json:"blacklistExceptionWwids,omitempty"`
 }
 
-func (m *MultiPathOption2) Render() (string, error) {
+func (m MultiPathOption2) Render() (string, error) {
 	return render("multipath.conf.option2.tmpl", m)
 }
 
-func (m *MultiPathOption2) GetConfig() MultiPathOption2 {
+func (m MultiPathOption2) GetConfig() MultiPathOption2 {
 	return MultiPathOption2{
 		Blacklist:               m.Blacklist,
 		BlacklistWwids:          m.BlacklistWwids,
@@ -282,13 +282,13 @@ func (m *MultiPathOption2) GetConfig() MultiPathOption2 {
 
 type MultipathOption1 []DiskConfig
 
-func (m *MultipathOption1) Render() (string, error) {
+func (m MultipathOption1) Render() (string, error) {
 	return render("multipath.conf.option1.tmpl", m)
 }
 
-func (m *MultipathOption1) GetConfig() MultiPathOption2 {
+func (m MultipathOption1) GetConfig() MultiPathOption2 {
 	return MultiPathOption2{
-		Blacklist:               *m,
+		Blacklist:               m,
 		BlacklistWwids:          []string{},
 		BlacklistExceptions:     []DiskConfig{},
 		BlacklistExceptionWwids: []string{},

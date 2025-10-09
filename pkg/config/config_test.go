@@ -887,13 +887,15 @@ os:
 
 	err = config.OS.ExternalStorage.ParseMultiPathConfig()
 	assert.NoError(err, "expected no error while parsing multipath config")
-
 	// Get the parsed configuration
 	option, ok := config.OS.ExternalStorage.MultiPathConfig.(MultiPathOption)
 	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
-	_, ok = option.(*MultipathOption1)
+	result := fmt.Sprintf("%v", config.OS.ExternalStorage)
+	assert.Equal("{true [{HP STORAGE1} {IBM STORAGE2} {DELL STORAGE3}]}", result, "expected external storage config to match")
+
+	_, ok = option.(MultipathOption1)
 	assert.True(ok, "expected option to be MultipathOption1 type")
 
 	content, err := option.Render()
@@ -961,7 +963,10 @@ os:
 	assert.True(ok, "expected MultiPathConfig to be a MultiPathOption after parsing")
 	assert.NotNil(option, "expected parsed option to not be nil")
 
-	_, ok = option.(*MultiPathOption2)
+	result := fmt.Sprintf("%v", config.OS.ExternalStorage)
+	assert.Equal("{true {[{QEMU QEMU HARDDISK} {VMware Virtual}] [.* ^36[0-9a-f]{30}] [{DELL POWERVAULT} {NETAPP LUN}] [^0QEMU_QEMU_HARDDISK_disk[0-9]+ ^scsi-SATA.*]}}", result, "expected external storage config to match")
+
+	_, ok = option.(MultiPathOption2)
 	assert.True(ok, "expected option to be MultiPathOption2 type")
 
 	content, err := option.Render()
