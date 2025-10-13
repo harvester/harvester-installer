@@ -3029,7 +3029,7 @@ func addNTPServersPanel(c *Console) error {
 				}
 				if err = enableNTPServers(ntpServerList); err != nil {
 					logrus.Errorf("enable ntp servers: %v", err)
-					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to enalbe NTP servers: %v. Press Enter to proceed.", err))
+					gotoSpinnerErrorPage(g, spinner, fmt.Sprintf("Failed to enable NTP servers: %v. Press Enter to proceed.", err))
 					return
 				}
 
