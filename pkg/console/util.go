@@ -184,7 +184,8 @@ func enableNTPServers(ntpServerList []string) error {
 		return nil
 	}
 
-	cfg, err := ini.Load("/etc/systemd/timesyncd.conf")
+	// LooseLoad allows us to handle the case where the file doesn't exist yet
+	cfg, err := ini.LooseLoad("/etc/systemd/timesyncd.conf")
 	if err != nil {
 		return err
 	}
