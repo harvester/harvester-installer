@@ -1,5 +1,23 @@
 name: "Network configuration"
 stages:
+  rootfs:
+    - name: Preserve DHCP leases from initramfs
+      # Note: this is arugably bad, because it ends up in the immutable root
+      # filesystem of the installed system.  I seriously doubt we want that.
+      # but, it does take us from DISCOVER/OFFER/REQUEST/ACK to just
+      # REQUEST/ACK after switch root, so it _might_ fix the problem...
+      # Doing this in initramfs or boot doesn't seem to work, because we
+      # don't have access to /var/lib/NetworkManager anymore from the initrd.
+      if: cat /proc/cmdline | grep -q "harvester.install.automatic=true"
+      commands:
+      - |
+        if [ -d /var/lib/NetworkManager ]; then
+          echo "Copying /var/lib/NetworkManager from initramfs to sysroot"
+          cp /var/lib/NetworkManager/* /sysroot/var/lib/NetworkManager/
+          echo "tserong was here" > /sysroot/var/lib/NetworkManager/tserong.test
+        else
+          echo "/var/lib/NetworkManager does not exist in initramfs"
+        fi
   network:
     - name: Bring up interfaces
       commands:
