@@ -254,7 +254,7 @@ func convertNetworkConfigToStages(config *HarvesterConfig, initramfs *yipSchema.
 func overwriteSSHDComponent(config *HarvesterConfig) {
 	if config.OS.SSHD.SFTP {
 		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
-		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/lib/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/libexec/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
 	}
 }
 
