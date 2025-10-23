@@ -10,9 +10,9 @@ resources:
         enabled: true
       dynamicNetworksController:
         enabled: true
-{{if eq . "arm64"}}
       labels:
         nodeSelector:
           kubernetes.io/os: linux
+{{if eq . "arm64"}}
           kubernetes.io/arch: arm64
 {{end}}
