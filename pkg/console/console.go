@@ -165,6 +165,7 @@ func (c *Console) doRun() error {
 
 	if preflightCheck {
 		checks := []preflight.Check{
+			preflight.BIOSCheck{},
 			preflight.CPUCheck{},
 			preflight.MemoryCheck{},
 			preflight.VirtCheck{},

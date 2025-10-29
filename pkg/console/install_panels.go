@@ -255,7 +255,7 @@ func showDiskPage(c *Console) error {
 		nextComponents = append([]string{dataDiskPanel}, nextComponents...)
 	}
 
-	if systemIsBIOS() {
+	if util.SystemIsBIOS() {
 		nextComponents = append([]string{askForceMBRTitlePanel, askForceMBRPanel}, nextComponents...)
 	}
 
@@ -554,7 +554,7 @@ func addDiskPanel(c *Console) error {
 		// no disks left to wipe, so close the wipeDisksTitlePanel and wipeDisksPanel
 		c.CloseElements(wipeDisksTitlePanel, wipeDisksPanel)
 
-		if systemIsBIOS() {
+		if util.SystemIsBIOS() {
 			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
 				return err
 			}
@@ -730,7 +730,7 @@ func addDiskPanel(c *Console) error {
 
 	wipeDisksConfirm := func(g *gocui.Gui, v *gocui.View) error {
 		c.config.WipeDisksList = wipeDisksV.GetMultiData()
-		if systemIsBIOS() {
+		if util.SystemIsBIOS() {
 			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
 				return err
 			}
