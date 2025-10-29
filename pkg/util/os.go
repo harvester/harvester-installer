@@ -1,6 +1,7 @@
 package util
 
 import (
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -32,4 +33,11 @@ func GetDiskSizeBytes(devPath string) (uint64, error) {
 	}
 
 	return uint64(sizeBytes), nil
+}
+
+func SystemIsBIOS() bool {
+	if _, err := os.Stat("/sys/firmware/efi"); os.IsNotExist(err) {
+		return true
+	}
+	return false
 }

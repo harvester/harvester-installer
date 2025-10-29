@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -47,6 +48,7 @@ type KVMHostCheck struct{}
 type NetworkSpeedCheck struct {
 	Dev string
 }
+type BIOSCheck struct{}
 
 func (c CPUCheck) Run() (msg string, err error) {
 	out, err := execCommand("/usr/bin/nproc", "--all").Output()
@@ -258,6 +260,13 @@ func (c NetworkSpeedCheck) Run() (msg string, err error) {
 	} else if speedGbps < MinNetworkGbpsProd {
 		msg = fmt.Sprintf("Link speed of %s is %gGbps. Harvester requires at least %dGbps for production use.",
 			c.Dev, speedGbps, MinNetworkGbpsProd)
+	}
+	return
+}
+
+func (c BIOSCheck) Run() (msg string, err error) {
+	if util.SystemIsBIOS() {
+		msg = "Support for legacy BIOS is deprecated and will be removed in a later release. If possible please reconfigure the system to use UEFI prior to installation."
 	}
 	return
 }

@@ -748,13 +748,6 @@ func validateDataDiskSize(devPath string) error {
 	return nil
 }
 
-func systemIsBIOS() bool {
-	if _, err := os.Stat("/sys/firmware/efi"); os.IsNotExist(err) {
-		return true
-	}
-	return false
-}
-
 func createVerticalLocator(c *Console) func(elem widgets.Element, height int) {
 	maxX, maxY := c.Gui.Size()
 	lastY := maxY / 8

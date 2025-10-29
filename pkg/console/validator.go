@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/harvester/harvester-installer/pkg/config"
+	"github.com/harvester/harvester-installer/pkg/util"
 )
 
 const validTokenChars = "[a-zA-Z0-9 !\"#$%&'()*+,-./:;<=>?@^_`{|}~[\\]\\\\]"
@@ -292,7 +293,7 @@ func checkForceMBR(device string) error {
 		return prettyError(ErrMsgForceMBROnLargeDisk, device)
 	}
 
-	if !systemIsBIOS() {
+	if !util.SystemIsBIOS() {
 		return prettyError(ErrMsgForceMBROnUEFI, "UEFI")
 	}
 
