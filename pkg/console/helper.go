@@ -1,11 +1,21 @@
 package console
 
 import (
-	"github.com/jroimartin/gocui"
+	"fmt"
+	"os"
+	"os/exec"
 
+	"github.com/jroimartin/gocui"
+	yipSchema "github.com/rancher/yip/pkg/schema"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
+
+	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/util"
 	"github.com/harvester/harvester-installer/pkg/widgets"
 )
+
+const loginUser = "rancher"
 
 type passwordWrapper struct {
 	c                *Console
@@ -36,13 +46,13 @@ func (p *passwordWrapper) passwordVEscapeKeyBinding(_ *gocui.Gui, _ *gocui.View)
 	if err = p.passwordConfirmV.Close(); err != nil {
 		return err
 	}
-	if installModeOnly {
-		return showDiskPage(p.c)
-	}
 	if err := p.c.setContentByName(notePanel, ""); err != nil {
 		return err
 	}
-	return showNext(p.c, tokenPanel)
+	if p.c.config.Install.Mode == config.ModeJoin {
+		return showNext(p.c, askRolePanel)
+	}
+	return showNext(p.c, askCreatePanel)
 }
 
 func (p *passwordWrapper) passwordConfirmVArrowUpKeyBinding(_ *gocui.Gui, _ *gocui.View) error {
@@ -74,11 +84,12 @@ func (p *passwordWrapper) passwordConfirmVKeyEnter(_ *gocui.Gui, _ *gocui.View) 
 		return err
 	}
 	p.c.config.Password = encrypted
-	//TODO: When booted in install mode.. show steps for application of config
-	if installModeOnly {
-		return showNext(p.c, confirmInstallPanel)
+	out, err := applyPassword(loginUser, encrypted)
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, out)
 	}
-	return showNext(p.c, ntpServersPanel)
+	logrus.Infof("Default user password updated: %s", out)
+	return showDiskPage(p.c)
 }
 
 func (p *passwordWrapper) passwordConfirmVKeyEscape(_ *gocui.Gui, _ *gocui.View) error {
@@ -92,8 +103,48 @@ func (p *passwordWrapper) passwordConfirmVKeyEscape(_ *gocui.Gui, _ *gocui.View)
 	if err := p.c.setContentByName(notePanel, ""); err != nil {
 		return err
 	}
-	if installModeOnly {
-		return showDiskPage(p.c)
+	if p.c.config.Install.Mode == config.ModeJoin {
+		return showNext(p.c, askRolePanel)
 	}
-	return showNext(p.c, tokenPanel)
+	return showNext(p.c, askCreatePanel)
+}
+
+func applyPassword(username, passwordHash string) ([]byte, error) {
+	user := yipSchema.User{
+		Name:         username,
+		PasswordHash: passwordHash,
+	}
+	if !user.Exists() {
+		return []byte(fmt.Sprintf("user %s doesn't exist.. skip password configuration", user.Name)), nil
+	}
+
+	conf := &yipSchema.YipConfig{
+		Name: "User Password Configuration",
+		Stages: map[string][]yipSchema.Stage{
+			"live": {
+				yipSchema.Stage{
+					Users: map[string]yipSchema.User{
+						username: user,
+					},
+				},
+			},
+		},
+	}
+	bytes, err := yaml.Marshal(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	liveFile, err := os.CreateTemp("/tmp", "live.XXXXXXXX")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(liveFile.Name()) //nolint:errcheck
+	if _, err := liveFile.Write(bytes); err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command("/usr/bin/yip", "-s", "live", liveFile.Name())
+	cmd.Env = os.Environ()
+	return cmd.CombinedOutput()
 }
