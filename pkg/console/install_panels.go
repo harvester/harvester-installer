@@ -323,10 +323,7 @@ func addDiskPanel(c *Console) error {
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		closeThisPage()
 		diskConfirmed = false
-		if c.config.Install.Mode == config.ModeJoin {
-			return showNext(c, askRolePanel)
-		}
-		return showNext(c, askCreatePanel)
+		return showPasswordPage(c)
 	}
 
 	diskFatalV := widgets.NewPanel(c.Gui, diskFatalPanel)
@@ -531,10 +528,8 @@ func addDiskPanel(c *Console) error {
 		}
 
 		closeThisPage()
-		//TODO: When Install modeonly.. we need to decide that this
-		// network page is not shown and skip straight to the password page
 		if installModeOnly {
-			return showNext(c, passwordConfirmPanel, passwordPanel)
+			return showNext(c, confirmInstallPanel)
 		}
 		return showNetworkPage(c)
 	}
@@ -968,11 +963,15 @@ func addAskCreatePanel(c *Console) error {
 			if alreadyInstalled {
 				return showNetworkPage(c)
 			}
-			return showDiskPage(c)
+			return showPasswordPage(c)
 		},
 	}
 	c.AddElement(askCreatePanel, askCreateV)
 	return nil
+}
+
+func showPasswordPage(c *Console) error {
+	return showNext(c, passwordConfirmPanel, passwordPanel)
 }
 
 func showRolePage(c *Console) error {
@@ -1028,7 +1027,7 @@ func addAskRolePanel(c *Console) error {
 			if alreadyInstalled {
 				return showNetworkPage(c)
 			}
-			return showDiskPage(c)
+			return showPasswordPage(c)
 		},
 		gocui.KeyEsc: gotoPrevPage,
 	}
@@ -1157,7 +1156,7 @@ func addPasswordPanels(c *Console) error {
 		if err := c.setContentByName(notePanel, ""); err != nil {
 			return err
 		}
-		return c.setContentByName(titlePanel, "Configure the password to access the node")
+		return c.setContentByName(titlePanel, "Password change: set the default login password")
 	}
 	pw.passwordConfirmV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: pw.passwordConfirmVArrowUpKeyBinding,
@@ -1295,7 +1294,7 @@ func addTokenPanel(c *Console) error {
 			if err := closeThisPage(); err != nil {
 				return err
 			}
-			return showNext(c, passwordConfirmPanel, passwordPanel)
+			return showNext(c, ntpServersPanel)
 		},
 		gocui.KeyEsc: func(g *gocui.Gui, _ *gocui.View) error {
 			if err := closeThisPage(); err != nil {
@@ -2507,7 +2506,7 @@ func addConfirmInstallPanel(c *Console) error {
 				return err
 			}
 			if installModeOnly {
-				return showNext(c, passwordConfirmPanel, passwordPanel)
+				return showDiskPage(c)
 			}
 			return showNext(c, cloudInitPanel)
 		},
@@ -2958,7 +2957,7 @@ func addNTPServersPanel(c *Console) error {
 		if err := closeThisPage(); err != nil {
 			return err
 		}
-		return showNext(c, passwordConfirmPanel, passwordPanel)
+		return showNext(c, tokenPanel)
 	}
 	gotoNextPage := func() error {
 		userInputData.HasCheckedNTPServers = false
@@ -3210,7 +3209,6 @@ func configureInstallModeDHCP(c *Console) {
 		c.config.Vip = vip.ipv4Addr
 		c.config.VipHwAddr = vip.hwAddr
 	}
-
 }
 
 func checkDHCPHostname(c *config.HarvesterConfig, generate bool) {
