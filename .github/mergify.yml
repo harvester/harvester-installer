@@ -52,6 +52,17 @@ pull_request_rules:
     comment:
       message: This pull request is now in conflict. Could you fix it @{{author}}? 🙏
 
+- name: Automatically open v1.7 backport PR
+  conditions:
+    - base=master
+    - label="pr-backport-to/v1.7"
+  actions:
+    backport:
+      branches:
+        - v1.7
+      assignees:
+        - "{{ author }}"
+
 - name: Automatically open v1.6 backport PR
   conditions:
     - base=master
