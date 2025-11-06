@@ -62,6 +62,7 @@ var (
 	installModeOnly   bool
 	diskConfirmed     bool
 	preflightWarnings []string
+	preflightAck      bool
 	diskOptionsCache  *DiskOptionsCache = NewDiskOptionsCache()
 )
 
@@ -300,11 +301,11 @@ func addDiskPanel(c *Console) error {
 
 	setLocation := createVerticalLocator(c)
 
-	setPageTitle := func() (error) {
-			if c.config.Install.Role == config.RoleWitness {
-				return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
-			}
-			return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
+	setPageTitle := func() error {
+		if c.config.Install.Role == config.RoleWitness {
+			return c.setContentByName(titlePanel, "Choose installation target. Device will be formatted")
+		}
+		return c.setContentByName(titlePanel, "Choose installation target and data disk. Device will be formatted")
 	}
 	closeThisPage := func() {
 		c.CloseElements(
@@ -472,6 +473,9 @@ func addDiskPanel(c *Console) error {
 	validateAllDiskSizes := func() (bool, error) {
 		installDisk := c.config.Install.Device
 		dataDisk := c.config.Install.DataDisk
+		if c.config.SkipChecks {
+			return true, nil
+		}
 
 		if c.config.Install.Role == config.RoleWitness {
 			if err := validateDiskSize(installDisk, false); err != nil {
@@ -499,7 +503,7 @@ func addDiskPanel(c *Console) error {
 			if err != nil {
 				return false, err
 			}
-			if _, err := util.ParsePartitionSize(diskSize, persistentSize); err != nil {
+			if _, err := util.ParsePartitionSize(diskSize, persistentSize, c.config.SkipChecks); err != nil {
 				return false, updateValidatorMessage(err.Error())
 			}
 		}
@@ -909,7 +913,7 @@ func addAskCreatePanel(c *Console) error {
 		// user wants the installation to succeed, regardless of whether any
 		// of the initial preflight checks failed, or if the later network
 		// speed check fails.
-		c.config.SkipChecks = true
+		preflightAck = true
 		askCreateV.Value = c.config.Install.Mode
 		if alreadyInstalled {
 			return c.setContentByName(titlePanel, "Harvester already installed. Choose configuration mode")
@@ -2645,7 +2649,7 @@ func addInstallPanel(c *Console) error {
 				// the NIC speed until we've got the correct set of interfaces.
 				preflightWarnings = append(preflightWarnings, c.doNetworkSpeedCheck(c.config.ManagementInterface.Interfaces)...)
 				if len(preflightWarnings) > 0 {
-					if c.config.SkipChecks {
+					if c.config.SkipChecks || preflightAck {
 						// User is happy to skip checks so let installation proceed,
 						// but still log the warning messages (this happens for both
 						// interactive and automatic/PXE install)

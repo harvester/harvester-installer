@@ -55,7 +55,7 @@ func TestCalcCosPersistentPartSize(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		result, err := calcCosPersistentPartSize(tc.diskSize, tc.partitionSize)
+		result, err := calcCosPersistentPartSize(tc.diskSize, tc.partitionSize, false)
 		assert.Equal(t, tc.result, result)
 		if err != nil {
 			assert.EqualError(t, err, tc.err)

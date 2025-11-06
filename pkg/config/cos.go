@@ -772,8 +772,8 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 	return bootstrapConfs, nil
 }
 
-func calcCosPersistentPartSize(diskSizeGiB uint64, partSize string) (uint64, error) {
-	size, err := util.ParsePartitionSize(util.GiToByte(diskSizeGiB), partSize)
+func calcCosPersistentPartSize(diskSizeGiB uint64, partSize string, skipChecks bool) (uint64, error) {
+	size, err := util.ParsePartitionSize(util.GiToByte(diskSizeGiB), partSize, skipChecks)
 	if err != nil {
 		return 0, err
 	}
@@ -816,7 +816,7 @@ func CreateRootPartitioningLayoutSharedDataDisk(elementalConfig *ElementalConfig
 	if persistentSize == "" {
 		persistentSize = fmt.Sprintf("%dGi", PersistentSizeMinGiB)
 	}
-	cosPersistentSizeMiB, err := calcCosPersistentPartSize(util.ByteToGi(diskSizeBytes), persistentSize)
+	cosPersistentSizeMiB, err := calcCosPersistentPartSize(util.ByteToGi(diskSizeBytes), persistentSize, hvstConfig.SkipChecks)
 	if err != nil {
 		return nil, err
 	}
