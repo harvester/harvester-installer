@@ -3,7 +3,7 @@ rancherValues:
   rancherImage: rancher/rancher
   rancherImageTag: v2.13.0-alpha6
   noDefaultAdmin: false
-  features: multi-cluster-management=false,multi-cluster-management-agent=false,managed-system-upgrade-controller=false
+  features: multi-cluster-management=false,multi-cluster-management-agent=false,managed-system-upgrade-controller=false,turtles=false,embedded-cluster-api=true
   useBundledSystemChart: true
   bootstrapPassword: admin
   hostPort: 0
