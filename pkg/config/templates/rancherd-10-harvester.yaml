@@ -133,16 +133,6 @@ resources:
         - /status/storedVersions
         kind: CustomResourceDefinition
         name: engines.longhorn.io
-      - apiVersion: v1
-        jsonPointers:
-        - /data
-        kind: Secret
-        name: snapshot-validation-webhook-tls
-      - apiVersion: admissionregistration.k8s.io/v1
-        jsonPointers:
-        - /webhooks
-        kind: ValidatingWebhookConfiguration
-        name: harvester-snapshot-validation-webhook
     repoName: harvester-charts
     targets:
     - clusterName: local
