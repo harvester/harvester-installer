@@ -5,7 +5,6 @@ docker.io/rancher/fleet:v0.14.0-rc.1
 docker.io/rancher/kubectl:v1.29.2
 docker.io/rancher/kubectl:v1.32.3
 docker.io/rancher/kubectl:v1.33.1
-docker.io/rancher/mirrored-cluster-api-controller:v1.10.2
 docker.io/rancher/mirrored-fluent-fluent-bit:3.1.8
 docker.io/rancher/mirrored-kube-logging-fluentd:v1.16-4.10-full
 docker.io/rancher/mirrored-kube-logging-logging-operator:4.10.0
@@ -24,8 +23,12 @@ docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.80.1
 docker.io/rancher/mirrored-prometheus-operator-admission-webhook:v0.80.1
 docker.io/rancher/prom-prometheus:v3.2.1
 docker.io/rancher/kuberlr-kubectl:v5.0.0
-docker.io/rancher/rancher:v2.13.0-alpha2
-docker.io/rancher/rancher-webhook:v0.9.0-rc.7
+docker.io/rancher/rancher:v2.13.0-alpha6
+docker.io/rancher/rancher-agent:v2.13.0-alpha6
+docker.io/rancher/rancher-webhook:v0.9.0-rc.11
 docker.io/rancher/shell:v0.5.0
+docker.io/rancher/shell:v0.6.0-rc.1
 docker.io/rancher/system-agent:v0.3.14-rc.1-suc
-docker.io/rancher/system-upgrade-controller:v0.16.0
+docker.io/rancher/system-upgrade-controller:v0.17.0
+docker.io/rancher/turtles:v0.25.0-rc.4
+registry.k8s.io/cluster-api/cluster-api-controller:v1.10.6
