@@ -31,7 +31,7 @@ source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/lib/iso
 
-BASE_OS_IMAGE="rancher/harvester-os:v1.7-20251105"
+BASE_OS_IMAGE="rancher/harvester-os:v1.7-20251112"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
