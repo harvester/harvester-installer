@@ -920,8 +920,8 @@ func disableLonghornMultipathing(stage *yipSchema.Stage) {
 Description=Device-Mapper Multipath Device Controller
 Before=lvm2-activation-early.service
 Before=local-fs-pre.target blk-availability.service shutdown.target
-Wants=systemd-udevd-kernel.socket
-After=systemd-udevd-kernel.socket
+Wants=systemd-udevd-kernel.socket modprobe@dm_multipath.service
+After=systemd-udevd-kernel.socket modprobe@dm_multipath.service
 After=multipathd.socket systemd-remount-fs.service
 Before=initrd-cleanup.service
 DefaultDependencies=no
@@ -933,9 +933,11 @@ ConditionVirtualization=!container
 [Service]
 Type=notify
 NotifyAccess=main
-ExecStart=/sbin/multipathd -d -s
-ExecReload=/sbin/multipathd reconfigure
+ExecStart=/usr/sbin/multipathd -d -s
+ExecReload=/usr/sbin/multipathd reconfigure
 TasksMax=infinity
+LimitRTPRIO=10
+CPUWeight=1000
 
 [Install]
 WantedBy=sysinit.target`)
