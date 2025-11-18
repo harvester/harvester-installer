@@ -8,7 +8,7 @@ SCRIPTS_DIR="${TOP_DIR}/scripts"
 source ${SCRIPTS_DIR}/lib/addon
 
 addons_path=${TOP_DIR}/../addons
-load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git v1.7
 
 generate_addon ${addons_path}
 # copy the generated addon yamls to installer

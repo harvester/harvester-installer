@@ -11,7 +11,7 @@ cd ${TOP_DIR}
 
 source ${SCRIPTS_DIR}/lib/addon
 addons_path=${TOP_DIR}/../addons
-load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git v1.7
 # generate template file in ${addons_path}, and this is used for subsequent checks
 generate_addon ${addons_path}
 
