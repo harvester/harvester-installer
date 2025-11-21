@@ -3,16 +3,13 @@ package console
 import (
 	"fmt"
 	"net"
-	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 
-	yipSchema "github.com/rancher/yip/pkg/schema"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
-	"gopkg.in/yaml.v3"
 
 	"github.com/dell/goiscsi"
 
@@ -37,12 +34,12 @@ func checkDefaultRoute() (bool, error) {
 	return defaultRouteExists, nil
 }
 
-func applyNetworks(network config.Network, hostname string) ([]byte, error) {
+func applyNetworks(network config.Network, hostname string) error {
 	if err := config.RestoreOriginalNetworkConfig(); err != nil {
-		return nil, err
+		return err
 	}
 	if err := config.SaveOriginalNetworkConfig(); err != nil {
-		return nil, err
+		return err
 	}
 
 	// If called without a hostname set, we enable setting hostname via the
@@ -84,44 +81,19 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 		if err != nil {
 			logrus.Warnf("Failed to clear hostname: %v", err)
 		}
+	} else {
+		err = setHostname(hostname)
+		if err != nil {
+			logrus.Errorf("Failed to set hostname: %v", err)
+			return err
+		}
 	}
 
-	conf := &yipSchema.YipConfig{
-		Name: "Network Configuration",
-		Stages: map[string][]yipSchema.Stage{
-			"live": {
-				yipSchema.Stage{Hostname: hostname}, // Ensure hostname updated before configuring network
-				yipSchema.Stage{},
-			},
-		},
-	}
-	err = config.UpdateManagementInterfaceConfig(&conf.Stages["live"][1], network, true)
+	err = config.UpdateManagementInterfaceConfig(network, []string{}, config.NMConnectionPath, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	tempFile, err := os.CreateTemp("/tmp", "live.XXXXXXXX")
-	if err != nil {
-		return nil, err
-	}
-	defer tempFile.Close() //nolint:errcheck
-
-	bytes, err := yaml.Marshal(conf)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := tempFile.Write(bytes); err != nil {
-		return nil, err
-	}
-	defer os.Remove(tempFile.Name()) //nolint:errcheck
-
-	cmd := exec.Command("/usr/bin/yip", "-s", "live", tempFile.Name())
-	cmd.Env = os.Environ()
-	bytes, err = cmd.CombinedOutput()
-	if err != nil {
-		logrus.Error(err, string(bytes))
-		return bytes, err
-	}
 	// Restore Down NIC to up
 	if err := upAllLinks(); err != nil {
 		logrus.Errorf("failed to bring all link up: %s", err.Error())
@@ -140,7 +112,7 @@ func applyNetworks(network config.Network, hostname string) ([]byte, error) {
 		}
 	}
 
-	return bytes, err
+	return err
 }
 
 func upAllLinks() error {

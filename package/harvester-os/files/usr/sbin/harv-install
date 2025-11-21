@@ -487,6 +487,11 @@ save_nm_state()
     local nm_state="${TARGET}/usr/local/.state/var-lib-NetworkManager.bind"
     mkdir -p ${nm_state}
     cp -r /var/lib/NetworkManager/. ${nm_state}
+
+    # Save NetworkManager connection profiles
+    local nm_conn="${TARGET}/usr/local/.state/etc-NetworkManager.bind/system-connections"
+    mkdir -p ${nm_conn}
+    cp -a /etc/NetworkManager/system-connections/* ${nm_conn}
 }
 
 do_data_disk_format()

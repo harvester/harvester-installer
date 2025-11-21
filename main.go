@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log"
 	"os"
-
-	"gopkg.in/yaml.v3"
+	"path/filepath"
 
 	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/console"
@@ -29,8 +28,8 @@ Executes the Harvester installer if no command is specified.`,
 
 		Commands: []*cli.Command{
 			{
-				Name:  "generate-network-yaml",
-				Usage: "Generate /oem YAML file for network configuration",
+				Name:  "generate-network-config",
+				Usage: "Generate NetworkManager connection profiles",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "config",
@@ -38,13 +37,13 @@ Executes the Harvester installer if no command is specified.`,
 						Usage: "Harvester config file",
 					},
 					&cli.StringFlag{
-						Name:  "cloud-init",
-						Value: "/oem/91_networkmanager.yaml",
-						Usage: "YAML file to generate",
+						Name:  "connection-path",
+						Value: config.NMConnectionPath,
+						Usage: "Directory to save connection profiles in",
 					},
 					&cli.BoolFlag{
 						Name:  "force",
-						Usage: "Overwrite YAML file if it already exists",
+						Usage: "Overwrite existing connection profiles",
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -56,30 +55,21 @@ Executes the Harvester installer if no command is specified.`,
 					if err != nil {
 						return err
 					}
-					cosConfig, err := config.ConvertNetworkToCOS(harvesterCfg)
+					paths, err := filepath.Glob(fmt.Sprintf("%s/%s", cmd.String("connection-path"), config.NMConnectionGlobPattern))
 					if err != nil {
 						return err
 					}
-					bytes, err := yaml.Marshal(cosConfig)
-					if err != nil {
-						return err
-					}
-					_, err = os.Stat(cmd.String("cloud-init"))
-					if errors.Is(err, os.ErrNotExist) || cmd.Bool("force") {
-						// Output file either doesn't exist, or we're forcing overwrite
-						err = os.WriteFile(cmd.String("cloud-init"), bytes, 0600)
+					if len(paths) == 0 || cmd.Bool("force") {
+						err = config.UpdateManagementInterfaceConfig(harvesterCfg.ManagementInterface, harvesterCfg.OS.DNSNameservers, cmd.String("connection-path"), false)
 						if err != nil {
 							return err
 						}
-						log.Printf("Generated %s from %s\n", cmd.String("cloud-init"), cmd.String("config"))
-						return nil
-					} else if err == nil {
-						// File definitely exists (os.Stat was successful)
-						log.Printf("Skipped generation of %s (file already exists, specify --force to overwrite)", cmd.String("cloud-init"))
+						log.Printf("Generated NetworkManager connection profiles in %s from %s\n", cmd.String("connection-path"), cmd.String("config"))
 						return nil
 					} else {
-						// File may or may not exists (some unexpected problem invoking os.Stat)
-						return err
+						log.Printf("Skipped generation of NetworkManager connection profiles (%s/%s already exists, specify --force to overwrite)", cmd.String("connection-path"), config.NMConnectionGlobPattern)
+						return nil
+
 					}
 				},
 			},

@@ -13,6 +13,9 @@ id={{ .Vlan.VlanID }}
 parent={{ .BridgeName }}
 
 [ipv4]
+{{ if ne .DNSServers "" -}}
+dns={{ .DNSServers }}
+{{- end }}
 {{ if eq .Vlan.Method "dhcp" -}}
 method=auto
 {{- end }}
