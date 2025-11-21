@@ -212,7 +212,6 @@ func enableNTPServers(ntpServerList []string) error {
 	return nil
 }
 
-// TODO: consolidate with getAddStaticDNSServersCmd()
 func updateDNSServersAndReloadNetConfig(dnsServerList []string, vlanId int) error {
 	connection := "bridge-mgmt"
 	device := config.MgmtInterfaceName
