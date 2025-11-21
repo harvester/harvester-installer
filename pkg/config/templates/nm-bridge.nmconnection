@@ -18,6 +18,9 @@ vlans={{ .Bridge.VlanID }}
 {{- end }}
 
 [ipv4]
+{{ if ne .DNSServers "" -}}
+dns={{ .DNSServers }}
+{{- end }}
 {{ if eq .Bridge.Method "none" -}}
 method=disabled
 {{- end }}

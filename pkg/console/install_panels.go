@@ -1577,7 +1577,7 @@ func addNetworkPanel(c *Console) error {
 		)
 	}
 
-	setupNetwork := func() ([]byte, error) {
+	setupNetwork := func() error {
 		return applyNetworks(
 			mgmtNetwork,
 			c.config.Hostname,
@@ -1585,11 +1585,11 @@ func addNetworkPanel(c *Console) error {
 	}
 
 	preGotoNextPage := func() (string, error) {
-		output, err := setupNetwork()
+		err := setupNetwork()
 		if err != nil {
-			return fmt.Sprintf("Configure network failed: %s %s", string(output), err), nil
+			return fmt.Sprintf("Configure network failed: %s", err), nil
 		}
-		logrus.Infof("Network configuration is applied: %s", output)
+		logrus.Infof("Network configuration is applied")
 
 		c.config.ManagementInterface = mgmtNetwork
 
@@ -2611,8 +2611,8 @@ func addInstallPanel(c *Console) error {
 				// Only need to do this for automatic installs, as manual installs will
 				// have already run applyNetworks()
 				printToPanel(c.Gui, "Configuring network...", installPanel)
-				if output, err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
-					printToPanel(c.Gui, fmt.Sprintf("Can't apply networks: %s\n%s", err, string(output)), installPanel)
+				if err := applyNetworks(c.config.ManagementInterface, c.config.Hostname); err != nil {
+					printToPanel(c.Gui, fmt.Sprintf("Can't apply networks: %s", err), installPanel)
 					return
 				}
 			}
@@ -3189,7 +3189,7 @@ func configureInstallModeDHCP(c *Console) {
 	mgmtNetwork.Method = netDef.Method
 	mgmtNetwork.VlanID = netDef.VlanID
 
-	_, err := applyNetworks(
+	err := applyNetworks(
 		mgmtNetwork,
 		c.config.Hostname,
 	)

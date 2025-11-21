@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"log"
+	"os"
 	"strings"
 	"testing"
 
@@ -9,6 +12,20 @@ import (
 
 	"github.com/harvester/harvester-installer/pkg/util"
 )
+
+func TestMain(m *testing.M) {
+	//config.NMConnectionPath, err := os.MkdirTemp("/tmp", "cos-test-")
+	dir, err := os.MkdirTemp("", "cos-test-")
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	// So UpdateManagementInterfaceConfig will work
+	NMConnectionPath = dir
+
+	m.Run()
+}
 
 func TestCalcCosPersistentPartSize(t *testing.T) {
 	testCases := []struct {
@@ -96,7 +113,6 @@ func Test_GenerateRancherdConfig(t *testing.T) {
 	yipConfig, err := GenerateRancherdConfig(conf)
 	assert.NoError(t, err)
 	assert.Equal(t, yipConfig.Stages["live"][0].TimeSyncd["NTP"], strings.Join(conf.OS.NTPServers, " "))
-	assert.Contains(t, yipConfig.Stages["live"][0].Commands, "nmcli connection reload")
 }
 
 func TestConvertToCos_VerifyNetworkCreateMode(t *testing.T) {
@@ -104,12 +120,12 @@ func TestConvertToCos_VerifyNetworkCreateMode(t *testing.T) {
 	assert.NoError(t, err)
 	yipConfig, err := ConvertToCOS(conf)
 	assert.NoError(t, err)
-	assert.Contains(t, yipConfig.Stages["network"][0].Commands, "nmcli con modify bridge-mgmt ipv4.dns 8.8.8.8,1.1.1.1 && nmcli device reapply mgmt-br")
 	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/rancher/rancherd/config.yaml"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-mgmt.nmconnection"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bridge-mgmt.nmconnection"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens0.nmconnection"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens3.nmconnection"))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-mgmt.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bridge-mgmt.nmconnection")))
+	assert.False(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "vlan-mgmt.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-slave-ens0.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-slave-ens3.nmconnection")))
 
 }
 
@@ -119,12 +135,12 @@ func TestConvertToCos_VerifyNetworkCreateModeVlan(t *testing.T) {
 	assert.NoError(t, err)
 	yipConfig, err := ConvertToCOS(conf)
 	assert.NoError(t, err)
-	assert.Contains(t, yipConfig.Stages["network"][0].Commands, "nmcli con modify vlan-mgmt ipv4.dns 8.8.8.8,1.1.1.1 && nmcli device reapply mgmt-br.2")
 	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/rancher/rancherd/config.yaml"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-mgmt.nmconnection"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bridge-mgmt.nmconnection"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens0.nmconnection"))
-	assert.True(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens3.nmconnection"))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-mgmt.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bridge-mgmt.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "vlan-mgmt.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-slave-ens0.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-slave-ens3.nmconnection")))
 
 }
 
@@ -132,11 +148,10 @@ func TestConvertToCos_VerifyNetworkInstallMode(t *testing.T) {
 	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
 	assert.NoError(t, err)
 	conf.Mode = ModeInstall
-	yipConfig, err := ConvertToCOS(conf)
+	_, err = ConvertToCOS(conf)
 	assert.NoError(t, err)
-	assert.NotContains(t, yipConfig.Stages["network"][0].Commands, "nmcli con modify bridge-mgmt ipv4.dns 8.8.8.8,1.1.1.1 && nmcli device reapply mgmt-br")
-	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens0.nmconnection"))
-	assert.False(t, containsFile(yipConfig.Stages["initramfs"][0].Files, "/etc/NetworkManager/system-connections/bond-slave-ens3.nmconnection"))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-slave-ens0.nmconnection")))
+	assert.True(t, fileExists(fmt.Sprintf("%s/%s", NMConnectionPath, "bond-slave-ens3.nmconnection")))
 }
 
 func TestConvertToCos_Remove_CPUManagerState(t *testing.T) {
@@ -147,6 +162,11 @@ func TestConvertToCos_Remove_CPUManagerState(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /var/lib/kubelet/cpu_manager_state")
+}
+
+func fileExists(fileName string) bool {
+	_, err := os.Stat(fileName)
+	return err == nil
 }
 
 func containsFile(files []yipSchema.File, fileName string) bool {
