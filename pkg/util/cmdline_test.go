@@ -11,7 +11,7 @@ import (
 
 func Test_parseCmdLineWithPrefix(t *testing.T) {
 	cmdline := `x y harvester.a.b=true "harvester.c=d" harvester.e harvester.f=1 harvester.f=2`
-	m, err := parseCmdLine(cmdline, "harvester")
+	m, err := ParseCmdLine(cmdline, "harvester")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func Test_parseCmdLineWithPrefix(t *testing.T) {
 
 func Test_parseCmdLineWithoutPrefix(t *testing.T) {
 	cmdline := `mode=live console=tty1 console=ttyS0,115200n8`
-	m, err := parseCmdLine(cmdline, "")
+	m, err := ParseCmdLine(cmdline, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		m, err := parseCmdLine(tc.cmdline, "harvester")
+		m, err := ParseCmdLine(tc.cmdline, "harvester")
 		if err != nil {
 			if tc.expectedError != nil {
 				assert.True(t, strings.Contains(err.Error(), tc.expectedError.Error()), "unexpected error")
@@ -92,7 +92,7 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 func Test_parseCmdLineWithSchemeVersion(t *testing.T) {
 	cmdline := `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="hwAddr: ab:cd:ef:gh:ij:kl" harvester.install.management_interface.interfaces="hwAddr:   de:fg:hi:jk:lm:no" harvester.scheme_version=1`
 
-	m, err := parseCmdLine(cmdline, "harvester")
+	m, err := ParseCmdLine(cmdline, "harvester")
 	assert.NoError(t, err, "expected no error while parsing arguments")
 
 	val, ok := m["scheme_version"]

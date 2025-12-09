@@ -11,8 +11,8 @@ import (
 	"github.com/rancher/mapper/values"
 )
 
-// parse kernel parameters
-func parseCmdLine(cmdline string, prefix string) (map[string]interface{}, error) {
+// ParseCmdLine parses kernel parameters.
+func ParseCmdLine(cmdline string, prefix string) (map[string]interface{}, error) {
 	//supporting regex https://regexr.com/4mq0s
 	parser, err := regexp.Compile(`(\"[^\"]+\")|([^\s]+=(\"[^\"]+\")|([^\s]+))`)
 	if err != nil {
@@ -62,7 +62,7 @@ func ReadCmdline(prefix string) (map[string]interface{}, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	return parseCmdLine(string(bytes), prefix)
+	return ParseCmdLine(string(bytes), prefix)
 }
 
 // parse kernel arguments and process network interfaces as a struct
