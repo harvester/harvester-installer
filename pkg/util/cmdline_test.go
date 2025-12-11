@@ -63,6 +63,19 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			cmdline: `harvester.install.management_interface.interfaces="hwAddr: ab:cd:ef:gh:ij:kl,ens3" harvester.install.management_interface.interfaces="de:fg:hi:jk:lm:no,name:ens5"`,
+			expectation: []interface{}{
+				map[string]interface{}{"hwAddr": "ab:cd:ef:gh:ij:kl", "name": "ens3"},
+				map[string]interface{}{"hwAddr": "de:fg:hi:jk:lm:no", "name": "ens5"},
+			},
+			expectedError: nil,
+		},
+		{
+			cmdline:       `harvester.install.management_interface.interfaces=""`,
+			expectation:   []interface{}{},
+			expectedError: fmt.Errorf("empty interface details"),
+		},
+		{
 			cmdline:       `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="foo:bar:foobar"`,
 			expectation:   []interface{}{},
 			expectedError: fmt.Errorf("could not parse interface details"),
