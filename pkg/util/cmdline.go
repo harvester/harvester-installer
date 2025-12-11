@@ -93,13 +93,13 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 }
 
 // parseIfDetails accepts strings in the form of:
-// - "hwAddr: ab:cd:ef:gh:ij:kl"
+// - "hwAddr: be:44:8c:b0:5d:f2"
 // - "name: ens3"
-// - "ab:cd:ef:gh:ij:kl"
+// - "be:44:8c:b0:5d:f2"
 // - "ens3"
-// - "hwAddr:ab:cd:ef:gh:ij:kl,name:ens3"
-// - "hwAddr:ab:cd:ef:gh:ij:kl,ens3"
-// - "ab:cd:ef:gh:ij:kl,name:ens3"
+// - "hwAddr:be:44:8c:b0:5d:f2,name:ens3"
+// - "hwAddr:be:44:8c:b0:5d:f2,ens3"
+// - "be:44:8c:b0:5d:f2,name:ens3"
 // and returns a map with the parsed fields `hwAddr` and `name`.
 func parseIfDetails(details string) (map[string]interface{}, error) {
 	var parts []string
@@ -124,14 +124,22 @@ func parseIfDetails(details string) (map[string]interface{}, error) {
 
 		switch len(subParts) {
 		case 7:
-			// hwAddr: ab:cd:ef:gh:ij:kl
+			// hwAddr: be:44:8c:b0:5d:f2
 			if subParts[0] != "hwAddr" {
 				return nil, fmt.Errorf("could not parse interface details %v", details)
 			}
-			data["hwAddr"] = strings.Join(subParts[1:], ":")
+			hwAddr := strings.Join(subParts[1:], ":")
+			if _, err := IsMACAddress(hwAddr); err != nil {
+				return nil, fmt.Errorf("could not parse interface details: %w", err)
+			}
+			data["hwAddr"] = hwAddr
 		case 6:
-			// ab:cd:ef:gh:ij:kl
-			data["hwAddr"] = strings.Join(subParts, ":")
+			// be:44:8c:b0:5d:f2
+			hwAddr := strings.Join(subParts, ":")
+			if _, err := IsMACAddress(hwAddr); err != nil {
+				return nil, fmt.Errorf("could not parse interface details: %w", err)
+			}
+			data["hwAddr"] = hwAddr
 		case 2:
 			// name: ens3
 			if subParts[0] != "name" {

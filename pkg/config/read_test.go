@@ -135,21 +135,21 @@ func TestReadConfigFromMap6(t *testing.T) {
 
 func TestReadConfigFromMap7(t *testing.T) {
 	data, err := util.ParseCmdLine(
-		`harvester.install.management_interface.interfaces="hwAddr:ab:cd:ef:gh:ij:kl,name:ens1" `+
-			`harvester.install.management_interface.interfaces="hwAddr:a1:c2:e3:g4:i5:k6,ens2" `+
-			`harvester.install.management_interface.interfaces="name:ens3,aa:bb:cc:dd:ee:ff" `+
-			`harvester.install.management_interface.interfaces="ens4,de:fg:hi:jk:lm:no"`,
+		`harvester.install.management_interface.interfaces="hwAddr:be:44:8c:b0:5d:f2,name:ens1" `+
+			`harvester.install.management_interface.interfaces="hwAddr:af:6a:ad:0d:06:d3,ens2" `+
+			`harvester.install.management_interface.interfaces="name:ens3,6a:fe:da:c4:37:a4" `+
+			`harvester.install.management_interface.interfaces="ens4,10:fe:71:05:57:fd"`,
 		kernelParamPrefix)
 	assert.NoError(t, err, "expected no error when parsing the command line")
 	config, err := readConfigFromMap(data)
 	assert.NoError(t, err, "expected no error when processing the config data")
 	assert.Len(t, config.Install.ManagementInterface.Interfaces, 4, "expected 4 interface entries")
 	assert.Equal(t, config.Install.ManagementInterface.Interfaces[0].Name, "ens1")
-	assert.Equal(t, config.Install.ManagementInterface.Interfaces[0].HwAddr, "ab:cd:ef:gh:ij:kl")
+	assert.Equal(t, config.Install.ManagementInterface.Interfaces[0].HwAddr, "be:44:8c:b0:5d:f2")
 	assert.Equal(t, config.Install.ManagementInterface.Interfaces[1].Name, "ens2")
-	assert.Equal(t, config.Install.ManagementInterface.Interfaces[1].HwAddr, "a1:c2:e3:g4:i5:k6")
+	assert.Equal(t, config.Install.ManagementInterface.Interfaces[1].HwAddr, "af:6a:ad:0d:06:d3")
 	assert.Equal(t, config.Install.ManagementInterface.Interfaces[2].Name, "ens3")
-	assert.Equal(t, config.Install.ManagementInterface.Interfaces[2].HwAddr, "aa:bb:cc:dd:ee:ff")
+	assert.Equal(t, config.Install.ManagementInterface.Interfaces[2].HwAddr, "6a:fe:da:c4:37:a4")
 	assert.Equal(t, config.Install.ManagementInterface.Interfaces[3].Name, "ens4")
-	assert.Equal(t, config.Install.ManagementInterface.Interfaces[3].HwAddr, "de:fg:hi:jk:lm:no")
+	assert.Equal(t, config.Install.ManagementInterface.Interfaces[3].HwAddr, "10:fe:71:05:57:fd")
 }
