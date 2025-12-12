@@ -6,7 +6,7 @@ import (
 	"github.com/rancher/mapper/mappers"
 )
 
-type Converter func(val interface{}) interface{}
+type Converter func(val interface{}) (interface{}, error)
 
 type fieldConverter struct {
 	mappers.DefaultMapper
@@ -19,7 +19,11 @@ func (f fieldConverter) ToInternal(data map[string]interface{}) error {
 	if !ok {
 		return nil
 	}
-	data[f.fieldName] = f.converter(val)
+	var err error
+	data[f.fieldName], err = f.converter(val)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -54,32 +58,41 @@ func NewTypeConverter(fieldType string, converter Converter) mapper.Mapper {
 }
 
 func NewToMap() mapper.Mapper {
-	return NewTypeConverter("map[string]", func(val interface{}) interface{} {
+	return NewTypeConverter("map[string]", func(val interface{}) (interface{}, error) {
 		if m, ok := val.(map[string]interface{}); ok {
 			obj := make(map[string]string, len(m))
 			for k, v := range m {
 				obj[k] = convert.ToString(v)
 			}
-			return obj
+			return obj, nil
 		}
-		return val
+		return val, nil
 	})
 }
 
 func NewToSlice() mapper.Mapper {
-	return NewTypeConverter("array[string]", func(val interface{}) interface{} {
+	return NewTypeConverter("array[string]", func(val interface{}) (interface{}, error) {
 		if str, ok := val.(string); ok {
-			return []string{str}
+			return []string{str}, nil
 		}
-		return val
+		return convert.ToStringSlice(val), nil
 	})
 }
 
 func NewToBool() mapper.Mapper {
-	return NewTypeConverter("boolean", func(val interface{}) interface{} {
-		if str, ok := val.(string); ok {
-			return str == "true"
-		}
-		return val
+	return NewTypeConverter("boolean", func(val interface{}) (interface{}, error) {
+		return convert.ToBool(val), nil
+	})
+}
+
+func NewToInt() mapper.Mapper {
+	return NewTypeConverter("int", func(val interface{}) (interface{}, error) {
+		return convert.ToNumber(val)
+	})
+}
+
+func NewToFloat() mapper.Mapper {
+	return NewTypeConverter("float", func(val interface{}) (interface{}, error) {
+		return convert.ToFloat(val)
 	})
 }

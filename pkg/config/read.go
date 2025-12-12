@@ -17,15 +17,12 @@ const (
 
 // ReadConfig constructs a config by reading various sources
 func ReadConfig() (HarvesterConfig, error) {
-	result := NewHarvesterConfig()
 	data, err := util.ReadCmdline(kernelParamPrefix)
 	if err != nil {
-		return *result, err
+		config := NewHarvesterConfig()
+		return *config, err
 	}
-	if err = schema.Mapper.ToInternal(data); err != nil {
-		return *result, err
-	}
-	return *result, convert.ToObj(data, result)
+	return readConfigFromMap(data)
 }
 
 func ToEnv(prefix string, obj interface{}) ([]string, error) {
@@ -89,4 +86,14 @@ func cleanupFile(content []byte) ([]byte, error) {
 	}
 
 	return []byte(strings.Join(config, "\n")), nil
+}
+
+func readConfigFromMap(data map[string]any) (HarvesterConfig, error) {
+	config := NewHarvesterConfig()
+	err := schema.Mapper.ToInternal(data)
+	if err != nil {
+		return *config, err
+	}
+	err = convert.ToObj(data, config)
+	return *config, err
 }
