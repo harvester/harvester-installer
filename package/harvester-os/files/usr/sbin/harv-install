@@ -483,6 +483,13 @@ save_installation_log()
 
 save_nm_state()
 {
+    # Networking is not setup in install mode only
+    # so we can skip this step
+    if [ "$HARVESTER_MODE" = "install" ]; then
+        echo "installer running in install mode only, no network manager persistence required"
+        return
+    fi
+
     # Save NetworkManager state [so we could keep the DHCP IP?!?]
     local nm_state="${TARGET}/usr/local/.state/var-lib-NetworkManager.bind"
     mkdir -p ${nm_state}
