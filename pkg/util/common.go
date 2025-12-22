@@ -1,6 +1,7 @@
 package util
 
 import (
+	"net"
 	"regexp"
 )
 
@@ -45,4 +46,12 @@ func GiToByte(gi uint64) uint64 {
 
 func MiToByte(mi uint64) uint64 {
 	return mi << 20
+}
+
+func IsMACAddress(s string) (bool, error) {
+	_, err := net.ParseMAC(s)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
