@@ -31,7 +31,7 @@ source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/lib/iso
 
-BASE_OS_IMAGE="rancher/harvester-os:sle-micro-head"
+BASE_OS_IMAGE="rancher/harvester-os:sl-micro-6-head"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
@@ -109,7 +109,7 @@ ISO_PREFIX="${PROJECT_PREFIX}-${ARCH}"
 cp harvester-release.yaml iso
 echo "set harvester_version=${VERSION}" > iso/boot/grub2/harvester.cfg
 
-# Elemental platform expects amd64 or aarch64
+# Elemental platform expects x86_64 or aarch64
 PLATFORM=$(uname -m)
 
 CONFIG_DIR="$(pwd)"
@@ -143,7 +143,12 @@ xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract / "${extr
 chmod -R a=r,u+w,a+X "${extract_dir}"
 
 # Copy squashfs image for PXE boot
-cp "${extract_dir}/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
+if [ ${ARCH} == "arm64" ]
+then
+  cp "${extract_dir}/boot/arm64/loader/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
+else
+  cp "${extract_dir}/boot/x86_64/loader/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
+fi
 
 # repackaging is only needed for amd64 builds.
 if [ "${ARCH}" == "amd64" ]
@@ -191,7 +196,7 @@ if [ "${BUILD_QCOW}" == "true" ]; then
   -serial file:harvester-installer.log  -nic none \
   -drive file=${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.raw,if=virtio,cache=writeback,discard=ignore,format=raw \
   -boot d -cdrom ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-amd64.iso -kernel ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmlinuz-amd64 \
-  -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=rootfs.squashfs \
+  -append "cdroot root=live:CDLABEL=COS_LIVE rd.live.dir=/ rd.live.ram=1 rd.live.squashimg=/boot/x86_64/loader/rootfs.squashfs \
   console=ttyS1 rd.cos.disable net.ifnames=1 harvester.install.mode=install harvester.install.device=/dev/vda \
   harvester.install.automatic=true harvester.install.powerOff=true harvester.os.password=rancher \
   harvester.scheme_version=1 harvester.install.persistentPartitionSize=150Gi harvester.install.skipchecks=true" \
