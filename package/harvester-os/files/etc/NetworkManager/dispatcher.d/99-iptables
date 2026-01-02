@@ -1,0 +1,79 @@
+#!/bin/sh
+
+if [ "$2" != "up" ]; then
+    exit 0
+fi
+
+# Create custom chains
+iptables -N HARVESTER_ESSENTIAL 2>/dev/null
+iptables -N HARVESTER_DYNAMIC 2>/dev/null
+
+# Helper to add rule if missing
+add_rule() {
+    iptables -C "$@" 2>/dev/null || iptables -A "$@"
+}
+
+# Ensure INPUT chain jumps to our custom chains
+add_rule INPUT -j HARVESTER_ESSENTIAL
+add_rule INPUT -j HARVESTER_DYNAMIC
+
+# Flush HARVESTER_ESSENTIAL to ensure clean state
+iptables -F HARVESTER_ESSENTIAL
+
+# --- Rules for HARVESTER_ESSENTIAL ---
+
+# Allow loopback
+add_rule HARVESTER_ESSENTIAL -i lo -j ACCEPT
+
+# Allow ICMP (Ping)
+add_rule HARVESTER_ESSENTIAL -p icmp -j ACCEPT
+
+# Allow VRRP (Keepalived)
+add_rule HARVESTER_ESSENTIAL -p vrrp -j ACCEPT
+
+# Allow Established/Related connections
+add_rule HARVESTER_ESSENTIAL -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Common Rules
+# TCP 80, 443, 22
+add_rule HARVESTER_ESSENTIAL -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+add_rule HARVESTER_ESSENTIAL -p tcp --dport 443 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+add_rule HARVESTER_ESSENTIAL -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+# UDP 8472 (VXLAN)
+add_rule HARVESTER_ESSENTIAL -p udp --dport 8472 -j ACCEPT
+
+# K8s/RKE2 Common
+add_rule HARVESTER_ESSENTIAL -p tcp -m multiport --dports 6443:6444 -j ACCEPT
+add_rule HARVESTER_ESSENTIAL -p tcp -m multiport --dports 10248:10250 -j ACCEPT
+add_rule HARVESTER_ESSENTIAL -p tcp --dport 10010 -j ACCEPT
+add_rule HARVESTER_ESSENTIAL -p tcp --dport 9099 -j ACCEPT
+
+# Determine role and apply specific rules
+IS_SERVER=false
+if systemctl is-enabled rke2-server.service 2>/dev/null | grep -q enabled; then
+    IS_SERVER=true
+elif systemctl is-active rke2-server.service 2>/dev/null | grep -q active; then
+    IS_SERVER=true
+fi
+
+if [ "$IS_SERVER" = "true" ]; then
+    # Master/Server specific
+    add_rule HARVESTER_ESSENTIAL -p tcp --dport 9345 -j ACCEPT
+    add_rule HARVESTER_ESSENTIAL -p tcp -m multiport --dports 10256:10260 -j ACCEPT
+    add_rule HARVESTER_ESSENTIAL -p tcp -m multiport --dports 2379:2382 -j ACCEPT
+    add_rule HARVESTER_ESSENTIAL -p tcp --dport 9091 -j ACCEPT
+    add_rule HARVESTER_ESSENTIAL -p tcp --dport 2112 -j ACCEPT
+else
+    # Worker/Agent specific
+    add_rule HARVESTER_ESSENTIAL -p tcp --dport 10256 -j ACCEPT
+fi
+
+# --- End HARVESTER_ESSENTIAL ---
+
+# FORWARD chain rules
+add_rule FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Set default policies
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
