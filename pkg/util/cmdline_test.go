@@ -11,7 +11,7 @@ import (
 
 func Test_parseCmdLineWithPrefix(t *testing.T) {
 	cmdline := `x y harvester.a.b=true "harvester.c=d" harvester.e harvester.f=1 harvester.f=2`
-	m, err := parseCmdLine(cmdline, "harvester")
+	m, err := ParseCmdLine(cmdline, "harvester")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func Test_parseCmdLineWithPrefix(t *testing.T) {
 
 func Test_parseCmdLineWithoutPrefix(t *testing.T) {
 	cmdline := `mode=live console=tty1 console=ttyS0,115200n8`
-	m, err := parseCmdLine(cmdline, "")
+	m, err := ParseCmdLine(cmdline, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,10 +46,10 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 
 	testcases := []testcase{
 		{
-			cmdline: `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="hwAddr: ab:cd:ef:gh:ij:kl" harvester.install.management_interface.interfaces="hwAddr:   de:fg:hi:jk:lm:no" harvester.install.management_interface.interfaces="ens3" harvester.install.management_interface.interfaces="name:ens5"`,
+			cmdline: `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="hwAddr: be:44:8c:b0:5d:f2" harvester.install.management_interface.interfaces="hwAddr:   10:fe:71:05:57:fd" harvester.install.management_interface.interfaces="ens3" harvester.install.management_interface.interfaces="name:ens5"`,
 			expectation: []interface{}{
-				map[string]interface{}{"hwAddr": "ab:cd:ef:gh:ij:kl"},
-				map[string]interface{}{"hwAddr": "de:fg:hi:jk:lm:no"},
+				map[string]interface{}{"hwAddr": "be:44:8c:b0:5d:f2"},
+				map[string]interface{}{"hwAddr": "10:fe:71:05:57:fd"},
 				map[string]interface{}{"name": "ens3"},
 				map[string]interface{}{"name": "ens5"},
 			},
@@ -63,6 +63,33 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			cmdline: `harvester.install.management_interface.interfaces="hwAddr: be:44:8c:b0:5d:f2,ens3" harvester.install.management_interface.interfaces="10:fe:71:05:57:fd,name:ens5"`,
+			expectation: []interface{}{
+				map[string]interface{}{"hwAddr": "be:44:8c:b0:5d:f2", "name": "ens3"},
+				map[string]interface{}{"hwAddr": "10:fe:71:05:57:fd", "name": "ens5"},
+			},
+			expectedError: nil,
+		},
+		{
+			// LWW (Last Write Wins) behavior for duplicate fields.
+			cmdline: `harvester.install.management_interface.interfaces="hwAddr: be:44:8c:b0:5d:f2,ens3,name:ens4" harvester.install.management_interface.interfaces="10:fe:71:05:57:fd,name:ens5,hwAddr:10:fe:71:ff:ff:ff"`,
+			expectation: []interface{}{
+				map[string]interface{}{"hwAddr": "be:44:8c:b0:5d:f2", "name": "ens4"},
+				map[string]interface{}{"hwAddr": "10:fe:71:ff:ff:ff", "name": "ens5"},
+			},
+			expectedError: nil,
+		},
+		{
+			cmdline:       `harvester.install.management_interface.interfaces="hwAddr: be:4:8c:b0:5d:x2,ens3"`,
+			expectation:   []interface{}{},
+			expectedError: fmt.Errorf("could not parse interface details: address be:4:8c:b0:5d:x2: invalid MAC address"),
+		},
+		{
+			cmdline:       `harvester.install.management_interface.interfaces=""`,
+			expectation:   []interface{}{},
+			expectedError: fmt.Errorf("empty interface details"),
+		},
+		{
 			cmdline:       `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="foo:bar:foobar"`,
 			expectation:   []interface{}{},
 			expectedError: fmt.Errorf("could not parse interface details"),
@@ -70,7 +97,7 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		m, err := parseCmdLine(tc.cmdline, "harvester")
+		m, err := ParseCmdLine(tc.cmdline, "harvester")
 		if err != nil {
 			if tc.expectedError != nil {
 				assert.True(t, strings.Contains(err.Error(), tc.expectedError.Error()), "unexpected error")
@@ -90,9 +117,9 @@ func Test_parseCmdLineWithNetworkInterface(t *testing.T) {
 }
 
 func Test_parseCmdLineWithSchemeVersion(t *testing.T) {
-	cmdline := `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="hwAddr: ab:cd:ef:gh:ij:kl" harvester.install.management_interface.interfaces="hwAddr:   de:fg:hi:jk:lm:no" harvester.scheme_version=1`
+	cmdline := `harvester.os.sshAuthorizedKeys=a  harvester.install.management_interface.method=dhcp harvester.install.management_interface.bond_options.mode=balance-tlb harvester.install.management_interface.bond_options.miimon=100 harvester.os.sshAuthorizedKeys=b harvester.install.mode=create harvester.install.management_interface.interfaces="hwAddr: be:44:8c:b0:5d:f2" harvester.install.management_interface.interfaces="hwAddr:   10:fe:71:05:57:fd" harvester.scheme_version=1`
 
-	m, err := parseCmdLine(cmdline, "harvester")
+	m, err := ParseCmdLine(cmdline, "harvester")
 	assert.NoError(t, err, "expected no error while parsing arguments")
 
 	val, ok := m["scheme_version"]

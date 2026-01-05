@@ -15,6 +15,8 @@ var (
 				NewToMap(),
 				NewToSlice(),
 				NewToBool(),
+				NewToInt(),
+				NewToFloat(),
 				&FuzzyNames{},
 			}
 		}

@@ -1,7 +1,6 @@
 package util
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -11,8 +10,8 @@ import (
 	"github.com/rancher/mapper/values"
 )
 
-// parse kernel parameters
-func parseCmdLine(cmdline string, prefix string) (map[string]interface{}, error) {
+// ParseCmdLine parses kernel parameters.
+func ParseCmdLine(cmdline string, prefix string) (map[string]interface{}, error) {
 	//supporting regex https://regexr.com/4mq0s
 	parser, err := regexp.Compile(`(\"[^\"]+\")|([^\s]+=(\"[^\"]+\")|([^\s]+))`)
 	if err != nil {
@@ -62,7 +61,7 @@ func ReadCmdline(prefix string) (map[string]interface{}, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	return parseCmdLine(string(bytes), prefix)
+	return ParseCmdLine(string(bytes), prefix)
 }
 
 // parse kernel arguments and process network interfaces as a struct
@@ -86,7 +85,7 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 		if err != nil {
 			return err
 		}
-		outDetails = append(outDetails, *n)
+		outDetails = append(outDetails, n)
 	}
 
 	values.PutValue(data, outDetails, "install", "management_interface", "interfaces")
@@ -94,53 +93,68 @@ func toNetworkInterfaces(data map[string]interface{}) error {
 }
 
 // parseIfDetails accepts strings in the form of:
-// - "hwAddr: ab:cd:ef:gh:ij:kl"
+// - "hwAddr: be:44:8c:b0:5d:f2"
 // - "name: ens3"
-// - "ab:cd:ef:gh:ij:kl"
+// - "be:44:8c:b0:5d:f2"
 // - "ens3"
-// and returns a map of either
-// "hwAddr: ab:cd:ef:gh:ij:kl"
-// or
-// "name: ens3"
-func parseIfDetails(details string) (*map[string]interface{}, error) {
-	var (
-		parts = make([]string, 0, 7)
-		data  string
-	)
+// - "hwAddr:be:44:8c:b0:5d:f2,name:ens3"
+// - "hwAddr:be:44:8c:b0:5d:f2,ens3"
+// - "be:44:8c:b0:5d:f2,name:ens3"
+// and returns a map with the parsed fields `hwAddr` and `name`.
+func parseIfDetails(details string) (map[string]interface{}, error) {
+	var parts []string
+	data := map[string]any{}
 
-	for _, s := range strings.Split(details, ":") {
-		parts = append(parts, strings.TrimSpace(s))
+	if details == "" {
+		return nil, fmt.Errorf("empty interface details")
 	}
 
-	switch len(parts) {
-	case 7:
-		// hwAddr: ab:cd:ef:gh:ij:kl
-		if parts[0] != "hwAddr" {
+	if strings.Contains(details, ",") {
+		parts = strings.Split(details, ",")
+	} else {
+		parts = []string{details}
+	}
+
+	for _, field := range parts {
+		subParts := make([]string, 0, 7)
+
+		for _, s := range strings.Split(field, ":") {
+			subParts = append(subParts, strings.TrimSpace(s))
+		}
+
+		switch len(subParts) {
+		case 7:
+			// hwAddr: be:44:8c:b0:5d:f2
+			if subParts[0] != "hwAddr" {
+				return nil, fmt.Errorf("could not parse interface details %v", details)
+			}
+			hwAddr := strings.Join(subParts[1:], ":")
+			if _, err := IsMACAddress(hwAddr); err != nil {
+				return nil, fmt.Errorf("could not parse interface details: %w", err)
+			}
+			data["hwAddr"] = hwAddr
+		case 6:
+			// be:44:8c:b0:5d:f2
+			hwAddr := strings.Join(subParts, ":")
+			if _, err := IsMACAddress(hwAddr); err != nil {
+				return nil, fmt.Errorf("could not parse interface details: %w", err)
+			}
+			data["hwAddr"] = hwAddr
+		case 2:
+			// name: ens3
+			if subParts[0] != "name" {
+				return nil, fmt.Errorf("could not parse interface details %v", details)
+			}
+			data["name"] = subParts[1]
+		case 1:
+			// ens3
+			data["name"] = subParts[0]
+		default:
 			return nil, fmt.Errorf("could not parse interface details %v", details)
 		}
-		data = fmt.Sprintf("{\"hwAddr\":\"%v\"}", strings.Join(parts[1:], ":"))
-	case 6:
-		// ab:cd:ef:gh:ij:kl
-		data = fmt.Sprintf("{\"hwAddr\":\"%v\"}", strings.Join(parts, ":"))
-	case 2:
-		// name: ens3
-		if parts[0] != "name" {
-			return nil, fmt.Errorf("could not parse interface details %v", details)
-		}
-		data = fmt.Sprintf("{\"name\":\"%v\"}", parts[1])
-	case 1:
-		// ens3
-		data = fmt.Sprintf("{\"name\":\"%v\"}", parts[0])
-	default:
-		return nil, fmt.Errorf("could not parse interface details %v", details)
 	}
 
-	n := make(map[string]interface{})
-	err := json.Unmarshal([]byte(data), &n)
-	if err != nil {
-		return nil, err
-	}
-	return &n, nil
+	return data, nil
 }
 
 func toSchemeVersion(data map[string]interface{}) error {
