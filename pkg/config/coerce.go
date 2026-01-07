@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/rancher/mapper"
 	"github.com/rancher/mapper/convert"
 	"github.com/rancher/mapper/mappers"
@@ -22,7 +24,7 @@ func (f fieldConverter) ToInternal(data map[string]interface{}) error {
 	var err error
 	data[f.fieldName], err = f.converter(val)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert field %q: %w", f.fieldName, err)
 	}
 	return nil
 }
@@ -87,6 +89,9 @@ func NewToBool() mapper.Mapper {
 
 func NewToInt() mapper.Mapper {
 	return NewTypeConverter("int", func(val interface{}) (interface{}, error) {
+		if val == nil || val == "nil" { // Allow nil values to pass through unchanged.
+			return nil, nil
+		}
 		return convert.ToNumber(val)
 	})
 }
