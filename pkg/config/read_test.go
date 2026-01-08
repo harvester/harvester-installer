@@ -153,3 +153,36 @@ func TestReadConfigFromMap7(t *testing.T) {
 	assert.Equal(t, config.Install.ManagementInterface.Interfaces[3].Name, "ens4")
 	assert.Equal(t, config.Install.ManagementInterface.Interfaces[3].HwAddr, "10:fe:71:05:57:fd")
 }
+
+func Test_parseCmdLineWithNilValue(t *testing.T) {
+	data, err := util.ParseCmdLine(
+		`harvester.install.harvester.longhorn.defaultSettings.guaranteedEngineManagerCPU=nil harvester.install.harvester.longhorn.defaultSettings.guaranteedReplicaManagerCPU=2`,
+		kernelParamPrefix)
+	assert.NoError(t, err, "expected no error when parsing the command line")
+	assert.Equal(t, map[string]any{
+		"install": map[string]any{
+			"harvester": map[string]any{
+				"longhorn": map[string]any{
+					"defaultSettings": map[string]any{
+						"guaranteedEngineManagerCPU":  "nil",
+						"guaranteedReplicaManagerCPU": "2",
+					},
+				},
+			},
+		}}, data)
+	config, err := readConfigFromMap(data)
+	assert.NoError(t, err, "expected no error when processing the config data")
+	assert.Nil(t, config.Install.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU)
+	assert.NotNil(t, config.Install.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU)
+	assert.Equal(t, *config.Install.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU, uint32(2))
+}
+
+func Test_parseCmdLineWithError(t *testing.T) {
+	data, err := util.ParseCmdLine(
+		`harvester.install.harvester.longhorn.defaultSettings.guaranteedEngineManagerCPU=abc`,
+		kernelParamPrefix)
+	assert.NoError(t, err, "expected no error when parsing the command line")
+	_, err = readConfigFromMap(data)
+	assert.Error(t, err, "expected error when processing the config data")
+	assert.ErrorContains(t, err, "failed to convert field \"guaranteedEngineManagerCPU\":")
+}

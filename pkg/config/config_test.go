@@ -1003,3 +1003,117 @@ blacklist_exceptions {
 
 	assert.Equal(expected, content, "rendered multipath config should match expected output")
 }
+
+func Test_NilValues_DirectFromPureYAML(t *testing.T) {
+	assert := require.New(t)
+
+	yamlContent := `
+schemeversion: 1
+serverurl: ""
+token: token
+sans: []
+os:
+    afterinstallchrootcommands: []
+    writefiles: []
+    hostname: harv-slm62
+    modules:
+        - kvm
+        - vhost_net
+    sysctls: {}
+    ntpservers:
+        - 0.suse.pool.ntp.org
+    dnsnameservers: []
+    environment: {}
+    labels: {}
+    sshd:
+        sftp: false
+    persistentstatepaths: []
+    externalstorage:
+        enabled: false
+        multipathconfig: null
+    additionalkernelarguments: ""
+install:
+    automatic: false
+    skipchecks: false
+    mode: create
+    managementinterface:
+        interfaces:
+            - name: enp1s0
+              hwaddr: 52:54:00:6b:16:07
+        method: dhcp
+        ip: ""
+        subnetmask: ""
+        gateway: ""
+        defaultroute: true
+        bondoptions:
+            miimon: "100"
+            mode: active-backup
+        mtu: 0
+        vlanid: 0
+    vip: 192.168.122.56
+    viphwaddr: b2:a1:16:14:12:66
+    vipmode: dhcp
+    clusterdns: ""
+    clusterpodcidr: ""
+    clusterservicecidr: ""
+    forceefi: false
+    device: /dev/vda
+    configurl: ""
+    silent: false
+    isourl: ""
+    poweroff: false
+    noformat: false
+    debug: false
+    tty: tty1
+    forcegpt: true
+    role: default
+    withnetimages: false
+    wipealldisks: false
+    wipediskslist: []
+    forcembr: false
+    datadisk: ""
+    webhooks: []
+    addons: {}
+    harvester:
+        storageclass:
+            replicacount: 0
+        longhorn:
+            defaultsettings:
+                guaranteedenginemanagercpu: null
+                guaranteedreplicamanagercpu: null
+                guaranteedinstancemanagercpu: null
+                storagereservedpercentagefordefaultdisk: 0
+        enablegocoverdir: false
+    rawdiskimagepath: ""
+    persistentpartitionsize: 150Gi
+runtimeversion: v1.34.2+rke2r1
+rancherversion: v2.13.0
+harvesterchartversion: 0.0.0-master-01441a3c
+monitoringchartversion: 107.1.0+up69.8.2-rancher.15
+systemsettings:
+    ntp-servers: '{"ntpServers":["0.suse.pool.ntp.org"]}'
+loggingchartversion: 107.0.1+up4.10.0-rancher.10
+kubeovnoperatorchartversion: 1.14.10-dev.1
+`
+
+	config, err := LoadHarvesterConfig([]byte(yamlContent))
+	assert.NoError(err, "expected no error while unmarshaling YAML")
+
+	assert.Equal(config.SchemeVersion, uint32(1))
+	assert.False(config.OS.ExternalStorage.Enabled)
+	assert.Nil(config.OS.ExternalStorage.MultiPathConfig)
+	assert.False(config.Install.PowerOff)
+	assert.True(config.Install.ForceGPT)
+	assert.Empty(config.Install.ConfigURL)
+	assert.Nil(config.Install.Harvester.Longhorn.DefaultSettings.GuaranteedEngineManagerCPU)
+	assert.Nil(config.Install.Harvester.Longhorn.DefaultSettings.GuaranteedReplicaManagerCPU)
+	assert.Nil(config.Install.Harvester.Longhorn.DefaultSettings.GuaranteedInstanceManagerCPU)
+	assert.Equal(config.Install.ManagementInterface.BondOptions["miimon"], "100")
+	assert.Equal(config.Install.ManagementInterface.VlanID, 0)
+	assert.Len(config.OS.Modules, 2)
+	assert.Contains(config.OS.Modules, "kvm")
+	assert.Contains(config.OS.Modules, "vhost_net")
+	assert.Empty(config.OS.DNSNameservers)
+	assert.Equal(config.RancherVersion, "v2.13.0")
+	assert.Equal(config.SystemSettings["ntp-servers"], "{\"ntpServers\":[\"0.suse.pool.ntp.org\"]}")
+}
