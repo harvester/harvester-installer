@@ -1,9 +1,10 @@
 pack_iso() {
     local extract_dir=$1
-    local vol_id=$2
-    local iso_file=$3
+    local uefi_img=$2
+    local vol_id=$3
+    local iso_file=$4
 
-    echo "Creating ISO ${iso_file} from ${extract_dir}, vol_id: ${vol_id}..."
+    echo "Creating ISO ${iso_file} from ${extract_dir} with uefi partition ${uefi_img}, vol_id: ${vol_id}..."
 
     xorriso -volid "$vol_id" \
         -joliet on -padding 0 \
@@ -19,7 +20,7 @@ pack_iso() {
         -boot_image any platform_id=0x00 \
         -boot_image any emul_type=no_emulation \
         -boot_image any load_size=2048 \
-        -append_partition 2 0xef "${extract_dir}/boot/uefi.img" \
+        -append_partition 2 0xef "${uefi_img}" \
         -boot_image any next \
         -boot_image any efi_path=--interval:appended_partition_2:all:: \
         -boot_image any platform_id=0xef \

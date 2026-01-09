@@ -135,7 +135,9 @@ rm -f ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
 # Elemental toolkit deprecated legacy BIOS boot support, and can only use one boot method (UEFI/BIOS) at the same time,
 # so we need to unpack the ISO, add legacy BIOS boot support back, and repack it.
 # It's a workaround for now, and we will remove legacy BIOS boot support in the future releases.
-extract_dir=$(mktemp -d)
+unpack_base=$(mktemp -d)
+extract_dir=${unpack_base}/iso
+mkdir ${extract_dir}
 xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract / "${extract_dir}"
 
 # Reset permissions, directories 0755 and files 0644
@@ -150,7 +152,9 @@ if [ "${ARCH}" == "amd64" ]
 then
 # Use dd to create empty image, create an empty FAT32 filesystem
 # and copy EFI files to it to make it UEFI bootable
-uefi_img="${extract_dir}/boot/uefi.img"
+# We need to put the uefi image outside the iso directory, or it also ends up
+# being written to a subdirectory of the ISO, which is weird and wrong.
+uefi_img="${unpack_base}/uefi.img"
 dd if=/dev/zero of="${uefi_img}" bs=1k count=4096 status=progress
 mkfs.vfat "${uefi_img}" -n COS_GRUB
 mcopy -s -i "${uefi_img}" "${extract_dir}/EFI" ::
@@ -158,7 +162,7 @@ mcopy -s -i "${uefi_img}" "${extract_dir}/EFI" ::
 # Remove original ISO, and repack it using xorriso
 rm -f "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
 iso_vol_id="$(yq '.iso.label' manifest.yaml)"
-pack_iso "${extract_dir}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
+pack_iso "${extract_dir}" "${uefi_img}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
 
 
 # Net-install ISO
@@ -178,11 +182,11 @@ rm -rf ${extract_dir}/bundle
 mv ${extract_dir}/bundle.new ${extract_dir}/bundle
 chmod -R a=r,u+w,a+X "${extract_dir}/bundle"
 
-pack_iso "${extract_dir}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}-net-install.iso"
+pack_iso "${extract_dir}" "${uefi_img}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}-net-install.iso"
 
 fi
 # Cleanup
-rm -rf "${extract_dir}"
+rm -rf "${unpack_base}"
 
 if [ "${BUILD_QCOW}" == "true" ]; then
   echo "generating harvester install mode qcow"
