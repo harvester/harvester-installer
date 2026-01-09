@@ -1,8 +1,3 @@
 iso:
-  uefi:
-    - dir:/grub2-efi
-  image:
-    - dir:/grub2-mbr
-    - dir:/grub2-efi
-    - dir:/boot-files
+  bootloader-in-rootfs: true
   label: "COS_LIVE"
