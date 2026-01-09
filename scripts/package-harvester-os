@@ -75,10 +75,6 @@ else
   PROJECT_PREFIX+="-master"
 fi
 
-# Create kernel, initrd folder for iso
-# If we use the dir format on the manifest, we need to handle it
-mkdir -p /boot-files/boot
-
 # Copy kernel, initrd out for PXE boot
 if [ ${ARCH} == "amd64" ]
 then
@@ -97,8 +93,6 @@ docker cp $(<os-img-container):${KERNEL} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-vmli
 docker cp $(<os-img-container):${INITRD} ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
 docker cp $(<os-img-container):/usr/bin/elemental /usr/bin/elemental
 chmod +r ${ARTIFACTS_DIR}/${PROJECT_PREFIX}-initrd-${ARCH}
-docker cp $(<os-img-container):${KERNEL} /boot-files/boot/kernel
-docker cp $(<os-img-container):${INITRD} /boot-files/boot/initrd
 docker rm $(<os-img-container) && rm -f os-img-container
 
 # Make sure files under bundle dir can be read by nginx
@@ -115,7 +109,6 @@ PLATFORM=$(uname -m)
 CONFIG_DIR="$(pwd)"
 if [ "${ARCH}" == "arm64" ]
 then
-  CONFIG_DIR="$(pwd)/arm"
   cp $(pwd)/arm/grub.cfg iso/boot/grub2/grub.cfg
 fi
 
@@ -131,23 +124,20 @@ elemental build-iso --config-dir "${CONFIG_DIR}" --debug "docker:${HARVESTER_OS_
 rm -f ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso.sha256
 
 
-# Unpack ISO for reconfiguring boot image
-# Elemental toolkit deprecated legacy BIOS boot support, and can only use one boot method (UEFI/BIOS) at the same time,
-# so we need to unpack the ISO, add legacy BIOS boot support back, and repack it.
-# It's a workaround for now, and we will remove legacy BIOS boot support in the future releases.
+# Unpack ISO to extract squashfs and create net-install ISO
 unpack_base=$(mktemp -d)
 extract_dir=${unpack_base}/iso
 mkdir ${extract_dir}
 xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract / "${extract_dir}"
 
 # Reset permissions, directories 0755 and files 0644
-# otherwise upgrade would fail due to wrong permission on /run/initramfs/live in upgrade repository VM
+# otherwise if you happen to loopback mount the ISO, it's only readable by root
 chmod -R a=r,u+w,a+X "${extract_dir}"
 
 # Copy squashfs image for PXE boot
 cp "${extract_dir}/rootfs.squashfs" "${ARTIFACTS_DIR}/${PROJECT_PREFIX}-rootfs-${ARCH}.squashfs"
 
-# repackaging is only needed for amd64 builds.
+# Currently only building Net-install ISO for amd64 builds.
 if [ "${ARCH}" == "amd64" ]
 then
 # Use dd to create empty image, create an empty FAT32 filesystem
@@ -159,11 +149,7 @@ dd if=/dev/zero of="${uefi_img}" bs=1k count=4096 status=progress
 mkfs.vfat "${uefi_img}" -n COS_GRUB
 mcopy -s -i "${uefi_img}" "${extract_dir}/EFI" ::
 
-# Remove original ISO, and repack it using xorriso
-rm -f "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
 iso_vol_id="$(yq '.iso.label' manifest.yaml)"
-pack_iso "${extract_dir}" "${uefi_img}" "$iso_vol_id" "${ARTIFACTS_DIR}/${ISO_PREFIX}.iso"
-
 
 # Net-install ISO
 echo "set extra_iso_cmdline=harvester.install.with_net_images=true" >> ${extract_dir}/boot/grub2/harvester.cfg
