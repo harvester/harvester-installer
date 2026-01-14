@@ -25,4 +25,11 @@ address1={{ .Vlan.IP }}/{{ .Vlan.SubnetMask }},{{ .Vlan.Gateway }}
 {{- end }}
 
 [ipv6]
+{{ if eq .Vlan.IPv6Method "dhcp" -}}
+method=auto
+{{- else if eq .Vlan.IPv6Method "static" -}}
+method=manual
+address1={{ .Vlan.IPv6IP }},{{ .Vlan.IPv6Gateway }}
+{{- else -}}
 method=disabled
+{{- end }}
