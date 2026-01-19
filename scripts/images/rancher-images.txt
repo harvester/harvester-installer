@@ -22,8 +22,8 @@ docker.io/rancher/mirrored-prometheus-operator-prometheus-operator:v0.80.1
 docker.io/rancher/mirrored-prometheus-operator-admission-webhook:v0.80.1
 docker.io/rancher/prom-prometheus:v3.2.1
 docker.io/rancher/kuberlr-kubectl:v5.0.0
-docker.io/rancher/rancher:v2.13.0
-docker.io/rancher/rancher-agent:v2.13.0
+docker.io/rancher/rancher:v2.13.1
+docker.io/rancher/rancher-agent:v2.13.1
 docker.io/rancher/rancher-webhook:v0.9.1
 docker.io/rancher/shell:v0.5.0
 docker.io/rancher/shell:v0.6.0
