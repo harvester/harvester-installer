@@ -1,5 +1,5 @@
-docker.io/rancher/fleet-agent:v0.14.0
-docker.io/rancher/fleet:v0.14.0
+docker.io/rancher/fleet-agent:v0.14.1
+docker.io/rancher/fleet:v0.14.1
 docker.io/rancher/kubectl:v1.29.2
 docker.io/rancher/kubectl:v1.32.3
 docker.io/rancher/kubectl:v1.33.1
@@ -26,7 +26,7 @@ docker.io/rancher/rancher:v2.13.1
 docker.io/rancher/rancher-agent:v2.13.1
 docker.io/rancher/rancher-webhook:v0.9.1
 docker.io/rancher/shell:v0.5.0
-docker.io/rancher/shell:v0.6.0
+docker.io/rancher/shell:v0.6.1
 docker.io/rancher/system-agent:v0.3.14-suc
 docker.io/rancher/system-upgrade-controller:v0.17.0
 docker.io/rancher/turtles:v0.25.0
