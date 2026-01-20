@@ -1,0 +1,162 @@
+name: Rancher upgrade integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseHarvesterVersion:
+        description: 'Base Harvester Version'
+        required: true
+      rancherVersion:
+        description: 'Rancher Version'
+        required: true
+      rke2Version:
+        description: 'RKE2 Version'
+        required: true
+
+env:
+  LIBVIRT_DEFAULT_URI: "qemu:///system"
+
+jobs:
+  main:
+    name: Build and deploy
+    runs-on:
+      - self-hosted
+      - Linux
+      - kvm
+      - vagrant
+      - equinix
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch RKE2 Version
+        run: |
+          sed -i 's/^RKE2_VERSION=".*"/RKE2_VERSION="${{ github.event.inputs.rke2Version }}"/' ./scripts/version-rke2
+
+      - name: Patch Rancher Version
+        run: |
+          sed -i 's/^RANCHER_VERSION=".*"/RANCHER_VERSION="${{ github.event.inputs.rancherVersion }}"/' ./scripts/version-rancher
+          sed -i 's/^  rancherImageTag: .*/  rancherImageTag: ${{ github.event.inputs.rancherVersion }}/' ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
+          sed -i 's|^rancherInstallerImage: .*|rancherInstallerImage: rancher/system-agent-installer-rancher:${{ github.event.inputs.rancherVersion }}|' ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
+
+      - name: Make a commit
+        run: |
+          git add ./scripts/version-rke2 ./scripts/version-rancher ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
+          git commit -m "Update RKE2 and Rancher versions to ${{ github.event.inputs.rke2Version }} and ${{ github.event.inputs.rancherVersion }}"
+
+      - name: Build Harvester artifacts
+        run: |
+          make
+
+      - name: Download Base Harvester Version
+        run: |
+          wget https://releases.rancher.com/harvester/${{ github.event.inputs.baseHarvesterVersion }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-amd64.iso
+          wget https://releases.rancher.com/harvester/${{ github.event.inputs.baseHarvesterVersion }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-vmlinuz-amd64
+          wget https://releases.rancher.com/harvester/${{ github.event.inputs.baseHarvesterVersion }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-initrd-amd64
+          wget https://releases.rancher.com/harvester/${{ github.event.inputs.baseHarvesterVersion }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-rootfs-amd64.squashfs
+      - name: Clone and checkout ipxe-examples
+        id: ipxe
+        run: |
+          cd $HOME
+          if [ ! -d ipxe-examples ]; then
+            git clone https://github.com/harvester/ipxe-examples.git
+          fi
+
+          cd ipxe-examples
+          git reset && git checkout .
+          git clean -fd
+          git pull
+          echo "VAGRANT_HOME=$HOME/ipxe-examples/vagrant-pxe-harvester" >> $GITHUB_OUTPUT
+      - name: Clean up previous vagrant deployment
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          vagrant destroy -f
+      - name: Remove OVMF.fd line if needed
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          if [ ! -f /usr/share/qemu/OVMF.fd ]; then
+            echo "Remove libvirt loader: can't find UEFI firmware"
+            sed 's/libvirt.loader.*/#libvirt.loader = /' Vagrantfile
+          fi
+      - name: Generate SSH keys
+        run: |
+          ssh-keygen -t rsa -q -N "" -f ./ci/terraform/tmp-ssh-key
+      - name: Set SSH key in ipxe-examples settings
+        run: |
+          export PUB_KEY=$(cat ./ci/terraform/tmp-ssh-key.pub)
+          yq e -i ".harvester_config.ssh_authorized_keys += [ strenv(PUB_KEY) ]" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Set artifacts in ipxe-examples settings
+        run: |
+          yq e -i ".harvester_iso_url = \"file://${{ github.workspace }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-amd64.iso\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+          yq e -i ".harvester_kernel_url = \"file://${{ github.workspace }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-vmlinuz-amd64\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+          yq e -i ".harvester_ramdisk_url = \"file://${{ github.workspace }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-initrd-amd64\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+          yq e -i ".harvester_rootfs_url = \"file://${{ github.workspace }}/harvester-${{ github.event.inputs.baseHarvesterVersion }}-rootfs-amd64.squashfs\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Setup cluster
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          ./setup_harvester.sh
+      - name: Enable soft emulation
+        working-directory: ./ci/terraform
+        run: |
+          ./enable_soft_emulation.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Clean the previous temp files
+        working-directory: ./ci/terraform
+        run: |
+          ./cleanup_test_files.sh
+      - name: Check files exist on provisioned hosts
+        working-directory: ./ci/terraform
+        run: |
+          ./check_files.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Check system services status on provisioned hosts
+        working-directory: ./ci/terraform
+        run: |
+          ./check_services_status.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+
+      - name: Start file server
+        run: |
+          python3 -m http.server 8000 --bind 0.0.0.0 &
+
+      - name: Create new-version.yaml
+        working-directory: ./ci/upgrade
+        run: |
+          ./create_version_file.sh
+          kubectl apply -f new-version.yaml
+
+      - name: Create new-upgrade.yaml
+        working-directory: ./ci/upgrade
+        run: |
+          ./create_upgrade_file.sh
+          kubectl apply -f new-upgrade.yaml
+
+      - name: Wait for upgrade to complete
+        run: |
+          kubectl wait --for=condition=Completed -n harvester-system upgrade/master-head --timeout=60m
+
+      - name: Collect logs
+        if: failure()
+        working-directory: ./ci/terraform
+        run: |
+          for i in 0 1 2; do
+            node_ip=$(yq e ".harvester_network_config.cluster[$i].ip" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml)
+            if ping -c 1 $node_ip &> /dev/null; then
+              node_name="node$i" # Dynamically set node name (e.g., node0, node1, node2)
+              mkdir -p logs/$node_name
+              ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node_ip "journalctl -u rancherd.service" > logs/$node_name/rancherd.log || true
+              ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node_ip "journalctl -u rancher-system-agent.service" > logs/$node_name/rancher-system-agent.log || true
+              ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node_ip "journalctl -u rke2-server.service" > logs/$node_name/rke2-server.log || true
+            else
+              echo "Failed to ping $node_ip"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        name: Upload logs
+        if: failure()
+        with:
+          name: node-logs
+          path: |
+            ./ci/terraform/logs
+
+      - name: Clean up vagrant cluster
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          vagrant destroy -f

@@ -1,0 +1,194 @@
+name: Rancher integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      rancherVersion:
+        description: 'Rancher Version'
+        required: true
+      rke2Version:
+        description: 'RKE2 Version'
+        required: true
+
+env:
+  LIBVIRT_DEFAULT_URI: "qemu:///system"
+
+jobs:
+  main:
+    name: Build and deploy
+    runs-on:
+      - self-hosted
+      - Linux
+      - kvm
+      - vagrant
+      - equinix
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch RKE2 Version
+        run: |
+          sed -i 's/^RKE2_VERSION=".*"/RKE2_VERSION="${{ github.event.inputs.rke2Version }}"/' ./scripts/version-rke2
+
+      - name: Patch Rancher Version
+        run: |
+          sed -i 's/^RANCHER_VERSION=".*"/RANCHER_VERSION="${{ github.event.inputs.rancherVersion }}"/' ./scripts/version-rancher
+          sed -i 's/^  rancherImageTag: .*/  rancherImageTag: ${{ github.event.inputs.rancherVersion }}/' ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
+          sed -i 's|^rancherInstallerImage: .*|rancherInstallerImage: rancher/system-agent-installer-rancher:${{ github.event.inputs.rancherVersion }}|' ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
+
+      - name: Make a commit
+        run: |
+          git add ./scripts/version-rke2 ./scripts/version-rancher ./package/harvester-os/files/usr/share/rancher/rancherd/config.yaml.d/50-defaults.yaml
+          git commit -m "Update RKE2 and Rancher versions to ${{ github.event.inputs.rke2Version }} and ${{ github.event.inputs.rancherVersion }}"
+
+      - name: Build Harvester artifacts
+        run: |
+          make
+      - name: Clone and checkout ipxe-examples
+        id: ipxe
+        run: |
+          cd $HOME
+          if [ ! -d ipxe-examples ]; then
+            git clone https://github.com/harvester/ipxe-examples.git
+          fi
+
+          cd ipxe-examples
+          git reset && git checkout .
+          git clean -fd
+          git pull
+          echo "VAGRANT_HOME=$HOME/ipxe-examples/vagrant-pxe-harvester" >> $GITHUB_OUTPUT
+      - name: Clean up previous vagrant deployment
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          vagrant destroy -f
+      - name: Remove OVMF.fd line if needed
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          if [ ! -f /usr/share/qemu/OVMF.fd ]; then
+            echo "Remove libvirt loader: can't find UEFI firmware"
+            sed -i 's/libvirt.loader.*/#libvirt.loader = /' Vagrantfile
+          fi
+      - name: Generate SSH keys
+        run: |
+          ssh-keygen -t rsa -q -N "" -f ./ci/terraform/tmp-ssh-key
+      - name: Set SSH key in ipxe-examples settings
+        run: |
+          export PUB_KEY=$(cat ./ci/terraform/tmp-ssh-key.pub)
+          yq e -i ".harvester_config.ssh_authorized_keys += [ strenv(PUB_KEY) ]" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Set artifacts in ipxe-examples settings
+        run: |
+          yq e -i ".harvester_iso_url = \"file://${{ github.workspace }}/dist/artifacts/harvester-master-amd64.iso\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+          yq e -i ".harvester_kernel_url = \"file://${{ github.workspace }}/dist/artifacts/harvester-master-vmlinuz-amd64\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+          yq e -i ".harvester_ramdisk_url = \"file://${{ github.workspace }}/dist/artifacts/harvester-master-initrd-amd64\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+          yq e -i ".harvester_rootfs_url = \"file://${{ github.workspace }}/dist/artifacts/harvester-master-rootfs-amd64.squashfs\"" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Setup cluster
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          ./setup_harvester.sh
+      - name: Enable soft emulation
+        working-directory: ./ci/terraform
+        run: |
+          ./enable_soft_emulation.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Clean the previous temp files
+        working-directory: ./ci/terraform
+        run: |
+          ./cleanup_test_files.sh
+      - name: Check files exist on provisioned hosts
+        working-directory: ./ci/terraform
+        run: |
+          ./check_files.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Check system services status on provisioned hosts
+        working-directory: ./ci/terraform
+        run: |
+          ./check_services_status.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+      - name: Create Harvester resources for testing
+        working-directory: ./ci/terraform
+        run: |
+          curl https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_amd64.zip -o terraform_bin.zip
+          unzip -o terraform_bin.zip
+          ./get_kubeconfig.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+          ./terraform init -no-color
+          ./terraform apply -auto-approve -no-color
+      - name: Test VM networking
+        working-directory: ./ci/terraform
+        run: |
+          ./test_terraform_vm.sh ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml
+
+      - name: Check Rancher System Agent
+        run: |
+          for i in 0 1 2; do
+            node_ip=$(yq e ".harvester_network_config.cluster[$i].ip" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml)
+            log_file="rancher-system-agent.log"
+            ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node_ip "journalctl -u rancher-system-agent.service" > $log_file
+            if tail -n 2 "$log_file" | grep -q "finished with err: <nil> and exit code: 0"; then
+              echo "Log check passed for $node_name"
+            else
+              echo "Log check failed for $node_name"
+              exit 1
+            fi
+          done
+
+      - name: Test Login
+        run: |
+          node0_ip=$(yq e ".harvester_network_config.cluster[0].ip" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml)
+          login_output=$(curl -skX POST -H "Content-Type: application/json" -H "Accept: application/json" -d '{"username":"admin","password":"admin","ttl":60000,"description":"CI integration test"}' \
+          https://${node0_ip}/v3-public/localProviders/local?action=login")
+          echo "login result: ${login_output}"
+          token=$(echo ${login_output} | jq -r '.token')
+          changepassword_output=curl -kX POST -H "Content-Type: application/json" -H "Authorization: Bearer ${token}" -d '{"currentPassword":"admin","newPassword":"testtesttest"}' \
+          https://${node0_ip}/v3/users?action=changepassword
+          if [ -n "${changepassword_output}" ]; then
+            echo "Change password result: ${changepassword_output}"
+            exit 1
+          fi
+
+      - name: Test RKE2 cert rotation
+        run: |
+          node0_ip=$(yq e ".harvester_network_config.cluster[0].ip" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml)
+          first_enddate=$(ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node0_ip "openssl x509 -in /var/lib/rancher/rke2/server/tls/serving-kube-apiserver.crt -noout -enddate")
+          kubectl patch cluster.provisioning.cattle.io local -n fleet-local --type merge -p '{"spec":{"rkeConfig":{"rotateCertificates":{"generation":1}}}}'
+          # use a while loop to check enddate is updated. timeout after 5 minutes and do exit 1
+          timeout=300
+          interval=10
+          while [ $timeout -gt 0 ]; do
+            sleep $interval
+            timeout=$((timeout - interval))
+            enddate=$(ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node0_ip "openssl x509 -in /var/lib/rancher/rke2/server/tls/serving-kube-apiserver.crt -noout -enddate")
+            if [ "$first_enddate" != "$enddate" ]; then
+              echo "Certificate rotation successful"
+              break
+            fi
+          done
+          if [ $timeout -lt 0 ]; then
+            echo "Certificate rotation failed"
+            exit 1
+          fi
+
+      - name: Collect logs
+        if: failure()
+        working-directory: ./ci/terraform
+        run: |
+          for i in 0 1 2; do
+            node_ip=$(yq e ".harvester_network_config.cluster[$i].ip" ${{ steps.ipxe.outputs.VAGRANT_HOME }}/settings.yml)
+            if ping -c 1 $node_ip &> /dev/null; then
+              node_name="node$i" # Dynamically set node name (e.g., node0, node1, node2)
+              mkdir -p logs/$node_name
+              ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node_ip "journalctl -u rancherd.service" > logs/$node_name/rancherd.log || true
+              ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node_ip "journalctl -u rancher-system-agent.service" > logs/$node_name/rancher-system-agent.log || true
+              ssh -o "StrictHostKeyChecking no" -i tmp-ssh-key rancher@$node_ip "journalctl -u rke2-server.service" > logs/$node_name/rke2-server.log || true
+            else
+              echo "Failed to ping $node_ip"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        name: Upload logs
+        if: failure()
+        with:
+          name: node-logs
+          path: |
+            ./ci/terraform/logs
+
+      - name: Clean up vagrant cluster
+        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
+        run: |
+          vagrant destroy -f
