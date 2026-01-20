@@ -2,6 +2,11 @@
 
 set -e
 
+# Log execution for debugging/verification
+if [ -x /usr/bin/logger ]; then
+    /usr/bin/logger -t "harvester-iptables" "Executing 99-iptables for interface '$1' with action '$2'"
+fi
+
 if [ "$2" != "up" ]; then
     exit 0
 fi
@@ -85,6 +90,33 @@ else
 fi
 
 # --- End HARVESTER_ESSENTIAL ---
+
+# --- Rules for HARVESTER_DYNAMIC ---
+
+check_kubeovn_enabled() {
+    KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+    KUBECTL=/var/lib/rancher/rke2/bin/kubectl
+    
+    if [ ! -x "$KUBECTL" ]; then
+        KUBECTL=$(command -v kubectl || true)
+    fi
+
+    if [ -x "$KUBECTL" ] && [ -f "$KUBECONFIG" ]; then
+        STATUS=$($KUBECTL --kubeconfig "$KUBECONFIG" --request-timeout=5s get addon -n kube-system kubeovn-operator -o jsonpath='{.spec.enabled}' 2>/dev/null || true)
+        if [ "$STATUS" = "true" ]; then
+            echo "true"
+            return
+        fi
+    fi
+    
+    echo "false"
+}
+
+if [ "$(check_kubeovn_enabled)" = "true" ]; then
+    # KubeOVN Ports: 6081 (UDP), 6641/6642 (TCP)
+    iptables -A HARVESTER_DYNAMIC -p udp --dport 6081 -j ACCEPT
+    iptables -A HARVESTER_DYNAMIC -p tcp -m multiport --dports 6641,6642 -j ACCEPT
+fi
 
 # FORWARD chain rules
 add_rule FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
