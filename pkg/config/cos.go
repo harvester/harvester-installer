@@ -194,7 +194,7 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	disableLonghornMultipathing(&initramfs)
 
 	// TOP
-	if cfg.Mode != ModeInstall {
+	if cfg.Install.Mode != ModeInstall {
 		if err := initRancherdStage(config, &initramfs); err != nil {
 			return nil, err
 		}
