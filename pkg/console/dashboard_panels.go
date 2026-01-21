@@ -463,7 +463,33 @@ func k8sIsReady() bool {
 	return true
 }
 
+func chartIsAnnotated() bool {
+	cmd := exec.Command("/bin/sh", "-c", `kubectl get managedchart -n fleet-local harvester -ojsonpath="{.metadata.annotations['installer\.harvesterhci\.io\/chartInstalled']}"`)
+	cmd.Env = os.Environ()
+	output, err := cmd.Output()
+
+	if err != nil {
+		// any return error means false
+		return false
+	}
+	return string(output) != ""
+}
+
+func annotateChart() {
+	cmd := exec.Command("/bin/sh", "-c", `kubectl annotate managedchart -n fleet-local harvester 'installer.harvesterhci.io/chartInstalled=true'`)
+	cmd.Env = os.Environ()
+	// skip output
+	_, _ = cmd.Output()
+}
+
 func chartIsInstalled() bool {
+	// after the managedchart installation step in done, it turns into `Ready`
+	// later if the user changes the downstream object like deployment, the managedchart might become `non-Ready`
+	// however, the `non-Ready` does not mean the chart is not `installed`
+	// use an annotation to mark the `installed` of managedchart
+	if chartIsAnnotated() {
+		return true
+	}
 	cmd := exec.Command("/bin/sh", "-c", `kubectl -n fleet-local get ManagedChart harvester -o jsonpath='{.status.conditions}' | jq 'map(select(.type == "Ready" and .status == "True")) | length'`)
 	cmd.Env = os.Environ()
 	output, err := cmd.Output()
@@ -481,7 +507,12 @@ func chartIsInstalled() bool {
 		return false
 	}
 
-	return processed >= 1
+	if processed >= 1 {
+		// installer annotates the managedchart when the installation step in done
+		annotateChart()
+		return true
+	}
+	return false
 }
 
 func isAPIReady(managementURL, path string) bool {
