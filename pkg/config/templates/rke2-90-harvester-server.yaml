@@ -16,3 +16,4 @@ kubelet-arg:
 {{- end }}
 {{- end }}
 audit-policy-file: /etc/rancher/rke2/config.yaml.d/92-harvester-kube-audit-policy.yaml
+pod-security-admission-config-file: /etc/rancher/rke2/config.yaml.d/99-harvester-psa.yaml
