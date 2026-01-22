@@ -399,10 +399,6 @@ update_grub_settings()
         TTY=$HARVESTER_TTY
     fi
 
-    if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
-        sed -i "s/console_params=\"console=tty1\"/console_params=\"console=${TTY} console=tty1\"/g" ${TARGET}/etc/cos/bootargs.cfg
-    fi
-
     PLATFORM=$(uname -m)
     if [ "${PLATFORM}" == "aarch64" ]
     then
@@ -450,6 +446,10 @@ update_grub_settings()
     TARGET_FILE="${oem_dir}/grubenv"
     if [ -n "${HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS}" ]; then
         grub2-editenv ${TARGET_FILE} set third_party_kernel_args="${HARVESTER_ADDITIONAL_KERNEL_ARGUMENTS}"
+    fi
+
+    if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
+        grub2-editenv ${TARGET_FILE} set "console_params=console=${TTY} console=tty1"
     fi
 
     add_debug_grub_entry

@@ -15,7 +15,14 @@ update_boot_args()
       fi
 
       if [ -e "/dev/${TTY%,*}" ] && [ "$TTY" != tty1 ] && [ "$TTY" != console ] && [ -n "$TTY" ]; then
-          sed -i "1s/.*/console_params=\"console=${TTY} console=tty1\"/g" ${TARGET}/etc/cos/bootargs.cfg
+          oem_partition=$(blkid -L COS_OEM)
+          mount ${oem_partition} /oem
+          TARGET_FILE=/oem/grubenv
+          if ! [ -f ${TARGET_FILE} ]; then
+              grub2-editenv ${TARGET_FILE} create
+          fi
+          grub2-editenv ${TARGET_FILE} set "console_params=console=${TTY} console=tty1"
+          umount /oem
       fi
 }
 
