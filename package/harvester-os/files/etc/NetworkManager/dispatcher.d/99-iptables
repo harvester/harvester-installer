@@ -1,0 +1,126 @@
+#!/bin/sh
+
+set -e
+
+# Log execution for debugging/verification
+if [ -x /usr/bin/logger ]; then
+    /usr/bin/logger -t "harvester-iptables" "Executing 99-iptables for interface '$1' with action '$2'"
+fi
+
+if [ "$2" != "up" ]; then
+    exit 0
+fi
+
+# Ensure custom chains exist
+ensure_chain() {
+    iptables -N "$1" 2>/dev/null || true
+    if ! iptables -L "$1" -n >/dev/null 2>&1; then
+        echo "Error: Failed to ensure chain $1 exists" >&2
+        exit 1
+    fi
+}
+
+ensure_chain HARVESTER_ESSENTIAL
+ensure_chain HARVESTER_DYNAMIC
+
+# Helper to add rule if missing
+add_rule() {
+    iptables -C "$@" 2>/dev/null || iptables -A "$@"
+}
+
+# Ensure INPUT chain jumps to our custom chains
+add_rule INPUT -j HARVESTER_ESSENTIAL
+add_rule INPUT -j HARVESTER_DYNAMIC
+
+# Set default policies to ACCEPT to prevent lockout during rule update
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+
+# Flush HARVESTER_ESSENTIAL to ensure clean state
+iptables -F HARVESTER_ESSENTIAL
+iptables -F HARVESTER_DYNAMIC
+
+# --- Rules for HARVESTER_ESSENTIAL ---
+
+# Allow loopback
+iptables -A HARVESTER_ESSENTIAL -i lo -j ACCEPT
+
+# Allow ICMP (Ping)
+iptables -A HARVESTER_ESSENTIAL -p icmp -j ACCEPT
+
+# Allow VRRP (Keepalived)
+iptables -A HARVESTER_ESSENTIAL -p vrrp -j ACCEPT
+
+# Allow Established/Related connections
+iptables -A HARVESTER_ESSENTIAL -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Common Rules
+# TCP 80, 443, 22
+iptables -A HARVESTER_ESSENTIAL -p tcp --dport 80 -j ACCEPT
+iptables -A HARVESTER_ESSENTIAL -p tcp --dport 443 -j ACCEPT
+iptables -A HARVESTER_ESSENTIAL -p tcp --dport 22 -j ACCEPT
+
+# UDP 8472 (VXLAN)
+iptables -A HARVESTER_ESSENTIAL -p udp --dport 8472 -j ACCEPT
+
+# K8s/RKE2 Common
+iptables -A HARVESTER_ESSENTIAL -p tcp -m multiport --dports 6443:6444 -j ACCEPT
+iptables -A HARVESTER_ESSENTIAL -p tcp -m multiport --dports 10248:10250 -j ACCEPT
+iptables -A HARVESTER_ESSENTIAL -p tcp --dport 10010 -j ACCEPT
+iptables -A HARVESTER_ESSENTIAL -p tcp --dport 9099 -j ACCEPT
+
+# Determine role and apply specific rules
+IS_SERVER=false
+if systemctl is-enabled rke2-server.service 2>/dev/null | grep -q enabled; then
+    IS_SERVER=true
+elif systemctl is-active rke2-server.service 2>/dev/null | grep -q active; then
+    IS_SERVER=true
+fi
+
+if [ "$IS_SERVER" = "true" ]; then
+    # Master/Server specific
+    iptables -A HARVESTER_ESSENTIAL -p tcp --dport 9345 -j ACCEPT
+    iptables -A HARVESTER_ESSENTIAL -p tcp -m multiport --dports 10256:10260 -j ACCEPT
+    iptables -A HARVESTER_ESSENTIAL -p tcp -m multiport --dports 2379:2382 -j ACCEPT
+    iptables -A HARVESTER_ESSENTIAL -p tcp --dport 9091 -j ACCEPT
+    iptables -A HARVESTER_ESSENTIAL -p tcp --dport 2112 -j ACCEPT
+else
+    # Worker/Agent specific
+    iptables -A HARVESTER_ESSENTIAL -p tcp --dport 10256 -j ACCEPT
+fi
+
+# --- End HARVESTER_ESSENTIAL ---
+
+# --- Rules for HARVESTER_DYNAMIC ---
+
+check_kubeovn_enabled() {
+    KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+    KUBECTL=/var/lib/rancher/rke2/bin/kubectl
+    
+    if [ ! -x "$KUBECTL" ]; then
+        KUBECTL=$(command -v kubectl || true)
+    fi
+
+    if [ -x "$KUBECTL" ] && [ -f "$KUBECONFIG" ]; then
+        STATUS=$($KUBECTL --kubeconfig "$KUBECONFIG" --request-timeout=5s get addon -n kube-system kubeovn-operator -o jsonpath='{.spec.enabled}' 2>/dev/null || true)
+        if [ "$STATUS" = "true" ]; then
+            echo "true"
+            return
+        fi
+    fi
+    
+    echo "false"
+}
+
+if [ "$(check_kubeovn_enabled)" = "true" ]; then
+    # KubeOVN Ports: 6081 (UDP), 6641/6642 (TCP)
+    iptables -A HARVESTER_DYNAMIC -p udp --dport 6081 -j ACCEPT
+    iptables -A HARVESTER_DYNAMIC -p tcp -m multiport --dports 6641,6642 -j ACCEPT
+fi
+
+# FORWARD chain rules
+add_rule FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Set default policies
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
