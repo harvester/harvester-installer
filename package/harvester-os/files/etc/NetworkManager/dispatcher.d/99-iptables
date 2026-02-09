@@ -93,29 +93,9 @@ fi
 
 # --- Rules for HARVESTER_DYNAMIC ---
 
-check_kubeovn_enabled() {
-    KUBECONFIG=/etc/rancher/rke2/rke2.yaml
-    KUBECTL=/var/lib/rancher/rke2/bin/kubectl
-    
-    if [ ! -x "$KUBECTL" ]; then
-        KUBECTL=$(command -v kubectl || true)
-    fi
-
-    if [ -x "$KUBECTL" ] && [ -f "$KUBECONFIG" ]; then
-        STATUS=$($KUBECTL --kubeconfig "$KUBECONFIG" --request-timeout=5s get addon -n kube-system kubeovn-operator -o jsonpath='{.spec.enabled}' 2>/dev/null || true)
-        if [ "$STATUS" = "true" ]; then
-            echo "true"
-            return
-        fi
-    fi
-    
-    echo "false"
-}
-
-if [ "$(check_kubeovn_enabled)" = "true" ]; then
-    # KubeOVN Ports: 6081 (UDP), 6641/6642 (TCP)
-    iptables -A HARVESTER_DYNAMIC -p udp --dport 6081 -j ACCEPT
-    iptables -A HARVESTER_DYNAMIC -p tcp -m multiport --dports 6641,6642 -j ACCEPT
+if [ -x /usr/sbin/harvester-kubeovn-monitor ]; then
+    /usr/sbin/harvester-kubeovn-monitor run-once
+    /usr/sbin/harvester-kubeovn-monitor monitor >/dev/null 2>&1 &
 fi
 
 # FORWARD chain rules
