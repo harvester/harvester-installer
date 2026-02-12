@@ -408,6 +408,20 @@ func initRancherdStage(config *HarvesterConfig, stage *yipSchema.Stage) error {
 		},
 	)
 
+	rke2KubePSAConfig, err := render("rke2-99-harvester-psa.yaml", config)
+	if err != nil {
+		return err
+	}
+	stage.Files = append(stage.Files,
+		yipSchema.File{
+			Path:        "/etc/rancher/rke2/config.yaml.d/99-harvester-psa.yaml",
+			Content:     rke2KubePSAConfig,
+			Permissions: 0600,
+			Owner:       0,
+			Group:       0,
+		},
+	)
+
 	rke2AgentConfig, err := render("rke2-90-harvester-agent.yaml", config)
 	if err != nil {
 		return err

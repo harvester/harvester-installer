@@ -2644,6 +2644,10 @@ func addInstallPanel(c *Console) error {
 				c.config.ServerURL = formatted
 			}
 
+			c.config.Install.PSA = config.PSAConfig{
+				EnforceSecurityLevel: "privileged",
+			}
+
 			if !alreadyInstalled {
 				// Have to handle preflight warnings here because we can't check
 				// the NIC speed until we've got the correct set of interfaces.
