@@ -28,3 +28,4 @@ rancher:
   - docker.io/rancher/mirrored-fluent-fluent-bit
   - docker.io/rancher/mirrored-jimmidyson-configmap-reload
   - docker.io/rancher/kuberlr-kubectl
+  - docker.io/rancher/turtles
