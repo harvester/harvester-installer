@@ -29,3 +29,4 @@ rancher:
   - docker.io/rancher/mirrored-jimmidyson-configmap-reload
   - docker.io/rancher/kuberlr-kubectl
   - docker.io/rancher/turtles
+  - docker.io/rancher/cluster-api-controller
