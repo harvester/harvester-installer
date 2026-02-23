@@ -29,4 +29,4 @@ docker.io/rancher/shell:v0.7.0-rc.3
 docker.io/rancher/system-agent:v0.3.15-rc.3-suc
 docker.io/rancher/system-upgrade-controller:v0.19.0
 docker.io/rancher/turtles:v0.26.0-rc.5
-docker.io/rancher/cluster-api-controller:v1.10.6
+docker.io/rancher/cluster-api-controller:v1.12.2
