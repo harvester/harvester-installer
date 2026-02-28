@@ -28,6 +28,8 @@ type UserInputData struct {
 	PasswordConfirm      string
 	Address              string
 	AddrMask             string
+	IPv6Address          string
+	IPv6Gateway          string
 	DNSServers           string
 	NTPServers           string
 	HasCheckedNTPServers bool
@@ -1316,10 +1318,16 @@ func addTokenPanel(c *Console) error {
 }
 
 func showNetworkPage(c *Console) error {
-	if mgmtNetwork.Method != config.NetworkMethodStatic {
-		return showNext(c, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, askInterfacePanel)
+	panels := []string{askVlanIDPanel, askBondModePanel, askNetworkMethodPanel}
+	if mgmtNetwork.Method == config.NetworkMethodStatic {
+		panels = append(panels, addressPanel, addrMaskPanel, gatewayPanel)
 	}
-	return showNext(c, askVlanIDPanel, askBondModePanel, askNetworkMethodPanel, addressPanel, addrMaskPanel, gatewayPanel, mtuPanel, askInterfacePanel)
+	panels = append(panels, askIPv6NetworkMethodPanel)
+	if mgmtNetwork.IPv6Method == config.NetworkMethodStatic {
+		panels = append(panels, ipv6AddressPanel, ipv6GatewayPanel)
+	}
+	panels = append(panels, mtuPanel, askInterfacePanel)
+	return showNext(c, panels...)
 }
 
 func showHostnamePage(c *Console) error {
@@ -1512,6 +1520,21 @@ func addNetworkPanel(c *Console) error {
 		return err
 	}
 
+	askIPv6NetworkMethodV, err := widgets.NewDropDown(c.Gui, askIPv6NetworkMethodPanel, askIPv6NetworkMethodLabel, getNetworkMethodOptions)
+	if err != nil {
+		return err
+	}
+
+	ipv6AddressV, err := widgets.NewInput(c.Gui, ipv6AddressPanel, ipv6AddressLabel, false)
+	if err != nil {
+		return err
+	}
+
+	ipv6GatewayV, err := widgets.NewInput(c.Gui, ipv6GatewayPanel, ipv6GatewayLabel, false)
+	if err != nil {
+		return err
+	}
+
 	bondNoteV := widgets.NewPanel(c.Gui, bondNotePanel)
 
 	networkValidatorV := widgets.NewPanel(c.Gui, networkValidatorPanel)
@@ -1568,9 +1591,12 @@ func addNetworkPanel(c *Console) error {
 			askVlanIDPanel,
 			askBondModePanel,
 			askNetworkMethodPanel,
+			askIPv6NetworkMethodPanel,
 			addressPanel,
 			addrMaskPanel,
 			gatewayPanel,
+			ipv6AddressPanel,
+			ipv6GatewayPanel,
 			mtuPanel,
 			networkValidatorPanel,
 			bondNotePanel,
@@ -1790,12 +1816,21 @@ func addNetworkPanel(c *Console) error {
 			return err
 		}
 		mgmtNetwork.Method = selected
+		panels := []string{mtuPanel}
+		if mgmtNetwork.IPv6Method == config.NetworkMethodStatic {
+			panels = append(panels, ipv6GatewayPanel, ipv6AddressPanel)
+		} else {
+			c.CloseElements(ipv6GatewayPanel, ipv6AddressPanel)
+		}
+		panels = append(panels, askIPv6NetworkMethodPanel)
+
 		if selected == config.NetworkMethodStatic {
-			return showNext(c, mtuPanel, gatewayPanel, addrMaskPanel, addressPanel)
+			panels = append(panels, gatewayPanel, addrMaskPanel, addressPanel)
+			return showNext(c, panels...)
 		}
 
-		c.CloseElements(mtuPanel, gatewayPanel, addrMaskPanel, addressPanel)
-		return gotoNextPage(askNetworkMethodPanel)
+		c.CloseElements(gatewayPanel, addrMaskPanel, addressPanel)
+		return showNext(c, panels...)
 	}
 	askNetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp:   gotoNextPanel(c, []string{askBondModePanel}),
@@ -1906,7 +1941,7 @@ func addNetworkPanel(c *Console) error {
 		mgmtNetwork.Gateway = gateway
 		return "", nil
 	}
-	gatewayVConfirm := gotoNextPanel(c, []string{mtuPanel}, validateGateway)
+	gatewayVConfirm := gotoNextPanel(c, []string{askIPv6NetworkMethodPanel}, validateGateway)
 	gatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyArrowUp: gotoNextPanel(c, []string{addrMaskPanel}, func() (string, error) {
 			mgmtNetwork.Gateway, err = gatewayV.GetData()
@@ -1918,6 +1953,118 @@ func addNetworkPanel(c *Console) error {
 	}
 	setLocation(gatewayV.Panel, 3)
 	c.AddElement(gatewayPanel, gatewayV)
+
+	// askIPv6NetworkMethodV
+	askIPv6NetworkMethodV.PreShow = func() error {
+		if mgmtNetwork.IPv6Method == "" {
+			askIPv6NetworkMethodV.Value = config.NetworkMethodDHCP
+			mgmtNetwork.IPv6Method = config.NetworkMethodDHCP
+		} else {
+			askIPv6NetworkMethodV.Value = mgmtNetwork.IPv6Method
+		}
+		return nil
+	}
+	askIPv6NetworkMethodVConfirm := func(_ *gocui.Gui, _ *gocui.View) error {
+		selected, err := askIPv6NetworkMethodV.GetData()
+		if err != nil {
+			return err
+		}
+		mgmtNetwork.IPv6Method = selected
+		if selected == config.NetworkMethodStatic {
+			return showNext(c, mtuPanel, ipv6GatewayPanel, ipv6AddressPanel)
+		}
+
+		c.CloseElements(ipv6GatewayPanel, ipv6AddressPanel)
+		return showNext(c, mtuPanel)
+	}
+	askIPv6NetworkMethodV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			if mgmtNetwork.Method == config.NetworkMethodStatic {
+				return showNext(c, gatewayPanel)
+			}
+			return showNext(c, askNetworkMethodPanel)
+		},
+		gocui.KeyArrowDown: askIPv6NetworkMethodVConfirm,
+		gocui.KeyEnter:     askIPv6NetworkMethodVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(askIPv6NetworkMethodV.Panel, 3)
+	c.AddElement(askIPv6NetworkMethodPanel, askIPv6NetworkMethodV)
+
+	// ipv6AddressV
+	ipv6AddressV.PreShow = func() error {
+		c.Gui.Cursor = true
+		ipv6AddressV.Value = userInputData.IPv6Address
+		return nil
+	}
+	validateIPv6Address := func() (string, error) {
+		address, err := ipv6AddressV.GetData()
+		if err != nil {
+			return "", err
+		}
+		if err = checkStaticRequiredString("IPv6 Address", address); err != nil {
+			return err.Error(), nil
+		}
+		userInputData.IPv6Address = address
+		ip, _, err := net.ParseCIDR(address)
+		if err != nil {
+			return fmt.Sprintf("%s is not a valid IPv6 CIDR address", address), nil
+		}
+		if ip.To4() != nil {
+			return fmt.Sprintf("%s is an IPv4 address, expected IPv6", address), nil
+		}
+		mgmtNetwork.IPv6IP = address
+		return "", nil
+	}
+	ipv6AddressVConfirm := gotoNextPanel(c, []string{ipv6GatewayPanel}, validateIPv6Address)
+	ipv6AddressV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{askIPv6NetworkMethodPanel}, func() (string, error) {
+			userInputData.IPv6Address, err = ipv6AddressV.GetData()
+			return "", err
+		}),
+		gocui.KeyArrowDown: ipv6AddressVConfirm,
+		gocui.KeyEnter:     ipv6AddressVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(ipv6AddressV.Panel, 3)
+	c.AddElement(ipv6AddressPanel, ipv6AddressV)
+
+	// ipv6GatewayV
+	ipv6GatewayV.PreShow = func() error {
+		c.Gui.Cursor = true
+		ipv6GatewayV.Value = mgmtNetwork.IPv6Gateway
+		return nil
+	}
+	validateIPv6Gateway := func() (string, error) {
+		gateway, err := ipv6GatewayV.GetData()
+		if err != nil {
+			return "", err
+		}
+		if err = checkStaticRequiredString("IPv6 Gateway", gateway); err != nil {
+			return err.Error(), nil
+		}
+		ip := net.ParseIP(gateway)
+		if ip == nil {
+			return fmt.Sprintf("%s is not a valid IP address", gateway), nil
+		}
+		if ip.To4() != nil {
+			return fmt.Sprintf("%s is an IPv4 address, expected IPv6", gateway), nil
+		}
+		mgmtNetwork.IPv6Gateway = gateway
+		return "", nil
+	}
+	ipv6GatewayVConfirm := gotoNextPanel(c, []string{mtuPanel}, validateIPv6Gateway)
+	ipv6GatewayV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: gotoNextPanel(c, []string{ipv6AddressPanel}, func() (string, error) {
+			mgmtNetwork.IPv6Gateway, err = ipv6GatewayV.GetData()
+			return "", err
+		}),
+		gocui.KeyArrowDown: ipv6GatewayVConfirm,
+		gocui.KeyEnter:     ipv6GatewayVConfirm,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
+	setLocation(ipv6GatewayV.Panel, 3)
+	c.AddElement(ipv6GatewayPanel, ipv6GatewayV)
 
 	// mtuV
 	mtuV.PreShow = func() error {
@@ -1963,7 +2110,13 @@ func addNetworkPanel(c *Console) error {
 		return gotoNextPage(mtuPanel)
 	}
 	mtuV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyArrowUp:   gotoNextPanel(c, []string{gatewayPanel}, validateMTU),
+		gocui.KeyArrowUp: func(g *gocui.Gui, v *gocui.View) error {
+			target := askIPv6NetworkMethodPanel
+			if mgmtNetwork.IPv6Method == config.NetworkMethodStatic {
+				target = ipv6GatewayPanel
+			}
+			return gotoNextPanel(c, []string{target}, validateMTU)(g, v)
+		},
 		gocui.KeyArrowDown: mtuVConfirm,
 		gocui.KeyEnter:     mtuVConfirm,
 		gocui.KeyEsc:       gotoPrevPage,
@@ -2764,6 +2917,10 @@ func addVIPPanel(c *Console) error {
 	if err != nil {
 		return err
 	}
+	vipIPv6V, err := widgets.NewInput(c.Gui, vipIPv6Panel, vipIPv6Label, false)
+	if err != nil {
+		return err
+	}
 	hwAddrNoteV := widgets.NewPanel(c.Gui, vipHwAddrNotePanel)
 	vipTextV := widgets.NewPanel(c.Gui, vipTextPanel)
 
@@ -2773,6 +2930,7 @@ func addVIPPanel(c *Console) error {
 			vipHwAddrPanel,
 			vipHwAddrNotePanel,
 			vipPanel,
+			vipIPv6Panel,
 			vipTextPanel)
 	}
 
@@ -2813,18 +2971,29 @@ func addVIPPanel(c *Console) error {
 					if err := hwAddrV.SetData(vip.hwAddr); err != nil {
 						return err
 					}
-					return vipV.SetData(vip.ipv4Addr)
+					// Clear IPv6 VIP field in DHCP mode as we don't support DHCP for VIP IPv6 yet or it's manual
+					if err := vipIPv6V.SetData(""); err != nil {
+						return err
+					}
+					if err := vipV.SetData(vip.ipv4Addr); err != nil {
+						return err
+					}
+					return showNext(c, vipPanel, vipIPv6Panel)
 				})
 			}(c.Gui)
 		} else {
 			vipTextV.SetContent("")
 			g.Update(func(_ *gocui.Gui) error {
+				if err := vipIPv6V.SetData(""); err != nil {
+					return err
+				}
 				return vipV.SetData("")
 			})
 			c.config.VipMode = config.NetworkMethodStatic
+			return showNext(c, vipPanel, vipIPv6Panel)
 		}
 
-		return showNext(c, vipPanel)
+		return nil
 	}
 	gotoVerifyIP := func(g *gocui.Gui, v *gocui.View) error {
 		vip, err := vipV.GetData()
@@ -2837,7 +3006,7 @@ func addVIPPanel(c *Console) error {
 				vipTextV.SetContent("Forbid to modify the VIP obtained through DHCP")
 				return nil
 			}
-			return gotoNextPage(g, v)
+			return showNext(c, vipIPv6Panel)
 		}
 
 		// verify static IP
@@ -2857,8 +3026,30 @@ func addVIPPanel(c *Console) error {
 		if c.config.VipMode == "" {
 			c.config.VipMode = config.NetworkMethodStatic
 		}
+		return showNext(c, vipIPv6Panel)
+	}
+
+	gotoVerifyIPv6 := func(g *gocui.Gui, v *gocui.View) error {
+		vipIPv6, err := vipIPv6V.GetData()
+		if err != nil {
+			return err
+		}
+
+		if vipIPv6 != "" {
+			if net.ParseIP(vipIPv6) == nil {
+				vipTextV.SetContent(fmt.Sprintf("Invalid IPv6 VIP: %s", vipIPv6))
+				return nil
+			}
+			// Should we check conflict with mgmt IPv6?
+			if vipIPv6 == mgmtNetwork.IPv6IP {
+				vipTextV.SetContent("VIP must not be the same as management NIC's IPv6 IP")
+				return nil
+			}
+		}
+		c.config.VipIPv6 = vipIPv6
 		return gotoNextPage(g, v)
 	}
+
 	gotoAskVipMethodPanel := func(_ *gocui.Gui, _ *gocui.View) error {
 		return showNext(c, askVipMethodPanel)
 	}
@@ -2875,7 +3066,7 @@ func addVIPPanel(c *Console) error {
 		c.CloseElement(vipHwAddrPanel)
 		c.CloseElement(vipHwAddrNotePanel)
 
-		return showNext(c, vipPanel)
+		return showNext(c, vipPanel, vipIPv6Panel)
 	}
 	gotoVipParentPanel := func(_ *gocui.Gui, _ *gocui.View) error {
 		method, err := askVipMethodV.GetData()
@@ -2907,6 +3098,14 @@ func addVIPPanel(c *Console) error {
 		gocui.KeyEnter:     gotoVerifyIP,
 		gocui.KeyEsc:       gotoPrevPage,
 	}
+	vipIPv6V.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			return showNext(c, vipPanel)
+		},
+		gocui.KeyArrowDown: gotoVerifyIPv6,
+		gocui.KeyEnter:     gotoVerifyIPv6,
+		gocui.KeyEsc:       gotoPrevPage,
+	}
 
 	askVipMethodV.PreShow = func() error {
 		c.Gui.Cursor = true
@@ -2922,6 +3121,9 @@ func addVIPPanel(c *Console) error {
 
 	setLocation(vipV, 3)
 	c.AddElement(vipPanel, vipV)
+
+	setLocation(vipIPv6V, 3)
+	c.AddElement(vipIPv6Panel, vipIPv6V)
 
 	hwAddrNoteV.Focus = false
 	hwAddrNoteV.Wrap = true

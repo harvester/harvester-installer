@@ -654,6 +654,9 @@ func updateBridge(name string, mgmtNetwork *Network, dnsNameServers []string, co
 		DefaultRoute: !needVlanInterface,
 		MTU:          mgmtNetwork.MTU,
 		VlanID:       mgmtNetwork.VlanID,
+		IPv6Method:   mgmtNetwork.IPv6Method,
+		IPv6IP:       mgmtNetwork.IPv6IP,
+		IPv6Gateway:  mgmtNetwork.IPv6Gateway,
 	}
 
 	maskToCIDR := func(mask string) (cidr string) {

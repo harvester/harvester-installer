@@ -87,6 +87,9 @@ type Network struct {
 	IP           string             `json:"ip,omitempty"`
 	SubnetMask   string             `json:"subnetMask,omitempty"`
 	Gateway      string             `json:"gateway,omitempty"`
+	IPv6Method   string             `json:"ipv6Method,omitempty"`
+	IPv6IP       string             `json:"ipv6IP,omitempty"`
+	IPv6Gateway  string             `json:"ipv6Gateway,omitempty"`
 	DefaultRoute bool               `json:"-"`
 	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
 	MTU          int                `json:"mtu,omitempty"`
@@ -150,6 +153,7 @@ type Install struct {
 	ManagementInterface Network `json:"managementInterface,omitempty"`
 
 	Vip       string `json:"vip,omitempty"`
+	VipIPv6   string `json:"vipIPv6,omitempty"`
 	VipHwAddr string `json:"vipHwAddr,omitempty"`
 	VipMode   string `json:"vipMode,omitempty"`
 
