@@ -177,6 +177,7 @@ func setPanels(c *Console) error {
 		addTokenPanel,
 		addPasswordPanels,
 		addSSHKeyPanel,
+		addSSHPasswordAuthPanel,
 		addProxyPanel,
 		addCloudInitPanel,
 		addConfirmInstallPanel,
@@ -1194,7 +1195,7 @@ func addSSHKeyPanel(c *Console) error {
 		if err := closeThisPage(); err != nil {
 			return err
 		}
-		return showNext(c, cloudInitPanel)
+		return showNext(c, sshPasswordAuthPanel)
 	}
 	sshKeyV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
@@ -1258,6 +1259,62 @@ func addSSHKeyPanel(c *Console) error {
 		return asyncTaskV.Close()
 	}
 	c.AddElement(sshKeyPanel, sshKeyV)
+	return nil
+}
+
+func addSSHPasswordAuthPanel(c *Console) error {
+	askOptionsFunc := func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{
+				Value: "true",
+				Text:  "Yes",
+			},
+			{
+				Value: "false",
+				Text:  "No",
+			},
+		}, nil
+	}
+	sshPasswordAuthV, err := widgets.NewSelect(c.Gui, sshPasswordAuthPanel, "", askOptionsFunc)
+	if err != nil {
+		return err
+	}
+	sshPasswordAuthV.PreShow = func() error {
+		c.Gui.Cursor = false
+		sshPasswordAuthV.Value = strconv.FormatBool(c.config.OS.SSHD.DisablePasswordAuth)
+		if err := c.setContentByName(notePanel, sshPasswordAuthNote); err != nil {
+			return err
+		}
+		return c.setContentByName(titlePanel, "Optional: disable SSH password authentication")
+	}
+	closeThisPage := func() error {
+		c.CloseElement(sshPasswordAuthPanel)
+		return c.setContentByName(notePanel, "")
+	}
+	sshPasswordAuthV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
+			selected, err := sshPasswordAuthV.GetData()
+			if err != nil {
+				return err
+			}
+			disablePasswordAuth, err := strconv.ParseBool(selected)
+			if err != nil {
+				return err
+			}
+			c.config.OS.SSHD.DisablePasswordAuth = disablePasswordAuth
+			if err := closeThisPage(); err != nil {
+				return err
+			}
+			return showNext(c, cloudInitPanel)
+		},
+		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
+			if err := closeThisPage(); err != nil {
+				return err
+			}
+			return showNext(c, sshKeyPanel)
+		},
+	}
+	c.AddElement(sshPasswordAuthPanel, sshPasswordAuthV)
 	return nil
 }
 
@@ -2412,7 +2469,7 @@ func addCloudInitPanel(c *Console) error {
 			if err = cloudInitV.Close(); err != nil {
 				return err
 			}
-			return showNext(c, sshKeyPanel)
+			return showNext(c, sshPasswordAuthPanel)
 		},
 	}
 	cloudInitV.PostClose = func() error {
@@ -2463,6 +2520,9 @@ func addConfirmInstallPanel(c *Console) error {
 		}
 		if userInputData.SSHKeyURL != "" {
 			options += fmt.Sprintf("ssh key url: %v\n", userInputData.SSHKeyURL)
+		}
+		if c.config.OS.SSHD.DisablePasswordAuth {
+			options += "disable SSH password auth: yes\n"
 		}
 		options += string(installBytes)
 		logrus.Debug("cfm cfg: ", fmt.Sprintf("%+v", c.config.Install))

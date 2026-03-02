@@ -164,6 +164,51 @@ func TestConvertToCos_Remove_CPUManagerState(t *testing.T) {
 	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /var/lib/kubelet/cpu_manager_state")
 }
 
+func TestOverwriteSSHDComponent_DisablePasswordAuth(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.DisablePasswordAuth = true
+
+	overwriteSSHDComponent(conf)
+
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'KbdInteractiveAuthentication no' >> /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'UsePAM no' >> /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
+}
+
+func TestOverwriteSSHDComponent_DisablePasswordAuth_NotSet(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.DisablePasswordAuth = false
+
+	overwriteSSHDComponent(conf)
+
+	for _, cmd := range conf.OS.AfterInstallChrootCommands {
+		assert.NotContains(t, cmd, "99-disable-password-auth.conf")
+	}
+}
+
+func TestOverwriteSSHDComponent_SFTP(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.SFTP = true
+
+	overwriteSSHDComponent(conf)
+
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'Subsystem\tsftp\t/usr/libexec/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
+}
+
+func TestOverwriteSSHDComponent_BothEnabled(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.SFTP = true
+	conf.OS.SSHD.DisablePasswordAuth = true
+
+	overwriteSSHDComponent(conf)
+
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'KbdInteractiveAuthentication no' >> /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'UsePAM no' >> /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
+}
+
 func fileExists(fileName string) bool {
 	_, err := os.Stat(fileName)
 	return err == nil
