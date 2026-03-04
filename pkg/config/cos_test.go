@@ -170,6 +170,7 @@ func TestOverwriteSSHDComponent_DisablePasswordAuth(t *testing.T) {
 
 	overwriteSSHDComponent(conf)
 
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
 	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
 	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'KbdInteractiveAuthentication no' >> /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
 	assert.Contains(t, conf.OS.AfterInstallChrootCommands, "echo 'UsePAM no' >> /etc/ssh/sshd_config.d/99-disable-password-auth.conf")
