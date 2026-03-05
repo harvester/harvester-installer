@@ -78,6 +78,16 @@ func GetSystemSettingsAllowList() []string {
 		"kubeconfig-default-token-ttl-minutes",
 		"harvester-csi-ccm-versions",
 		"ntp-servers",
+		"additional-guest-memory-overhead-ratio",
+		"csi-online-expand-validation",
+		"ui-plugin-bundled-version",
+		"upgrade-config",
+		"longhorn-v2-data-engine-enabled",
+		"max-hotplug-ratio",
+		"vm-migration-network",
+		"rancher-cluster",
+		"kubevirt-migration",
+		"cluster-pod-security-standard",
 	}
 }
 
