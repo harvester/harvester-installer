@@ -1,0 +1,74 @@
+#!/bin/bash
+
+LOG_TAG="harvester-kubeovn-monitor"
+LOCK_FILE="/var/run/harvester-kubeovn-monitor.lock"
+
+log() {
+    if [ -x /usr/bin/logger ]; then
+        /usr/bin/logger -t "$LOG_TAG" "$1"
+    else
+        echo "$1"
+    fi
+}
+
+check_kubeovn_enabled() {
+    KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+    KUBECTL=/var/lib/rancher/rke2/bin/kubectl
+
+    if [ ! -x "$KUBECTL" ]; then
+        KUBECTL=$(command -v kubectl || true)
+    fi
+
+    if [ -x "$KUBECTL" ] && [ -f "$KUBECONFIG" ]; then
+        if $KUBECTL --kubeconfig "$KUBECONFIG" --request-timeout=5s get addon -n kube-system kubeovn-operator -o jsonpath='{.spec.enabled}' > /dev/null 2>&1; then
+            echo "true"
+            return
+        fi
+
+        REPLICAS=$($KUBECTL --kubeconfig "$KUBECONFIG" --request-timeout=5s get deployment -n kube-system kubeovn-operator-controller-manager -o jsonpath='{.status.availableReplicas}' 2>/dev/null || true)
+        if [ -n "$REPLICAS" ] && [ "$REPLICAS" -gt 0 ]; then
+            echo "true"
+            return
+        fi
+    fi
+
+    echo "false"
+}
+
+ensure_rules() {
+    ENABLED=$1
+
+    if [ "$ENABLED" = "true" ]; then
+        # KubeOVN Ports: 6081 (UDP), 6641/6642 (TCP)
+        iptables -C HARVESTER_DYNAMIC -p udp --dport 6081 -j ACCEPT 2>/dev/null || iptables -A HARVESTER_DYNAMIC -p udp --dport 6081 -j ACCEPT
+        iptables -C HARVESTER_DYNAMIC -p tcp -m multiport --dports 6641,6642 -j ACCEPT 2>/dev/null || iptables -A HARVESTER_DYNAMIC -p tcp -m multiport --dports 6641,6642 -j ACCEPT
+    else
+        iptables -D HARVESTER_DYNAMIC -p udp --dport 6081 -j ACCEPT 2>/dev/null || true
+        iptables -D HARVESTER_DYNAMIC -p tcp -m multiport --dports 6641,6642 -j ACCEPT 2>/dev/null || true
+    fi
+}
+
+do_monitor() {
+    log "Starting monitor..."
+    while true; do
+        ENABLED=$(check_kubeovn_enabled)
+        ensure_rules "$ENABLED"
+        sleep 5
+    done
+}
+
+CMD=${1:-monitor}
+
+if [ "$CMD" = "run-once" ]; then
+    ENABLED=$(check_kubeovn_enabled)
+    ensure_rules "$ENABLED"
+    exit 0
+fi
+
+if [ "$CMD" = "monitor" ]; then
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+        exit 0
+    fi
+    do_monitor
+fi
