@@ -28,6 +28,8 @@ var (
 
 const (
 	NMConnectionGlobPattern = "*nmconnection"
+	SSHConfigFolder         = "/etc/ssh/sshd_config.d"
+	SSHPasswordConfigFile   = "99-disable-password-auth.conf"
 )
 
 const (
@@ -241,8 +243,14 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 func overwriteSSHDComponent(config *HarvesterConfig) {
 	if config.OS.SSHD.SFTP {
-		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "mkdir -p /etc/ssh/sshd_config.d")
-		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, "echo 'Subsystem	sftp	/usr/libexec/ssh/sftp-server' > /etc/ssh/sshd_config.d/sftp.conf")
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, fmt.Sprintf("mkdir -p %s", SSHConfigFolder))
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'Subsystem	sftp	/usr/libexec/ssh/sftp-server' > %s/sftp.conf", SSHConfigFolder))
+	}
+	if config.OS.SSHD.DisablePasswordAuth {
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, fmt.Sprintf("mkdir -p %s", SSHConfigFolder))
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'PasswordAuthentication no' > %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'KbdInteractiveAuthentication no' >> %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+		config.OS.AfterInstallChrootCommands = append(config.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'UsePAM no' >> %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
 	}
 }
 
