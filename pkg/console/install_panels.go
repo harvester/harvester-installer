@@ -1191,7 +1191,6 @@ func addSSHPanel(c *Console) error {
 		return err
 	}
 
-	// closeThisPage closes both stacked widgets together.
 	closeThisPage := func() error {
 		c.CloseElement(sshPasswordAuthPanel)
 		return sshKeyV.Close()
@@ -1203,7 +1202,16 @@ func addSSHPanel(c *Console) error {
 		if err = c.setContentByName(titlePanel, "Optional: configure SSH"); err != nil {
 			return err
 		}
-		return c.setContentByName(notePanel, sshKeyNote)
+		if err = c.setContentByName(notePanel, sshKeyNote); err != nil {
+			return err
+		}
+		if len(c.config.SSHAuthorizedKeys) > 0 {
+			if err = sshPasswordAuthV.Show(); err != nil {
+				return err
+			}
+			c.Gui.Cursor = true
+		}
+		return nil
 	}
 	gotoNextPage := func() error {
 		if len(c.config.SSHAuthorizedKeys) > 0 {
@@ -1221,6 +1229,10 @@ func addSSHPanel(c *Console) error {
 			if err != nil {
 				return err
 			}
+			if url != "" && url == userInputData.SSHKeyURL && len(c.config.SSHAuthorizedKeys) > 0 {
+				return gotoNextPage()
+			}
+			hadKeys := len(c.config.SSHAuthorizedKeys) > 0
 			userInputData.SSHKeyURL = url
 			c.config.SSHAuthorizedKeys = []string{}
 			if url != "" {
@@ -1257,6 +1269,10 @@ func addSSHPanel(c *Console) error {
 				}(c.Gui)
 				return nil
 			}
+			if hadKeys {
+				c.CloseElement(sshPasswordAuthPanel)
+				return showNext(c, sshKeyPanel)
+			}
 			return gotoNextPage()
 		},
 		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
@@ -1278,23 +1294,48 @@ func addSSHPanel(c *Console) error {
 	}
 	sshPasswordAuthV.PreShow = func() error {
 		c.Gui.Cursor = false
-		return sshPasswordAuthV.SetData(strconv.FormatBool(!c.config.OS.SSHD.DisablePasswordAuth))
+		if sshPasswordAuthV.Value == "" {
+			sshPasswordAuthV.Value = strconv.FormatBool(!c.config.OS.SSHD.DisablePasswordAuth)
+		}
+		return nil
+	}
+	sshPasswordAuthNavigate := func() error {
+		selected, err := sshPasswordAuthV.GetData()
+		if err != nil {
+			return err
+		}
+		passwordAuthEnabled, err := strconv.ParseBool(selected)
+		if err != nil {
+			return err
+		}
+		c.config.OS.SSHD.DisablePasswordAuth = !passwordAuthEnabled
+		if err := closeThisPage(); err != nil {
+			return err
+		}
+		return showNext(c, cloudInitPanel)
 	}
 	sshPasswordAuthV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
-			selected, err := sshPasswordAuthV.GetData()
-			if err != nil {
-				return err
+		gocui.KeyEnter: func(_ *gocui.Gui, v *gocui.View) error {
+			if v != nil && v.Name() != sshPasswordAuthV.ViewName {
+				selected, err := sshPasswordAuthV.GetData()
+				if err != nil {
+					return err
+				}
+				passwordAuthEnabled, err := strconv.ParseBool(selected)
+				if err != nil {
+					return err
+				}
+				c.config.OS.SSHD.DisablePasswordAuth = !passwordAuthEnabled
+				return nil
 			}
-			passwordAuthEnabled, err := strconv.ParseBool(selected)
-			if err != nil {
-				return err
-			}
-			c.config.OS.SSHD.DisablePasswordAuth = !passwordAuthEnabled
-			if err := closeThisPage(); err != nil {
-				return err
-			}
-			return showNext(c, cloudInitPanel)
+			return sshPasswordAuthNavigate()
+		},
+		gocui.KeyArrowDown: func(_ *gocui.Gui, _ *gocui.View) error {
+			return sshPasswordAuthNavigate()
+		},
+		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			c.CloseElement(sshPasswordAuthPanel)
+			return showNext(c, sshKeyPanel)
 		},
 		gocui.KeyEsc: func(_ *gocui.Gui, _ *gocui.View) error {
 			c.CloseElement(sshPasswordAuthPanel)

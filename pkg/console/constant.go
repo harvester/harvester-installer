@@ -103,7 +103,6 @@ const (
 	bondNote               = "Note: Select one or more NICs for the Management NIC.\nUse the default value for the Bond Mode if only one NIC is selected."
 	forceMBRNote           = "Note: GPT is used by default. You can use MBR if you encountered compatibility issues."
 	persistentSizeNote     = "Note: persistent partition stores data like system package and container images, not the VM data. \nYou can specify a size like 200Gi or 153600Mi. \nLeave it blank to use the default value."
-	sshPasswordAuthNote    = "Note: Disabling SSH password authentication is recommended for security hardening. Once disabled, you must use SSH key-based access to connect to the nodes."
 
 	defaultHostname = "rancher"
 )
