@@ -53,6 +53,7 @@ const (
 	askRolePanel                = "askRolePanel"
 	wipeDisksPanel              = "wipeDisksPanel"
 	wipeDisksTitlePanel         = "wipeDisksTitlePanel"
+	sshPasswordAuthPanel        = "sshPasswordAuth"
 
 	hostnameTitle         = "Configure hostname for this instance"
 	networkTitle          = "Configure network"
