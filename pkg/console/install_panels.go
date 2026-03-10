@@ -1317,16 +1317,7 @@ func addSSHPanel(c *Console) error {
 	sshPasswordAuthV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEnter: func(_ *gocui.Gui, v *gocui.View) error {
 			if v != nil && v.Name() != sshPasswordAuthV.ViewName {
-				selected, err := sshPasswordAuthV.GetData()
-				if err != nil {
-					return err
-				}
-				passwordAuthEnabled, err := strconv.ParseBool(selected)
-				if err != nil {
-					return err
-				}
-				c.config.OS.SSHD.DisablePasswordAuth = !passwordAuthEnabled
-				return nil
+				return showNext(c, sshPasswordAuthPanel)
 			}
 			return sshPasswordAuthNavigate()
 		},
