@@ -11,7 +11,7 @@ cd ${TOP_DIR}
 
 source ${SCRIPTS_DIR}/lib/addon
 addons_path=${TOP_DIR}/../addons
-load_and_source_addon ${addons_path} https://github.com/harvester/addons.git main
+load_and_source_addon ${addons_path} https://github.com/harvester/addons.git v1.8
 # generate template file in ${addons_path}, and this is used for subsequent checks
 generate_addon ${addons_path}
 
@@ -42,7 +42,7 @@ mkdir -p ${RANCHERD_IMAGES_DIR}
 harvester_path=../harvester
 if [ ! -d ${harvester_path} ];then
   echo "No existing harvester source. Pulling..."
-  git clone --branch master --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
+  git clone --branch v1.8 --single-branch --depth 1 https://github.com/harvester/harvester.git ../harvester
 fi
 
 # Revert harvester chart version patch to clean dirty git status
