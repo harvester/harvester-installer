@@ -164,6 +164,52 @@ func TestConvertToCos_Remove_CPUManagerState(t *testing.T) {
 	assert.Contains(t, yipConfig.Stages["initramfs"][0].Commands, "rm -f /var/lib/kubelet/cpu_manager_state")
 }
 
+func TestOverwriteSSHDComponent_DisablePasswordAuth(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.DisablePasswordAuth = true
+
+	overwriteSSHDComponent(conf)
+
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("mkdir -p %s", SSHConfigFolder))
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'PasswordAuthentication no' > %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'KbdInteractiveAuthentication no' >> %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'UsePAM no' >> %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+}
+
+func TestOverwriteSSHDComponent_DisablePasswordAuth_NotSet(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.DisablePasswordAuth = false
+
+	overwriteSSHDComponent(conf)
+
+	for _, cmd := range conf.OS.AfterInstallChrootCommands {
+		assert.NotContains(t, cmd, SSHPasswordConfigFile)
+	}
+}
+
+func TestOverwriteSSHDComponent_SFTP(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.SFTP = true
+
+	overwriteSSHDComponent(conf)
+
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("mkdir -p %s", SSHConfigFolder))
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'Subsystem\tsftp\t/usr/libexec/ssh/sftp-server' > %s/sftp.conf", SSHConfigFolder))
+}
+
+func TestOverwriteSSHDComponent_BothEnabled(t *testing.T) {
+	conf := NewHarvesterConfig()
+	conf.OS.SSHD.SFTP = true
+	conf.OS.SSHD.DisablePasswordAuth = true
+
+	overwriteSSHDComponent(conf)
+
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("mkdir -p %s", SSHConfigFolder))
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'PasswordAuthentication no' > %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'KbdInteractiveAuthentication no' >> %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+	assert.Contains(t, conf.OS.AfterInstallChrootCommands, fmt.Sprintf("echo 'UsePAM no' >> %s/%s", SSHConfigFolder, SSHPasswordConfigFile))
+}
+
 func fileExists(fileName string) bool {
 	_, err := os.Stat(fileName)
 	return err == nil
