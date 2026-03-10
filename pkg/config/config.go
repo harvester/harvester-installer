@@ -313,8 +313,10 @@ type DiskConfig struct {
 // SSHDConfig is the SSHD configuration for the node
 //
 //   - SFTP: the switch to enable/disable SFTP
+//   - DisablePasswordAuth: the switch to disable SSH password authentication after installation
 type SSHDConfig struct {
-	SFTP bool `json:"sftp,omitempty"`
+	SFTP                bool `json:"sftp,omitempty"`
+	DisablePasswordAuth bool `json:"disablePasswordAuth,omitempty"`
 }
 
 type HarvesterConfig struct {
