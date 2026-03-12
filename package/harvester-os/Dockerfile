@@ -5,7 +5,9 @@ ARG ARCH=amd64
 RUN curl -sfL https://github.com/rancher/wharfie/releases/download/v0.6.8/wharfie-${ARCH}  -o /usr/bin/wharfie && chmod +x /usr/bin/wharfie
 
 COPY files/ /
-RUN chmod 0600 /system/oem/*
+RUN chmod 0600 /system/oem/* && \
+    chown root:root /etc/NetworkManager/dispatcher.d/99-iptables && \
+    chmod 755 /etc/NetworkManager/dispatcher.d/99-iptables
 
 COPY harvester-release.yaml /etc/
 
