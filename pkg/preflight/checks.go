@@ -266,7 +266,7 @@ func (c NetworkSpeedCheck) Run() (msg string, err error) {
 
 func (c BIOSCheck) Run() (msg string, err error) {
 	if util.SystemIsBIOS() {
-		msg = "Support for legacy BIOS is deprecated and will be removed in a later release. If possible please reconfigure the system to use UEFI prior to installation."
+		msg = "Legacy BIOS systems are no longer supported. Please reconfigure the system to use UEFI prior to installation."
 	}
 	return
 }
