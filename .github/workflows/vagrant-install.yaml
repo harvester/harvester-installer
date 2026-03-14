@@ -45,13 +45,6 @@ jobs:
         working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
         run: |
           vagrant destroy -f
-      - name: Remove OVMF.fd line if needed
-        working-directory: ${{ steps.ipxe.outputs.VAGRANT_HOME }}
-        run: |
-          if [ ! -f /usr/share/qemu/OVMF.fd ]; then
-            echo "Remove libvirt loader: can't find UEFI firmware"
-            sed 's/libvirt.loader.*/#libvirt.loader = /' Vagrantfile
-          fi
       - name: Generate SSH keys
         run: |
           ssh-keygen -t rsa -q -N "" -f ./ci/terraform/tmp-ssh-key
