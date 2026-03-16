@@ -256,10 +256,6 @@ func showDiskPage(c *Console) error {
 		nextComponents = append([]string{dataDiskPanel}, nextComponents...)
 	}
 
-	if util.SystemIsBIOS() {
-		nextComponents = append([]string{askForceMBRTitlePanel, askForceMBRPanel}, nextComponents...)
-	}
-
 	if showPersistentSizeOption {
 		nextComponents = append([]string{persistentSizePanel}, nextComponents...)
 	}
@@ -312,10 +308,8 @@ func addDiskPanel(c *Console) error {
 			diskFatalPanel,
 			diskPanel,
 			dataDiskPanel,
-			askForceMBRPanel,
 			diskValidatorPanel,
 			diskNotePanel,
-			askForceMBRTitlePanel,
 			persistentSizePanel,
 			wipeDisksTitlePanel,
 			wipeDisksPanel,
@@ -428,31 +422,7 @@ func addDiskPanel(c *Console) error {
 	}
 	c.AddElement(wipeDisksPanel, wipeDisksV)
 
-	// Asking force MBR title
-	askForceMBRTitleV := widgets.NewPanel(c.Gui, askForceMBRTitlePanel)
-	askForceMBRTitleV.SetContent("Use MBR partitioning scheme")
-	setLocation(askForceMBRTitleV, 3)
-	c.AddElement(askForceMBRTitlePanel, askForceMBRTitleV)
-
-	// Asking force MBR DropDown
-	askForceMBRV, err := widgets.NewDropDown(c.Gui, askForceMBRPanel, "", func() ([]widgets.Option, error) {
-		return []widgets.Option{{Value: "no", Text: "No"}, {Value: "yes", Text: "Yes"}}, nil
-	})
-	if err != nil {
-		return err
-	}
-	askForceMBRV.PreShow = func() error {
-		c.Cursor = true
-
-		if c.config.ForceMBR {
-			return askForceMBRV.SetData("yes")
-		}
-		return askForceMBRV.SetData("no")
-	}
-	setLocation(askForceMBRV.Panel, 3)
-	c.AddElement(askForceMBRPanel, askForceMBRV)
-
-	// Note panel for ForceMBR and persistent partition size
+	// Note panel for persistent partition size
 	diskNoteV := widgets.NewPanel(c.Gui, diskNotePanel)
 	diskNoteV.Wrap = true
 	setLocation(diskNoteV, 3)
@@ -539,7 +509,6 @@ func addDiskPanel(c *Console) error {
 	}
 
 	// isWipeDisksPanelNeeded is a helper function to render the wipeDisksPanel if needed
-	// if there are no additional disks to wipe then it checks if MBR needs to be enabled
 	// else will move on to the next apge
 	isWipeDisksPanelNeeded := func(g *gocui.Gui, v *gocui.View) error {
 		options := diskOptionsCache.getWipeDisksOptions(c.config)
@@ -553,12 +522,6 @@ func addDiskPanel(c *Console) error {
 		// no disks left to wipe, so close the wipeDisksTitlePanel and wipeDisksPanel
 		c.CloseElements(wipeDisksTitlePanel, wipeDisksPanel)
 
-		if util.SystemIsBIOS() {
-			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
-				return err
-			}
-			return showNext(c, askForceMBRPanel)
-		}
 		return gotoNextPage(g, v)
 	}
 
@@ -729,12 +692,6 @@ func addDiskPanel(c *Console) error {
 
 	wipeDisksConfirm := func(g *gocui.Gui, v *gocui.View) error {
 		c.config.WipeDisksList = wipeDisksV.GetMultiData()
-		if util.SystemIsBIOS() {
-			if err := c.setContentByName(diskNotePanel, forceMBRNote); err != nil {
-				return err
-			}
-			return showNext(c, askForceMBRPanel)
-		}
 		return gotoNextPage(g, v)
 	}
 
@@ -766,58 +723,6 @@ func addDiskPanel(c *Console) error {
 			return showNext(c, persistentSizePanel)
 		},
 		gocui.KeyEsc: gotoPrevPage,
-	}
-
-	mbrConfirm := func(g *gocui.Gui, v *gocui.View) error {
-		forceMBR, err := askForceMBRV.GetData()
-		if err != nil {
-			return err
-		}
-		if forceMBR == "yes" {
-			diskTooLargeForMBR, err := diskExceedsMBRLimit(c.config.Device)
-			if err != nil {
-				return err
-			}
-			if diskTooLargeForMBR {
-				return updateValidatorMessage("Disk too large for MBR. Must be less than 2TiB")
-			}
-		}
-		if c.config.ForceMBR != (forceMBR == "yes") {
-			// Force another `ENTER` hit to proceed to the next page if the
-			// value is changed.
-			c.config.ForceMBR = forceMBR == "yes"
-			return nil
-		}
-		return gotoNextPage(g, v)
-	}
-	askForceMBRV.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
-		gocui.KeyEnter: mbrConfirm,
-		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
-			diskConfirmed = false
-
-			disk, err := diskV.GetData()
-			if err != nil {
-				return err
-			}
-			dataDisk, err := dataDiskV.GetData()
-			if err != nil {
-				return err
-			}
-
-			if c.config.Install.Role == config.RoleWitness {
-				return showNext(c, diskPanel)
-			}
-			diskOpts := diskOptionsCache.getAllValidDiskOptions()
-			if len(diskOpts) > 1 && disk != dataDisk {
-				return showNext(c, dataDiskPanel)
-			}
-			if err := c.setContentByName(diskNotePanel, persistentSizeNote); err != nil {
-				return err
-			}
-			return showNext(c, persistentSizePanel)
-		},
-		gocui.KeyArrowDown: mbrConfirm,
-		gocui.KeyEsc:       gotoPrevPage,
 	}
 	return nil
 }
