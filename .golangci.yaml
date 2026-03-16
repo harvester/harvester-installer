@@ -25,7 +25,7 @@ linters:
     - _generated
   exclude-dirs:
     - generated
-  executions:
+  exclusions:
     presets:
       - comments
       - common-false-positives
