@@ -24,8 +24,8 @@ docker.io/rancher/prom-prometheus:v3.5.0
 docker.io/rancher/kuberlr-kubectl:v6.0.0
 docker.io/rancher/kuberlr-kubectl:v7.0.1
 docker.io/rancher/kuberlr-kubectl:v7.0.3
-docker.io/rancher/rancher:v2.14.0-rc1
-docker.io/rancher/rancher-agent:v2.14.0-rc1
+docker.io/rancher/rancher:v2.14.0
+docker.io/rancher/rancher-agent:v2.14.0
 docker.io/rancher/rancher-webhook:v0.10.0
 docker.io/rancher/shell:v0.7.0
 docker.io/rancher/system-agent:v0.3.15-suc
