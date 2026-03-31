@@ -1,1 +1,3 @@
 RANCHER_VERSION="v2.14.0"
+
+# NOTE: Run scripts/collect-rancher-deps.sh to update scripts/rancher/deps.yaml when updating the rancher version
