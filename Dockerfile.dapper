@@ -16,8 +16,20 @@ ENV ARCH $DAPPER_HOST_ARCH
 # mtools and dosfstools are requirements for luet-makeiso >= 0.4.0 to build hybrid ISO.
 RUN zypper -n rm container-suseconnect && \
     zypper -n install git curl docker gzip tar wget zstd squashfs xorriso awk jq mtools dosfstools unzip rsync patch
-RUN curl -sfL https://github.com/mikefarah/yq/releases/download/v4.21.1/yq_linux_${ARCH} -o /usr/bin/yq && chmod +x /usr/bin/yq
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest
+
+# yq
+# renovate: datasource=github-release-attachments depName=mikefarah/yq
+ARG YQ_VERSION=v4.52.5
+# renovate: datasource=github-release-attachments depName=mikefarah/yq digestVersion=v4.52.5
+ARG YQ_SUM_amd64=75d893a0d5940d1019cb7cdc60001d9e876623852c31cfc6267047bc31149fa9
+# renovate: datasource=github-release-attachments depName=mikefarah/yq digestVersion=v4.52.5
+ARG YQ_SUM_arm64=90fa510c50ee8ca75544dbfffed10c88ed59b36834df35916520cddc623d9aaa
+
+ENV YQ_SUM="YQ_SUM_${ARCH}"
+RUN curl -sfL https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${ARCH} -o /usr/bin/yq && echo "${!YQ_SUM}" /usr/bin/yq | sha256sum -c - && chmod +x /usr/bin/yq
+
+
+RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
 
 # only needed for raw image generation. currently skipped for arm builds
 RUN if [ "${ARCH}" == "amd64" ]; then \
@@ -27,11 +39,15 @@ RUN if [ "${ARCH}" == "amd64" ]; then \
     fi
 
 # set up helm
-ENV HELM_VERSION v3.3.1
-ENV HELM_URL=https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz
-RUN mkdir /usr/tmp && \
-    curl ${HELM_URL} | tar xvzf - --strip-components=1 -C /usr/tmp/ && \
-    mv /usr/tmp/helm /usr/bin/helm
+ARG HELM_VERSION=v3.20.0
+ARG HELM_SUM_amd64=dbb4c8fc8e19d159d1a63dda8db655f9ffa4aac1b9a6b188b34a40957119b286
+ARG HELM_SUM_arm64=bfb14953295d5324d47ab55f3dfba6da28d46c848978c8fbf412d4271bdc29f1
+ARG HELM_SUM="HELM_SUM_${ARCH}"
+RUN mkdir /usr/tmp && cd /usr/tmp && \
+    curl -O https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz && \
+    echo "${!HELM_SUM}" helm-${HELM_VERSION}-linux-${ARCH}.tar.gz | sha256sum -c - && \
+    tar xvzf helm-${HELM_VERSION}-linux-${ARCH}.tar.gz --strip-components=1 && \
+    mv helm /usr/bin/helm
 
 ARG LOCAL_HARVESTER_SRC
 ENV HARVESTER_SRC_MOUNT="${LOCAL_HARVESTER_SRC:+-v $LOCAL_HARVESTER_SRC:/go/src/github.com/harvester/harvester}"
