@@ -1,0 +1,36 @@
+name: check-rancher-deps
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - master
+    - v*
+    paths:
+    - scripts/version-rancher
+    - scripts/rancher/deps.yaml
+    - ci/check-rancher-dep.sh
+  pull_request:
+    paths:
+    - scripts/version-rancher
+    - scripts/rancher/deps.yaml
+    - ci/check-rancher-dep.sh
+jobs:
+  check-rancher-deps:
+    name: Check Rancher Charts in Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+    - name: Verify deps.yaml is up-to-date
+      run: |
+        scripts/collect-rancher-deps.sh /tmp/fresh-deps.yaml
+        if ! diff -u scripts/rancher/deps.yaml /tmp/fresh-deps.yaml; then
+          echo "ERROR: scripts/rancher/deps.yaml is out of date."
+          echo "Run scripts/collect-rancher-deps.sh and commit the result."
+          exit 1
+        fi
+        echo "PASS: scripts/rancher/deps.yaml is up-to-date."
+    - name: Check charts exist in Rancher image
+      run: ci/check-rancher-dep.sh
