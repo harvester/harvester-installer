@@ -70,9 +70,7 @@ update_rancher_deps() {
   local rancher_build_yaml=$(mktemp)
   local build_yaml_url="https://raw.githubusercontent.com/rancher/rancher/${rancher_version}/build.yaml"
   echo "Fetching rancher build.yaml from ${build_yaml_url}"
-  curl -sf "$build_yaml_url" -o "$rancher_build_yaml"
-
-  if [ ! -s "$rancher_build_yaml" ]; then
+  if ! curl -sf "$build_yaml_url" -o "$rancher_build_yaml"; then
     echo "Error: Failed to fetch build.yaml" >&2
     rm -f "$rancher_build_yaml"
     return 1
