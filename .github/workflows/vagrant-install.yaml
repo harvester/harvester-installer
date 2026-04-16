@@ -26,6 +26,8 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Build Harvester artifacts
+        env:
+          DISABLE_BUILD_NET_INSTALL_ISO: "true"
         run: |
           make
       - name: Clone and checkout ipxe-examples
