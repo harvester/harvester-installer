@@ -115,6 +115,14 @@ func Test_GenerateRancherdConfig(t *testing.T) {
 	assert.Equal(t, yipConfig.Stages["live"][0].TimeSyncd["NTP"], strings.Join(conf.OS.NTPServers, " "))
 }
 
+func TestGenBootstrapResources(t *testing.T) {
+	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
+	assert.NoError(t, err)
+	bootstrapResources, err := genBootstrapResources(conf)
+	assert.NoError(t, err)
+	assert.True(t, len(bootstrapResources) > 0)
+}
+
 func TestConvertToCos_VerifyNetworkCreateMode(t *testing.T) {
 	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
 	assert.NoError(t, err)
