@@ -1251,7 +1251,7 @@ resources:
               {
                 "expr": "irate(kubevirt_vmi_storage_iops_write_total{namespace=\"$namespace\", name=\"$vm\"}[5m])",
                 "interval": "",
-                "legendFormat": "{{drive}}-writ",
+                "legendFormat": "{{drive}}-write",
                 "refId": "B"
               }
             ],

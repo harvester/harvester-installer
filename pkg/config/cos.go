@@ -757,7 +757,10 @@ func genBootstrapResources(config *HarvesterConfig) (map[string]string, error) {
 			return nil, err
 		}
 
-		bootstrapConfs[templateName] = string(templBytes)
+		// Since Grafana also uses mustaches for templating, these must
+		// now be masked; otherwise, they will cause errors later when
+		// Elemental/yip processes them as Go templates.
+		bootstrapConfs[templateName] = escapeMustaches(string(templBytes))
 	}
 
 	// for arm based installs we need to deploy rancherd-23-multus-config.yaml which configures the multus helm chart
