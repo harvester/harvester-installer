@@ -48,7 +48,9 @@ fi
 # Revert harvester chart version patch to clean dirty git status
 reset_charts() {
   pushd ${harvester_path}
-  git checkout -- ./deploy/charts
+  echo "Resetting harvester chart changes"
+  rm -rf ./deploy
+  cp -r ${TOP_DIR}/.backup/deploy ./deploy
   popd
 }
 
@@ -56,6 +58,9 @@ reset_charts() {
 source ${SCRIPTS_DIR}/version-harvester ${harvester_path}
 
 # Replace harvester chart version
+mkdir -p "${TOP_DIR}/.backup" && rm -rf "${TOP_DIR}/.backup/deploy"
+cp -r ${harvester_path}/deploy "${TOP_DIR}/.backup/deploy"
+trap reset_charts EXIT
 ${SCRIPTS_DIR}/patch-harvester ${harvester_path}
 # Package harvester chart
 harvester_chart_path=${harvester_path}/deploy/charts/harvester
