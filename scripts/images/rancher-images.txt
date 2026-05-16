@@ -26,9 +26,9 @@ docker.io/rancher/kuberlr-kubectl:v7.0.1
 docker.io/rancher/kuberlr-kubectl:v7.0.3
 docker.io/rancher/rancher:v2.14.2-alpha2
 docker.io/rancher/rancher-agent:v2.14.2-alpha2
-docker.io/rancher/rancher-webhook:v0.10.5-rc.2
+docker.io/rancher/rancher-webhook:v0.10.4
 docker.io/rancher/shell:v0.7.0
 docker.io/rancher/system-agent:v0.3.16-suc
 docker.io/rancher/system-upgrade-controller:v0.19.1
-docker.io/rancher/turtles:v0.26.2-rc.1
+docker.io/rancher/turtles:v0.26.2-rc.0
 docker.io/rancher/cluster-api-controller:v1.12.2
