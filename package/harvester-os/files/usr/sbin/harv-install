@@ -183,11 +183,15 @@ preload_rke2_images()
     fi
 
     # Use HARVESTER_ISO_URL to determine if this is an ISO-based installation
-    if [ -n "$HARVESTER_ISO_URL" ]; then
-        INSTALL_MODE="PXE"
-    else
-        INSTALL_MODE="ISO"
-    fi
+    # Only remote URL sources use the PXE bind-mount path.
+    case "${HARVESTER_ISO_URL:-}" in
+        ftp*|http*|tftp*)
+            INSTALL_MODE="PXE"
+            ;;
+        *)
+            INSTALL_MODE="ISO"
+            ;;
+    esac
 
     readonly RKE2_IMAGES_DIR="/var/lib/rancher/rke2/agent/images"
     readonly TMP_IMAGES_DIR="/var/lib/rancher/tmp/images"
