@@ -570,6 +570,11 @@ func doInstall(g *gocui.Gui, hvstConfig *config.HarvesterConfig, webhooks Render
 
 	// prepare to wipe disks
 	for _, disk := range hvstConfig.Install.WipeDisksList {
+		if _, err := os.Stat(disk); os.IsNotExist(err) {
+			logrus.Warnf("disk %s does not exist, skipping wipe", disk)
+			continue
+		}
+		logrus.Infof("wiping disk %s", disk)
 		if err := executeWipeDisks(ctx, disk); err != nil {
 			return fmt.Errorf("error wiping disk %s: %w", disk, err)
 		}
