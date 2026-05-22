@@ -1,0 +1,10 @@
+rancherDependencies:
+  fleet:
+    chart: "109.0.0+up0.15.0"
+    app: "0.15.0"
+  fleet-crd:
+    chart: "109.0.0+up0.15.0"
+    app: "0.15.0"
+  rancher-webhook:
+    chart: "109.0.0+up0.10.0"
+    app: "0.10.0"
