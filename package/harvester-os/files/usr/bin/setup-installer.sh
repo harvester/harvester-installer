@@ -36,6 +36,22 @@ EOF
 
 }
 
+is_virtual_tty()
+{
+  local tty_name=$1
+  local tty_num=${tty_name#tty}
+  [[ ${tty_num} =~ ^[1-9][0-9]*$ ]]
+}
+
+is_serial_tty()
+{
+  local tty_name=$1
+  local tty_type
+
+  tty_type=$(cat "/sys/class/tty/${tty_name}/type")
+  [ "x${tty_type}" != "x0" ]
+}
+
 
 echo "Remove the getty service..."
 rm -rf "/etc/systemd/system/getty*"
@@ -43,40 +59,29 @@ rm -rf "/etc/systemd/system/getty*"
 echo "Remove the serial-getty service..."
 rm -rf "/etc/systemd/system/serial-getty*"
 
-# reverse the ttys to start from the last one
 read -r -a tty_list < /sys/class/tty/console/active
+preferred_virtual_tty=""
 
 for TTY in "${tty_list[@]}"; do
-  tty_num=${TTY#tty}
-
- #for arm64 the terminals are named /dev/ttyAMA*
- #skip /dev/ttyAMA* if an additional tty is present
- #on equinix metal /dev/ttyAMA is the only terminal available
- #so needs to be used as default option
-  PLATFORM=$(uname -m)
-  if [[ $PLATFORM == "aarch64" && ${#tty_list[@]} > 1 ]]
-  then
-    if  [[ $tty_num =~ ^AMA[0-9]+$ ]]; then
-      continue
-    fi
-  fi
-
-  # tty1 ~ tty64
-  if [[ $tty_num =~ ^[0-9]+$ ]]; then
+  if [[ ${TTY} == "tty1" ]]; then
     create_drop_in "/etc/systemd/system/getty@${TTY}.service.d"
-    
-    break
+    exit 0
   fi
+  if [[ -z ${preferred_virtual_tty} ]] && is_virtual_tty "${TTY}"; then
+    preferred_virtual_tty=${TTY}
+  fi
+done
 
- 
-  # might be serial console
+if [[ -n ${preferred_virtual_tty} ]]; then
+  create_drop_in "/etc/systemd/system/getty@${preferred_virtual_tty}.service.d"
+  exit 0
+fi
 
-  # check type is not 0
-  tty_type=$(cat "/sys/class/tty/${TTY}/type")
-  if [ "x${tty_type}" = "x0" ]; then
+for TTY in "${tty_list[@]}"; do
+  if ! is_serial_tty "${TTY}"; then
     continue
   fi
-  
+
   create_drop_in "/etc/systemd/system/serial-getty@${TTY}.service.d"
-  break
+  exit 0
 done
