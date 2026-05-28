@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-      - 'v*'
+      - 'v**'
   pull_request:
 
 jobs:
