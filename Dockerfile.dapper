@@ -1,4 +1,4 @@
-FROM registry.suse.com/bci/golang:1.25
+FROM registry.suse.com/bci/golang:1.26
 
 ARG http_proxy=$http_proxy
 ARG https_proxy=$https_proxy
@@ -29,7 +29,7 @@ ENV YQ_SUM="YQ_SUM_${ARCH}"
 RUN curl -sfL https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${ARCH} -o /usr/bin/yq && echo "${!YQ_SUM}" /usr/bin/yq | sha256sum -c - && chmod +x /usr/bin/yq
 
 
-RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
+RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 
 # only needed for raw image generation. currently skipped for arm builds
 RUN if [ "${ARCH}" == "amd64" ]; then \
