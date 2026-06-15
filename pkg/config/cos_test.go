@@ -265,9 +265,9 @@ func TestConvertToCOS_EnableIPv6(t *testing.T) {
 			check: func(t *testing.T, initramfs yipSchema.Stage) {
 				for _, f := range initramfs.Files {
 					if f.Path == "/etc/sysctl.d/zz-harvester-enable-ipv6.conf" {
-						assert.Contains(t, f.Content, "net.ipv6.conf.all.disable_ipv6 = 0")
-						assert.Contains(t, f.Content, "net.ipv6.conf.default.disable_ipv6 = 0")
-						assert.Contains(t, f.Content, "net.ipv6.conf.lo.disable_ipv6 = 0")
+						assert.Contains(t, f.Content, SysctlDisableIPv6All+" = 0")
+						assert.Contains(t, f.Content, SysctlDisableIPv6Default+" = 0")
+						assert.Contains(t, f.Content, SysctlDisableIPv6Lo+" = 0")
 						assert.Equal(t, uint32(0644), f.Permissions)
 						return
 					}
@@ -284,9 +284,9 @@ func TestConvertToCOS_EnableIPv6(t *testing.T) {
 		{
 			name: "sysctl map keys",
 			check: func(t *testing.T, initramfs yipSchema.Stage) {
-				assert.Equal(t, "0", initramfs.Sysctl["net.ipv6.conf.all.disable_ipv6"])
-				assert.Equal(t, "0", initramfs.Sysctl["net.ipv6.conf.default.disable_ipv6"])
-				assert.Equal(t, "0", initramfs.Sysctl["net.ipv6.conf.lo.disable_ipv6"])
+				assert.Equal(t, "0", initramfs.Sysctl[SysctlDisableIPv6All])
+				assert.Equal(t, "0", initramfs.Sysctl[SysctlDisableIPv6Default])
+				assert.Equal(t, "0", initramfs.Sysctl[SysctlDisableIPv6Lo])
 			},
 		},
 	}

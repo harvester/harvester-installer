@@ -204,10 +204,8 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	})
 	initramfs.Files = append(initramfs.Files, yipSchema.File{
 		Path: "/etc/sysctl.d/zz-harvester-enable-ipv6.conf",
-		Content: "# Written by harvester-installer: overrides /etc/sysctl.d/ipv6.conf\n" +
-			"net.ipv6.conf.all.disable_ipv6 = 0\n" +
-			"net.ipv6.conf.default.disable_ipv6 = 0\n" +
-			"net.ipv6.conf.lo.disable_ipv6 = 0\n",
+		Content: fmt.Sprintf("# Written by harvester-installer: overrides /etc/sysctl.d/ipv6.conf\n%s = 0\n%s = 0\n%s = 0\n",
+			SysctlDisableIPv6All, SysctlDisableIPv6Default, SysctlDisableIPv6Lo),
 		Permissions: 0644,
 		Owner:       0,
 		Group:       0,
@@ -215,9 +213,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	if initramfs.Sysctl == nil {
 		initramfs.Sysctl = make(map[string]string)
 	}
-	initramfs.Sysctl["net.ipv6.conf.all.disable_ipv6"] = "0"
-	initramfs.Sysctl["net.ipv6.conf.default.disable_ipv6"] = "0"
-	initramfs.Sysctl["net.ipv6.conf.lo.disable_ipv6"] = "0"
+	initramfs.Sysctl[SysctlDisableIPv6All] = "0"
+	initramfs.Sysctl[SysctlDisableIPv6Default] = "0"
+	initramfs.Sysctl[SysctlDisableIPv6Lo] = "0"
 
 	// TOP
 	if cfg.Install.Mode != ModeInstall {
