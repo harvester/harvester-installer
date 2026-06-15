@@ -89,6 +89,17 @@ func applyNetworks(network config.Network, hostname string) error {
 		}
 	}
 
+	// enable IPv6 before applying NetworkManager profiles
+	for _, param := range []string{
+		"net.ipv6.conf.all.disable_ipv6=0",
+		"net.ipv6.conf.default.disable_ipv6=0",
+		"net.ipv6.conf.lo.disable_ipv6=0",
+	} {
+		if out, execErr := exec.Command("sysctl", "-w", param).CombinedOutput(); execErr != nil {
+			logrus.Warnf("Failed to enable IPv6 sysctl %s: %v (%s)", param, execErr, string(out))
+		}
+	}
+
 	err = config.UpdateManagementInterfaceConfig(network, []string{}, config.NMConnectionPath, true)
 	if err != nil {
 		return err

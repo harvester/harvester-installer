@@ -195,6 +195,30 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	// disable multipath for longhorn
 	disableLonghornMultipathing(&initramfs)
 
+	// write a persistent sysctl drop-in and apply at runtime; persists after reboot
+	initramfs.Directories = append(initramfs.Directories, yipSchema.Directory{
+		Path:        "/etc/sysctl.d",
+		Permissions: 0755,
+		Owner:       0,
+		Group:       0,
+	})
+	initramfs.Files = append(initramfs.Files, yipSchema.File{
+		Path: "/etc/sysctl.d/zz-harvester-enable-ipv6.conf",
+		Content: "# Written by harvester-installer: overrides /etc/sysctl.d/ipv6.conf\n" +
+			"net.ipv6.conf.all.disable_ipv6 = 0\n" +
+			"net.ipv6.conf.default.disable_ipv6 = 0\n" +
+			"net.ipv6.conf.lo.disable_ipv6 = 0\n",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+	if initramfs.Sysctl == nil {
+		initramfs.Sysctl = make(map[string]string)
+	}
+	initramfs.Sysctl["net.ipv6.conf.all.disable_ipv6"] = "0"
+	initramfs.Sysctl["net.ipv6.conf.default.disable_ipv6"] = "0"
+	initramfs.Sysctl["net.ipv6.conf.lo.disable_ipv6"] = "0"
+
 	// TOP
 	if cfg.Install.Mode != ModeInstall {
 		if err := initRancherdStage(config, &initramfs); err != nil {
