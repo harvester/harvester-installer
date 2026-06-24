@@ -33,4 +33,11 @@ address1={{ .Bridge.IP }}/{{ .Bridge.SubnetMask }},{{ .Bridge.Gateway }}
 {{- end }}
 
 [ipv6]
+{{ if eq .Bridge.IPv6Method "dhcp" -}}
+method=auto
+{{- else if eq .Bridge.IPv6Method "static" -}}
+method=manual
+address1={{ .Bridge.IPv6IP }},{{ .Bridge.IPv6Gateway }}
+{{- else -}}
 method=disabled
+{{- end }}
