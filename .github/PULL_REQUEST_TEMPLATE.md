@@ -1,6 +1,10 @@
 <!-- 
 !IMPORTANT!
 Please do not create a Pull Request without creating an issue first.
+
+!IMPORTANT!
+The installer code has been integrated into the main [harvester/harvester](https://github.com/harvester/harvester) repository. Please do not submit pull requests to this repository unless they are for v1.8 or earlier branches. This repository will be archived soon.
+
 -->
 
 #### Problem:
