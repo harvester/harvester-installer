@@ -142,7 +142,7 @@ Vagrant box.
 The `harvester-installer` app will now listen for remote connections
 on port `2345`.
 
-Run `vagrant ssh-config` on your host to get the IP address that is 
+Run `vagrant ssh-config` on your host to get the IP address that is
 needed to connect the IDE debugger to the `harvester-installer` app.
 
 If you are using the Goland IDE, check out their [documentation](https://www.jetbrains.com/help/go/go-remote.html)
@@ -177,3 +177,4 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+test
