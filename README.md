@@ -2,6 +2,9 @@ harvester-installer
 ========
 [![Build Status](https://github.com/harvester/harvester-installer/actions/workflows/build.yml/badge.svg)](https://github.com/harvester/harvester-installer/actions/workflows/build.yml)
 
+> [!IMPORTANT]  
+> The installer code has been integrated into the main [harvester/harvester](https://github.com/harvester/harvester) repository. Please do not submit pull requests to this repository unless they are for v1.8 or earlier branches. This repository will be archived soon.
+
 Repo for building the [Harvester](https://github.com/harvester/harvester)
 ISO image.  This includes the various scripts necessary to build the ISO
 itself, plus the `harvester-installer` binary and related scripts that
