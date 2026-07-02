@@ -1,3 +1,35 @@
 #!/bin/bash -ex
+
+restart_console_getty()
+{
+  read -r -a tty_list < /sys/class/tty/console/active
+  local preferred_virtual_tty=""
+
+  for TTY in "${tty_list[@]}"; do
+    if [[ ${TTY} == "tty1" ]]; then
+      systemctl restart "getty@${TTY}.service"
+      return 0
+    fi
+    tty_num=${TTY#tty}
+    if [[ -z ${preferred_virtual_tty} ]] && [[ ${tty_num} =~ ^[1-9][0-9]*$ ]]; then
+      preferred_virtual_tty=${TTY}
+    fi
+  done
+
+  if [[ -n ${preferred_virtual_tty} ]]; then
+    systemctl restart "getty@${preferred_virtual_tty}.service"
+    return 0
+  fi
+
+  for TTY in "${tty_list[@]}"; do
+    tty_type=$(cat "/sys/class/tty/${TTY}/type")
+    if [ "x${tty_type}" = "x0" ]; then
+      continue
+    fi
+    systemctl restart "serial-getty@${TTY}.service"
+    return 0
+  done
+}
+
 systemctl restart --no-block rancherd
-systemctl restart getty@tty1.service
+restart_console_getty
