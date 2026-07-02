@@ -1,0 +1,9 @@
+scm:
+  commitusingapi: true
+  enabled: true
+  user: harvester-bot
+  email: harvester-bot@users.noreply.github.com
+  owner: harvester
+  repository: harvester-installer
+  username: "harvester-bot"
+  branch: master

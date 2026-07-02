@@ -1,0 +1,9 @@
+Name: Update Go version
+policies:
+  - name: Update Go version
+    policy: ghcr.io/pohanhuang/harvester/golang/version:0.1.4@sha256:11fc576517439818918532aa6caeaeb073b5f205a0775606d6ca17b1a51e0df1
+  - name: Update Updatecli policies
+    policy: ghcr.io/updatecli/policies/updatecli/autodiscovery:0.8.1@sha256:f8edda1a6cbf0d7274e2b847ede29fc4dc70dd5302ccb8575ae21b069cc0d8a0
+    values:
+      - values.d/scm.yaml
+      - values.d/spec.yaml
