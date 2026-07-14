@@ -191,6 +191,10 @@ type Install struct {
 	Harvester               HarvesterChartValues `json:"harvester,omitempty"`
 	RawDiskImagePath        string               `json:"rawDiskImagePath,omitempty"`
 	PersistentPartitionSize string               `json:"persistentPartitionSize,omitempty"`
+
+	// pod security admission config
+	// see templates/rke2-99-harvester-psa.yaml
+	PSA PSAConfig `json:"psaConfig,omitempty"`
 }
 
 type File struct {
@@ -317,6 +321,10 @@ type DiskConfig struct {
 type SSHDConfig struct {
 	SFTP                bool `json:"sftp,omitempty"`
 	DisablePasswordAuth bool `json:"disablePasswordAuth,omitempty"`
+}
+
+type PSAConfig struct {
+	EnforceSecurityLevel string `json:"enforceSecurityLevel"`
 }
 
 type HarvesterConfig struct {
