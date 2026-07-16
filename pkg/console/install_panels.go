@@ -1992,7 +1992,12 @@ func addClusterNetworkPanel(c *Console) error {
 			clusterNetworkValidatorPanel)
 	}
 
+	// awaitingDualStackAck tracks whether the user has seen the dual-stack
+	// experimental warning and needs to press Enter once more to confirm.
+	var awaitingDualStackAck bool
+
 	prevPage := func(_ *gocui.Gui, _ *gocui.View) error {
+		awaitingDualStackAck = false
 		closePage()
 		return showNetworkPage(c)
 	}
@@ -2072,9 +2077,23 @@ func addClusterNetworkPanel(c *Console) error {
 		if cidr == "" {
 			return nil
 		}
-
-		_, err := netip.ParsePrefix(cidr)
-		return err
+		parts := strings.Split(cidr, ",")
+		if len(parts) > 2 {
+			return fmt.Errorf("at most two CIDRs (IPv4,IPv6) are allowed, got %d", len(parts))
+		}
+		for _, p := range parts {
+			if _, err := netip.ParsePrefix(strings.TrimSpace(p)); err != nil {
+				return err
+			}
+		}
+		if len(parts) == 2 {
+			first, _ := netip.ParsePrefix(strings.TrimSpace(parts[0]))
+			second, _ := netip.ParsePrefix(strings.TrimSpace(parts[1]))
+			if !first.Addr().Is4() || second.Addr().Is4() {
+				return fmt.Errorf("dual-stack CIDRs must be in IPv4-first order (e.g. 10.42.0.0/16,fd42::/48)")
+			}
+		}
+		return nil
 	}
 
 	validateDNSIP := func(ip string) error {
@@ -2087,20 +2106,34 @@ func addClusterNetworkPanel(c *Console) error {
 			return nil
 		}
 
-		// the DNS IP address must be well-formed and within the
-		// service CIDR
-		ipAddr, err := netip.ParseAddr(ip)
-		if err != nil {
-			return fmt.Errorf("invalid cluster DNS IP: %w", err)
+		// Build a map from Is4() bool → service prefix so each DNS address
+		// can be matched to the CIDR of its own address family.
+		svcParts := strings.Split(serviceCIDR, ",")
+		svcNets := make(map[bool]netip.Prefix, len(svcParts))
+		for _, part := range svcParts {
+			part = strings.TrimSpace(part)
+			prefix, parseErr := netip.ParsePrefix(part)
+			if parseErr != nil {
+				return fmt.Errorf("to override the cluster DNS IP, the service CIDR must be valid: %w", parseErr)
+			}
+			svcNets[prefix.Addr().Is4()] = prefix
 		}
 
-		svcNet, err := netip.ParsePrefix(serviceCIDR)
-		if err != nil {
-			return fmt.Errorf("to override the cluster DNS IP, the service CIDR must be valid: %w", err)
-		}
-
-		if !svcNet.Contains(ipAddr) {
-			return fmt.Errorf("invalid cluster DNS IP: %s is not in the service CIDR %s", ip, serviceCIDR)
+		// Validate each DNS address against the service CIDR of the same family.
+		dnsParts := strings.Split(ip, ",")
+		for _, part := range dnsParts {
+			part = strings.TrimSpace(part)
+			ipAddr, parseErr := netip.ParseAddr(part)
+			if parseErr != nil {
+				return fmt.Errorf("invalid cluster DNS IP: %w", parseErr)
+			}
+			svcNet, ok := svcNets[ipAddr.Is4()]
+			if !ok {
+				return fmt.Errorf("invalid cluster DNS IP: %s has no matching service CIDR for its address family", part)
+			}
+			if !svcNet.Contains(ipAddr) {
+				return fmt.Errorf("invalid cluster DNS IP: %s is not in the service CIDR %s", part, svcNet)
+			}
 		}
 
 		return nil
@@ -2118,7 +2151,9 @@ func addClusterNetworkPanel(c *Console) error {
 				clusterNetworkValidatorPanel,
 				fmt.Sprintf("Invalid pod CIDR: %s", err))
 		}
+
 		c.config.ClusterPodCIDR = podCIDR
+		awaitingDualStackAck = false
 
 		// reset any previous error in the validator panel before
 		// moving to the next panel
@@ -2140,6 +2175,7 @@ func addClusterNetworkPanel(c *Console) error {
 				fmt.Sprintf("Invalid service CIDR: %s", err))
 		}
 		c.config.ClusterServiceCIDR = serviceCIDR
+		awaitingDualStackAck = false
 
 		// reset any previous error in the validator panel before
 		// moving to the next panel
@@ -2155,11 +2191,28 @@ func addClusterNetworkPanel(c *Console) error {
 			return err
 		}
 		if err = validateDNSIP(dns); err != nil {
+			awaitingDualStackAck = false
 			return c.setContentByName(clusterNetworkValidatorPanel, err.Error())
 		}
 		c.config.ClusterDNS = dns
 
-		// reset the validator panel before moving to the next page
+		// All fields are validated. If dual-stack was configured, show an inline
+		// warning on the first Enter and require a second Enter to confirm.
+		if strings.Contains(c.config.ClusterPodCIDR, ",") {
+			if !awaitingDualStackAck {
+				awaitingDualStackAck = true
+				return c.setContentByName(clusterNetworkValidatorPanel,
+					"WARNING: Dual-stack networking (IPv4, IPv6) is an experimental feature "+
+						"and may behave unexpectedly in production. "+
+						"Press Enter again to confirm, or go back to change the configuration.")
+			}
+			// Second Enter: user confirmed, apply IPv6 and proceed.
+			awaitingDualStackAck = false
+			if err = applyKernelIPv6(true); err != nil {
+				return c.setContentByName(clusterNetworkValidatorPanel, err.Error())
+			}
+		}
+
 		if err = c.setContentByName(clusterNetworkValidatorPanel, ""); err != nil {
 			return err
 		}
@@ -2190,6 +2243,7 @@ func addClusterNetworkPanel(c *Console) error {
 	dnsInput.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
 		gocui.KeyEsc: prevPage,
 		gocui.KeyArrowUp: func(_ *gocui.Gui, _ *gocui.View) error {
+			awaitingDualStackAck = false
 			return showNext(c, clusterServiceCIDRPanel)
 		},
 		gocui.KeyArrowDown: dnsConfirm,
@@ -2209,9 +2263,8 @@ func addClusterNetworkPanel(c *Console) error {
 	validatorPanel := widgets.NewPanel(c.Gui, clusterNetworkValidatorPanel)
 	validatorPanel.FgColor = gocui.ColorRed
 	validatorPanel.Focus = false
-	maxX, _ := c.Gui.Size()
-	validatorPanel.X1 = maxX / 8 * 6
-	setLocation(validatorPanel, 3)
+	validatorPanel.Wrap = true
+	setLocation(validatorPanel, 6)
 	c.AddElement(clusterNetworkValidatorPanel, validatorPanel)
 
 	return nil

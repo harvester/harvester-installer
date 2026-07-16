@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/harvester/harvester-installer/pkg/config"
 	"github.com/harvester/harvester-installer/pkg/console"
@@ -60,7 +61,7 @@ Executes the Harvester installer if no command is specified.`,
 						return err
 					}
 					if len(paths) == 0 || cmd.Bool("force") {
-						err = config.UpdateManagementInterfaceConfig(harvesterCfg.ManagementInterface, harvesterCfg.OS.DNSNameservers, cmd.String("connection-path"), false)
+						err = config.UpdateManagementInterfaceConfig(harvesterCfg.ManagementInterface, harvesterCfg.OS.DNSNameservers, cmd.String("connection-path"), false, strings.Contains(harvesterCfg.Install.ClusterPodCIDR, ","))
 						if err != nil {
 							return err
 						}

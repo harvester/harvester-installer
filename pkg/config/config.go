@@ -539,7 +539,8 @@ func GenerateRancherdConfig(config *HarvesterConfig) (*yipSchema.YipConfig, erro
 		return nil, err
 	}
 
-	if err := UpdateManagementInterfaceConfig(config.ManagementInterface, config.OS.DNSNameservers, NMConnectionPath, true); err != nil {
+	ipv6Enabled := strings.Contains(config.Install.ClusterPodCIDR, ",")
+	if err := UpdateManagementInterfaceConfig(config.ManagementInterface, config.OS.DNSNameservers, NMConnectionPath, true, ipv6Enabled); err != nil {
 		return nil, err
 	}
 

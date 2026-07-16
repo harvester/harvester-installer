@@ -294,6 +294,7 @@ func TestConvertToCOS_EnableIPv6(t *testing.T) {
 	conf, err := LoadHarvesterConfig(util.LoadFixture(t, "harvester-config.yaml"))
 	assert.NoError(t, err)
 	conf.Mode = ModeInstall
+	conf.Install.ClusterPodCIDR = "10.42.0.0/16,fd42::/48" // dual-stack triggers IPv6 enable path
 
 	yipConfig, err := ConvertToCOS(conf)
 	assert.NoError(t, err)
