@@ -2086,6 +2086,16 @@ func addClusterNetworkPanel(c *Console) error {
 				return err
 			}
 		}
+		if len(parts) == 1 {
+			// A single CIDR must be IPv4; IPv6-only is not a supported mode.
+			single, err := netip.ParsePrefix(strings.TrimSpace(parts[0])) // already validated above
+			if err != nil {
+				return err
+			}
+			if !single.Addr().Is4() {
+				return fmt.Errorf("a single CIDR must be IPv4 (e.g. 10.42.0.0/16); for dual-stack provide IPv4,IPv6")
+			}
+		}
 		if len(parts) == 2 {
 			firstStr := strings.TrimSpace(parts[0])
 			secondStr := strings.TrimSpace(parts[1])

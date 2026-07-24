@@ -996,12 +996,29 @@ WantedBy=sysinit.target`)
 	})
 }
 
-// isIPv6Enabled checks if the clusterPodCIDR is dual-stack IPv4
-// family first (IPv4, IPv6) or not.
+// isIPv6Enabled reports whether clusterPodCIDR describes a valid dual-stack
+// configuration: exactly two comma-separated prefixes in IPv4-first order.
+// An empty value returns (false, nil). A single IPv4 CIDR returns (false, nil).
+// A single IPv6-only CIDR returns an error (unsupported mode).
+// A two-part value with a malformed prefix returns (false, err).
 func isIPv6Enabled(clusterPodCIDR string) (bool, error) {
 	parts := strings.Split(clusterPodCIDR, ",")
+	if len(parts) == 1 {
+		cidr := strings.TrimSpace(parts[0])
+		if cidr == "" {
+			return false, nil
+		}
+		prefix, err := netip.ParsePrefix(cidr)
+		if err != nil {
+			return false, err
+		}
+		if !prefix.Addr().Is4() {
+			return false, fmt.Errorf("IPv6-only CIDR %q is not supported; use IPv4 or IPv4,IPv6 for dual-stack", cidr)
+		}
+		return false, nil
+	}
 	if len(parts) != 2 {
-		return false, fmt.Errorf("invalid clusterPodCIDR format")
+		return false, fmt.Errorf("at most two CIDRs (IPv4,IPv6) are allowed, got %d", len(parts))
 	}
 	first, err := netip.ParsePrefix(strings.TrimSpace(parts[0]))
 	if err != nil {
