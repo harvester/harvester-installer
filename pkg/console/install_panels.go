@@ -2087,8 +2087,16 @@ func addClusterNetworkPanel(c *Console) error {
 			}
 		}
 		if len(parts) == 2 {
-			first, _ := netip.ParsePrefix(strings.TrimSpace(parts[0]))
-			second, _ := netip.ParsePrefix(strings.TrimSpace(parts[1]))
+			firstStr := strings.TrimSpace(parts[0])
+			secondStr := strings.TrimSpace(parts[1])
+			first, err := netip.ParsePrefix(firstStr)
+			if err != nil {
+				return err
+			}
+			second, err := netip.ParsePrefix(secondStr)
+			if err != nil {
+				return err
+			}
 			if !first.Addr().Is4() || second.Addr().Is4() {
 				return fmt.Errorf("dual-stack CIDRs must be in IPv4-first order (e.g. 10.42.0.0/16,fd42::/48)")
 			}
@@ -2121,6 +2129,10 @@ func addClusterNetworkPanel(c *Console) error {
 
 		// Validate each DNS address against the service CIDR of the same family.
 		dnsParts := strings.Split(ip, ",")
+		if len(dnsParts) > 2 {
+			return fmt.Errorf("at most two DNS IPs (IPv4,IPv6) are allowed, got %d", len(dnsParts))
+		}
+		parsed := make([]netip.Addr, 0, len(dnsParts))
 		for _, part := range dnsParts {
 			part = strings.TrimSpace(part)
 			ipAddr, parseErr := netip.ParseAddr(part)
@@ -2133,6 +2145,12 @@ func addClusterNetworkPanel(c *Console) error {
 			}
 			if !svcNet.Contains(ipAddr) {
 				return fmt.Errorf("invalid cluster DNS IP: %s is not in the service CIDR %s", part, svcNet)
+			}
+			parsed = append(parsed, ipAddr)
+		}
+		if len(parsed) == 2 {
+			if !parsed[0].Is4() || parsed[1].Is4() {
+				return fmt.Errorf("dual-stack DNS IPs must be in IPv4-first order (e.g. 10.53.0.10,fd53::a)")
 			}
 		}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -197,7 +198,10 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	// Write a persistent sysctl drop-in whose value matches the install's IPv6 choice.
 	// For dual-stack, IPv6 is enabled (disable_ipv6=0); for IPv4-only it is disabled (disable_ipv6=1).
-	ipv6Enabled := strings.Contains(cfg.Install.ClusterPodCIDR, ",")
+	ipv6Enabled, err := isIPv6Enabled(cfg.Install.ClusterPodCIDR)
+	if err != nil {
+		return nil, err
+	}
 	ipv6SysctlVal := "1"
 	ipv6FileHeader := "# Written by harvester-installer (IPv4-only install)\n"
 	if ipv6Enabled {
@@ -990,4 +994,22 @@ WantedBy=sysinit.target`)
 		Owner:       0,
 		Group:       0,
 	})
+}
+
+// isIPv6Enabled checks if the clusterPodCIDR is dual-stack IPv4
+// family first (IPv4, IPv6) or not.
+func isIPv6Enabled(clusterPodCIDR string) (bool, error) {
+	parts := strings.Split(clusterPodCIDR, ",")
+	if len(parts) != 2 {
+		return false, fmt.Errorf("invalid clusterPodCIDR format")
+	}
+	first, err := netip.ParsePrefix(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return false, err
+	}
+	second, err := netip.ParsePrefix(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return false, err
+	}
+	return first.Addr().Is4() && !second.Addr().Is4(), nil
 }
