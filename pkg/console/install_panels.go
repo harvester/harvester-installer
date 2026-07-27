@@ -2083,7 +2083,7 @@ func addClusterNetworkPanel(c *Console) error {
 		}
 		for _, p := range parts {
 			if _, err := netip.ParsePrefix(strings.TrimSpace(p)); err != nil {
-				return err
+				return fmt.Errorf("%q is not a valid CIDR (expected e.g. 10.42.0.0/16 or fd42::/48)", strings.TrimSpace(p))
 			}
 		}
 		if len(parts) == 1 {
@@ -2135,6 +2135,14 @@ func addClusterNetworkPanel(c *Console) error {
 				return fmt.Errorf("to override the cluster DNS IP, the service CIDR must be valid: %w", parseErr)
 			}
 			svcNets[prefix.Addr().Is4()] = prefix
+		}
+
+		// A single DNS IP must be IPv4; IPv6-only is not a supported mode.
+		if !strings.Contains(ip, ",") {
+			singleAddr, parseErr := netip.ParseAddr(strings.TrimSpace(ip))
+			if parseErr == nil && !singleAddr.Is4() {
+				return fmt.Errorf("a single DNS IP must be IPv4 (e.g. 10.53.0.10); for dual-stack provide IPv4,IPv6 (e.g. 10.53.0.10,fd53::a)")
+			}
 		}
 
 		// Validate each DNS address against the service CIDR of the same family.
