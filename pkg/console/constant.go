@@ -13,6 +13,7 @@ const (
 	diskNotePanel               = "diskNote"
 	preflightCheckPanel         = "preflightCheck"
 	askCreatePanel              = "askCreate"
+	askIPv6Panel                = "askIPv6"
 	serverURLPanel              = "serverUrl"
 	passwordPanel               = "osPassword"
 	passwordConfirmPanel        = "osPasswordConfirm"

@@ -167,6 +167,11 @@ type Install struct {
 	ClusterPodCIDR     string `json:"clusterPodCidr,omitempty"`
 	ClusterServiceCIDR string `json:"clusterServiceCidr,omitempty"`
 
+	// IPv6Enabled is set by the installer UI for join/install modes where
+	// ClusterPodCIDR is not provided. For create mode the flag is derived
+	// from the CIDR input instead.
+	IPv6Enabled bool `json:"ipv6Enabled,omitempty"`
+
 	ForceEFI      bool     `json:"forceEfi,omitempty"`
 	Device        string   `json:"device,omitempty"`
 	ConfigURL     string   `json:"configUrl,omitempty"`

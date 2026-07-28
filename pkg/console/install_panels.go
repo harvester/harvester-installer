@@ -165,6 +165,7 @@ func setPanels(c *Console) error {
 		addFooterPanel,
 		addPreflightCheckPanel,
 		addAskCreatePanel,
+		addAskIPv6Panel,
 		addAskRolePanel,
 		addDiskPanel,
 		addHostnamePanel,
@@ -867,7 +868,7 @@ func addAskCreatePanel(c *Console) error {
 			// all packages are already install
 			// configure hostname and network
 			if c.config.Install.Mode == config.ModeJoin {
-				return showRolePage(c)
+				return showIPv6Page(c)
 			}
 			if alreadyInstalled {
 				return showNetworkPage(c)
@@ -883,6 +884,14 @@ func showPasswordPage(c *Console) error {
 	return showNext(c, passwordConfirmPanel, passwordPanel)
 }
 
+func showIPv6Page(c *Console) error {
+	setLocation := createVerticalLocatorWithName(c)
+	if err := setLocation(askIPv6Panel, 3); err != nil {
+		return err
+	}
+	return showNext(c, askIPv6Panel)
+}
+
 func showRolePage(c *Console) error {
 	setLocation := createVerticalLocatorWithName(c)
 
@@ -891,6 +900,93 @@ func showRolePage(c *Console) error {
 	}
 
 	return showNext(c, askRolePanel)
+}
+
+// addAskIPv6Panel shows a Yes/No prompt for enabling IPv6 on join-mode nodes.
+// IPv6 is disabled by default; enabling it is required for dual-stack clusters.
+func addAskIPv6Panel(c *Console) error {
+	const (
+		optNo  = "no"
+		optYes = "yes"
+	)
+	var awaitingIPv6Ack bool
+
+	optionsFunc := func() ([]widgets.Option, error) {
+		return []widgets.Option{
+			{Value: optNo, Text: "No"},
+			{Value: optYes, Text: "Yes"},
+		}, nil
+	}
+
+	v, err := widgets.NewSelect(c.Gui, askIPv6Panel, "", optionsFunc)
+	if err != nil {
+		return err
+	}
+
+	v.PreShow = func() error {
+		awaitingIPv6Ack = false
+		if c.config.Install.IPv6Enabled {
+			v.Value = optYes
+		} else {
+			v.Value = optNo
+		}
+		if err := c.setContentByName(titlePanel, "Enable IPv6 on this node?"); err != nil {
+			return err
+		}
+		if err := c.setContentByName(validatorPanel, ""); err != nil {
+			return err
+		}
+		return c.setContentByName(notePanel,
+			"Note: Enabling IPv6 is required for Dual Stack (IPv4, IPv6) configurations.")
+	}
+
+	gotoPrev := func(_ *gocui.Gui, _ *gocui.View) error {
+		c.CloseElements(askIPv6Panel)
+		if err := c.setContentByName(validatorPanel, ""); err != nil {
+			return err
+		}
+		if err := c.setContentByName(notePanel, ""); err != nil {
+			return err
+		}
+		return showNext(c, askCreatePanel)
+	}
+
+	v.KeyBindings = map[gocui.Key]func(*gocui.Gui, *gocui.View) error{
+		gocui.KeyEnter: func(_ *gocui.Gui, _ *gocui.View) error {
+			selected, err := v.GetData()
+			if err != nil {
+				return err
+			}
+
+			if selected == optYes && !awaitingIPv6Ack {
+				// First Enter on "Yes": show the experimental warning in the
+				// validator panel (red) and ask the user to press Enter once more.
+				awaitingIPv6Ack = true
+				return c.setContentByName(validatorPanel,
+					"WARNING: Dual-stack networking (IPv4, IPv6) is an experimental feature "+
+						"and may behave unexpectedly in production. "+
+						"Press Enter again to confirm, or press ESC to go back.")
+			}
+
+			// Reset warning and store choice.
+			awaitingIPv6Ack = false
+			if err := c.setContentByName(validatorPanel, ""); err != nil {
+				return err
+			}
+			if err := c.setContentByName(notePanel, ""); err != nil {
+				return err
+			}
+			c.config.Install.IPv6Enabled = (selected == optYes)
+
+			if err = v.Close(); err != nil {
+				return err
+			}
+			return showRolePage(c)
+		},
+		gocui.KeyEsc: gotoPrev,
+	}
+	c.AddElement(askIPv6Panel, v)
+	return nil
 }
 
 func addAskRolePanel(c *Console) error {
@@ -917,6 +1013,10 @@ func addAskRolePanel(c *Console) error {
 	}
 	gotoPrevPage := func(_ *gocui.Gui, _ *gocui.View) error {
 		c.CloseElements(askRolePanel)
+		// In join mode the page before role is the IPv6 prompt.
+		if c.config.Install.Mode == config.ModeJoin {
+			return showIPv6Page(c)
+		}
 		return showNext(c, askCreatePanel)
 	}
 	askRoleV.PreShow = func() error {

@@ -198,9 +198,17 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 
 	// Write a persistent sysctl drop-in whose value matches the install's IPv6 choice.
 	// For dual-stack, IPv6 is enabled (disable_ipv6=0); for IPv4-only it is disabled (disable_ipv6=1).
-	ipv6Enabled, err := isIPv6Enabled(cfg.Install.ClusterPodCIDR)
-	if err != nil {
-		return nil, err
+	// For create mode the choice is derived from the cluster CIDR.
+	// For join/install modes the installer UI explicitly asks the user and stores the result
+	// in cfg.Install.IPv6Enabled — never infer it from the empty CIDR.
+	var ipv6Enabled bool
+	if cfg.Install.Mode == ModeCreate {
+		ipv6Enabled, err = isIPv6Enabled(cfg.Install.ClusterPodCIDR)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ipv6Enabled = cfg.Install.IPv6Enabled
 	}
 	ipv6SysctlVal := "1"
 	ipv6FileHeader := "# Written by harvester-installer (IPv4-only install)\n"
