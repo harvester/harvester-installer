@@ -2,7 +2,7 @@
 
 if [[ $# != 1 ]]
 then
-        echo "We need the settings.yaml from ipxe repo"
+        echo "We need the config.yaml from harvester-dev"
         exit 1
 fi
 
@@ -11,7 +11,7 @@ IN_SCRIPT_DIR=$SCRIPT_DIR/in-scripts
 
 SETTINGS=$1
 SSHKEY="$SCRIPT_DIR/tmp-ssh-key"
-NODE0_IP=$(yq e ".harvester_network_config.cluster[0].ip" ${SETTINGS})
+NODE0_IP=$(yq e ".nodes[0].ip" ${SETTINGS})
 
 ssh-keygen -R ${NODE0_IP} || true
 
