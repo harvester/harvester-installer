@@ -35,6 +35,7 @@ resources:
         config:
           proxy-body-size: "0"
           proxy-request-buffering: "off"
+          use-http2: "false"
         admissionWebhooks:
           port: 8444
         publishService:
